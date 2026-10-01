@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { buildProgressChartSvg, ChartMode, plannedProgressToday } from '../../utils/chartSvg';
 
@@ -14,10 +14,24 @@ export function scheduleStatus(actual: number, planned: number): { label: string
 export const ProgressChart: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { activeProject, projectSnapshots } = useApp();
   const [mode, setMode] = useState<ChartMode>('progress');
+  const holder = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(640);
+
+  // Dựng SVG theo bề rộng thật của khung (làm tròn theo bước 20px để tránh vẽ lại liên tục khi kéo cửa sổ)
+  useEffect(() => {
+    const el = holder.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(entries => {
+      const w = Math.round(entries[0].contentRect.width / 20) * 20;
+      if (w > 0) setWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const svg = useMemo(
-    () => buildProgressChartSvg(projectSnapshots, activeProject, { mode }),
-    [projectSnapshots, activeProject, mode]
+    () => buildProgressChartSvg(projectSnapshots, activeProject, { mode, width }),
+    [projectSnapshots, activeProject, mode, width]
   );
 
   const planned = plannedProgressToday(activeProject);
@@ -57,7 +71,7 @@ export const ProgressChart: React.FC<{ className?: string }> = ({ className = ''
       </div>
 
       {/* SVG do buildProgressChartSvg tạo ra từ số và ngày, không chứa văn bản người dùng nhập */}
-      <div dangerouslySetInnerHTML={{ __html: svg }} />
+      <div ref={holder} dangerouslySetInnerHTML={{ __html: svg }} />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-slate-500">
         <span className="inline-flex items-center gap-1.5">

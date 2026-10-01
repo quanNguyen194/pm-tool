@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MemberRole, Role } from '../../types';
+import { WorkloadBar } from './WorkloadPanel';
+import { computeWorkload } from '../../utils/workload';
 import {
   Shield,
   CheckCircle2,
@@ -21,6 +23,8 @@ export const TeamView: React.FC = () => {
     setMemberRole,
     removeMember
   } = useApp();
+
+  const workloadById = new Map(computeWorkload(users, projectTasks).map(w => [w.user.id, w]));
 
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<MemberRole>('developer');
@@ -290,11 +294,26 @@ export const TeamView: React.FC = () => {
                 </div>
 
                 {/* Workload stats */}
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
-                  <span>Khối lượng:</span>
-                  <span className="font-mono font-semibold text-slate-800">
-                    {userTasks.length} việc ({userDoneTasks} hoàn thành)
-                  </span>
+                <div className="pt-2 border-t border-slate-200/80 space-y-1.5 text-xs text-slate-500">
+                  <WorkloadBar active={userTasks.length - userDoneTasks} done={userDoneTasks} />
+                  <div className="flex items-center justify-between">
+                    <span>Khối lượng:</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      {userTasks.length - userDoneTasks} mở · {userDoneTasks} xong
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Giờ công:</span>
+                    <span className="font-mono tabular-nums text-slate-700">
+                      {workloadById.get(user.id)?.actualHours ?? 0}/{workloadById.get(user.id)?.estimatedHours ?? 0}h
+                    </span>
+                  </div>
+                  {(workloadById.get(user.id)?.overdue ?? 0) > 0 && (
+                    <div className="flex items-center justify-between text-rose-600 font-semibold">
+                      <span>Quá hạn:</span>
+                      <span className="font-mono">{workloadById.get(user.id)?.overdue} việc</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -42,11 +42,12 @@ export function plannedProgressToday(project: ChartProject): number {
 export function buildProgressChartSvg(
   snapshots: ProgressSnapshot[],
   project: ChartProject,
-  opts: { mode: ChartMode }
+  opts: { mode: ChartMode; /** Bề rộng khung chứa (px). Mặc định 640; truyền bề rộng thật để chữ không bị co nhỏ trên điện thoại. */ width?: number }
 ): string {
-  const W = 640;
-  const H = 260;
-  const m = { l: 40, r: 16, t: 14, b: 30 };
+  const W = Math.max(280, Math.round(opts.width ?? 640));
+  const compact = W < 480;
+  const H = compact ? 220 : 260;
+  const m = { l: compact ? 34 : 40, r: compact ? 10 : 16, t: 14, b: 30 };
   const iw = W - m.l - m.r;
   const ih = H - m.t - m.b;
 
@@ -83,11 +84,12 @@ export function buildProgressChartSvg(
     );
   });
 
-  // Nhãn trục X
-  for (let i = 0; i <= 4; i++) {
-    const d = Math.round(start + ((end - start) * i) / 4);
+  // Nhãn trục X (ít nhãn hơn trên màn hình hẹp)
+  const xTicks = compact ? 2 : 4;
+  for (let i = 0; i <= xTicks; i++) {
+    const d = Math.round(start + ((end - start) * i) / xTicks);
     parts.push(
-      `<text x="${x(d)}" y="${H - 10}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" font-size="10" style="fill:${COLORS.text}">${fmt(d)}</text>`
+      `<text x="${x(d)}" y="${H - 10}" text-anchor="${i === 0 ? 'start' : i === xTicks ? 'end' : 'middle'}" font-size="10" style="fill:${COLORS.text}">${fmt(d)}</text>`
     );
   }
 

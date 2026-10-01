@@ -1,6 +1,8 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { ProgressChart } from '../charts/ProgressChart';
+import { WorkloadPanel } from '../team/WorkloadPanel';
+import { computeForecast } from '../../utils/workload';
 import {
   TrendingUp,
   CheckCircle2,
@@ -23,6 +25,7 @@ export const DashboardView: React.FC = () => {
     projectUseCases,
     projectQualityGates,
     users,
+    projectSnapshots,
     setActiveTab,
     sendDeadlineReminder
   } = useApp();
@@ -73,6 +76,16 @@ export const DashboardView: React.FC = () => {
   const ucAvgProgress = totalUseCases > 0
     ? Math.round(projectUseCases.reduce((sum, u) => sum + u.progressPercent, 0) / totalUseCases)
     : 0;
+
+  // Giờ công, việc cần chú ý và dự báo hoàn thành
+  const totalEstimatedHours = projectTasks.reduce((s, t) => s + (t.estimatedHours || 0), 0);
+  const totalActualHours = projectTasks.reduce((s, t) => s + (t.actualHours || 0), 0);
+  const hoursPct = totalEstimatedHours > 0 ? Math.round((totalActualHours / totalEstimatedHours) * 100) : 0;
+  const overrunTasks = projectTasks.filter(t => t.estimatedHours > 0 && t.actualHours > t.estimatedHours).length;
+  const hoursBarColor = hoursPct > 100 ? 'bg-rose-500' : hoursPct > 85 ? 'bg-amber-500' : 'bg-indigo-600';
+  const urgentOpen = projectTasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
+  const forecast = computeForecast(projectSnapshots, projectTasks, activeProject.targetEndDate);
+  const fmtDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('vi-VN');
 
   const phaseNames: Record<string, string> = {
     phase_1: 'Giai đoạn 1: Khởi tạo',
@@ -347,6 +360,90 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
+      {/* Hàng chỉ số hiệu suất */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Giờ Công</span>
+            <Clock className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
+              {totalActualHours}h / {totalEstimatedHours}h
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden" role="img" aria-label={`Đã dùng ${hoursPct}% giờ dự kiến`}>
+            <div className={`${hoursBarColor} h-full rounded-full transition-all`} style={{ width: `${Math.min(hoursPct, 100)}%` }} />
+          </div>
+          <div className="text-[11px] text-slate-500 mt-2">
+            Đã dùng {hoursPct}% giờ dự kiến{overrunTasks > 0 ? ` · ${overrunTasks} việc vượt giờ` : ''}
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('tasks')}
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Cần Chú Ý</span>
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className={`text-2xl font-bold font-mono tabular-nums ${overdueTasks.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+            {overdueTasks.length} quá hạn
+          </div>
+          <div className="text-[11px] text-slate-500 mt-3">
+            {approachingTasks.length} sắp đến hạn (≤ 48h) · {urgentOpen} việc khẩn cấp đang mở
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Xong Trong 7 Ngày</span>
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
+            {forecast.doneLast7 === null ? '—' : `+${forecast.doneLast7} việc`}
+          </div>
+          <div className="text-[11px] text-slate-500 mt-3">
+            {forecast.doneLast7 === null ? 'Chưa đủ lịch sử tiến độ (cần dữ liệu từ 7 ngày trước)' : `Còn ${forecast.remaining} việc chưa xong`}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Dự Báo Hoàn Thành</span>
+            <Calendar className="w-4 h-4 text-indigo-600" />
+          </div>
+          {forecast.remaining === 0 ? (
+            <>
+              <div className="text-2xl font-bold text-emerald-600 font-mono">Hoàn tất</div>
+              <div className="text-[11px] text-slate-500 mt-3">Mọi nhiệm vụ đã xong</div>
+            </>
+          ) : forecast.etaDate ? (
+            <>
+              <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">{fmtDate(forecast.etaDate)}</div>
+              <div
+                className={`text-[11px] mt-3 font-medium ${
+                  (forecast.slackDays ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600'
+                }`}
+              >
+                {(forecast.slackDays ?? 0) > 0
+                  ? `Trễ ${forecast.slackDays} ngày so với hạn chót ${fmtDate(activeProject.targetEndDate)}`
+                  : (forecast.slackDays ?? 0) < 0
+                    ? `Sớm ${-(forecast.slackDays ?? 0)} ngày so với hạn chót`
+                    : 'Đúng hạn chót'}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-slate-400 font-mono">—</div>
+              <div className="text-[11px] text-slate-500 mt-3">Chưa ước tính được (chưa có việc hoàn thành gần đây)</div>
+            </>
+          )}
+          <div className="text-[10px] text-slate-400 mt-1">Ước tính theo tốc độ 7 ngày gần nhất</div>
+        </div>
+      </div>
+
       {/* Biểu đồ tiến độ theo thời gian */}
       <ProgressChart />
 
@@ -506,6 +603,9 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Khối lượng công việc theo thành viên */}
+      <WorkloadPanel />
     </div>
   );
 };
