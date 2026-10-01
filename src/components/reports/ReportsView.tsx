@@ -148,7 +148,7 @@ export const ReportsView: React.FC = () => {
             onClick={() => exportTasksToCSV(activeProject, projectTasks, users, projectUseCases)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
             <span>Excel Nhiệm Vụ</span>
           </button>
 
@@ -177,7 +177,7 @@ export const ReportsView: React.FC = () => {
         {/* Document Header */}
         <div className="border-b-2 border-slate-900 pb-5 mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
+            <div className="text-xs font-mono font-bold tracking-widest text-slate-500 uppercase">
               OMNIPROJECT ENTERPRISE PMO SUITE
             </div>
             <h2 className="text-xl font-bold text-slate-900 mt-1">{reportTypeTitles[reportType]}</h2>
@@ -281,7 +281,7 @@ export const ReportsView: React.FC = () => {
                       <td className="py-2 px-3 font-mono font-bold text-slate-700">{t.code}</td>
                       <td className="py-2 px-3 font-medium text-slate-900">{t.title}</td>
                       <td className="py-2 px-3 font-mono text-[10px] uppercase">{t.priority}</td>
-                      <td className={`py-2 px-3 font-mono ${isPastDue ? 'text-rose-600 font-bold' : 'text-slate-600'}`}>
+                      <td className={`py-2 px-3 font-mono ${isPastDue ? 'text-rose-700 font-bold' : 'text-slate-600'}`}>
                         {t.dueDate} {isPastDue && '(QUÁ HẠN)'}
                       </td>
                       <td className="py-2 px-3 font-mono text-[10px] uppercase">{t.status}</td>
@@ -333,15 +333,15 @@ export const ReportsView: React.FC = () => {
         <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center text-xs">
           <div>
             <div className="font-bold text-slate-800 mb-14">QUẢN LÝ DỰ ÁN (PM)</div>
-            <div className="text-[11px] text-slate-400 italic">(Ký và xác nhận tiến độ)</div>
+            <div className="text-[11px] text-slate-500 italic">(Ký và xác nhận tiến độ)</div>
           </div>
           <div>
             <div className="font-bold text-slate-800 mb-14">TRƯỞNG NHÓM QA/QC</div>
-            <div className="text-[11px] text-slate-400 italic">(Ký xác nhận chất lượng)</div>
+            <div className="text-[11px] text-slate-500 italic">(Ký xác nhận chất lượng)</div>
           </div>
           <div>
             <div className="font-bold text-slate-800 mb-14">ĐẠI DIỆN NGHIỆP VỤ (PO)</div>
-            <div className="text-[11px] text-slate-400 italic">(Ký phê duyệt nghiệm thu)</div>
+            <div className="text-[11px] text-slate-500 italic">(Ký phê duyệt nghiệm thu)</div>
           </div>
         </div>
       </div>

@@ -37,7 +37,7 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
   </FullScreenMessage>
 );
 
-const MainLayout: React.FC = () => {
+export const MainLayout: React.FC = () => {
   const { activeTab } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 

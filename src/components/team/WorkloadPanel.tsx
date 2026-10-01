@@ -61,7 +61,7 @@ export const WorkloadPanel: React.FC = () => {
               <div className="flex items-center justify-between gap-2 text-xs mb-1">
                 <span className="font-semibold text-slate-800 truncate">
                   {r.user.name}
-                  <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-400">{r.user.role.toUpperCase()}</span>
+                  <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-500">{r.user.role.toUpperCase()}</span>
                 </span>
                 <span className="font-mono tabular-nums text-slate-500 shrink-0">
                   {r.active} mở · {r.done} xong
@@ -76,12 +76,12 @@ export const WorkloadPanel: React.FC = () => {
                   {r.actualHours}/{r.estimatedHours}h
                 </span>
                 {r.overdue > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-rose-600 font-semibold">
+                  <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
                     <AlertTriangle className="w-3 h-3" />
                     {r.overdue} quá hạn
                   </span>
                 ) : (
-                  r.urgentActive > 0 && <span className="text-amber-600 font-medium">{r.urgentActive} khẩn cấp</span>
+                  r.urgentActive > 0 && <span className="text-amber-700 font-medium">{r.urgentActive} khẩn cấp</span>
                 )}
               </div>
             </div>
@@ -91,7 +91,7 @@ export const WorkloadPanel: React.FC = () => {
 
       {unassigned > 0 && (
         <p className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-          <strong className="text-amber-600">{unassigned} việc</strong> chưa có người phụ trách trong dự án này.
+          <strong className="text-amber-700">{unassigned} việc</strong> chưa có người phụ trách trong dự án này.
         </p>
       )}
     </div>

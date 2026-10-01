@@ -120,7 +120,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, userMap, on
       </div>
 
       {rows.length === 0 ? (
-        <div className="py-12 text-center text-xs text-slate-400">Không có nhiệm vụ nào để hiển thị</div>
+        <div className="py-12 text-center text-xs text-slate-500">Không có nhiệm vụ nào để hiển thị</div>
       ) : (
         <div className="overflow-x-auto">
           <div className="flex" style={{ width: 'max-content', minWidth: '100%' }}>
@@ -138,7 +138,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, userMap, on
                     className="px-3 flex items-center gap-2 border-b border-slate-100"
                   >
                     <div
-                      className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center shrink-0 ${assignee?.avatarColor || 'bg-slate-400'}`}
+                      className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center shrink-0 ${assignee?.avatarColor || 'bg-zinc-700'}`}
                       title={assignee?.name || 'Chưa phân công'}
                     >
                       {assignee?.name.charAt(0) || '?'}
@@ -179,7 +179,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, userMap, on
                         key={d}
                         style={{ width: cellW }}
                         className={`flex flex-col items-center justify-center text-[10px] leading-tight border-l border-slate-100 ${
-                          isToday ? 'bg-rose-600 text-white font-bold theme-fixed' : dow === 0 || dow === 6 ? 'text-slate-400' : 'text-slate-600'
+                          isToday ? 'bg-rose-600 text-white font-bold theme-fixed' : dow === 0 || dow === 6 ? 'text-slate-500' : 'text-slate-600'
                         }`}
                       >
                         <span>{dt.getUTCDate()}</span>
@@ -227,7 +227,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, userMap, on
                     <div key={task.id} style={{ height: ROW_H }} className="relative border-b border-slate-100">
                       {outLeft || outRight ? (
                         <span
-                          className={`absolute top-1/2 -translate-y-1/2 text-[10px] text-slate-400 ${outLeft ? 'left-1' : 'right-1'}`}
+                          className={`absolute top-1/2 -translate-y-1/2 text-[10px] text-slate-500 ${outLeft ? 'left-1' : 'right-1'}`}
                           title={text}
                         >
                           {outLeft ? (

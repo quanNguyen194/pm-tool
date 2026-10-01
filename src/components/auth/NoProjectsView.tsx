@@ -112,7 +112,7 @@ export const NoProjectsView: React.FC = () => {
               </button>
             </form>
 
-            <div className="flex items-center gap-3 text-[11px] text-slate-400">
+            <div className="flex items-center gap-3 text-[11px] text-slate-500">
               <div className="flex-1 border-t border-slate-200" />
               <span>hoặc</span>
               <div className="flex-1 border-t border-slate-200" />

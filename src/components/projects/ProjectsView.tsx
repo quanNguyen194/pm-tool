@@ -262,7 +262,7 @@ export const ProjectsView: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Quản lý dự án (PM):</span>
                     <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                      <div className={`w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${manager?.avatarColor || 'bg-slate-400'}`}>
+                      <div className={`w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${manager?.avatarColor || 'bg-zinc-700'}`}>
                         {manager?.name.charAt(0) || 'M'}
                       </div>
                       <span>{manager?.name || 'Chưa gán'}</span>
@@ -278,7 +278,7 @@ export const ProjectsView: React.FC = () => {
                   disabled={isActive}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex-1 ${
                     isActive
-                      ? 'bg-slate-100 text-slate-400 cursor-default'
+                      ? 'bg-slate-100 text-slate-600 cursor-default'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
@@ -302,7 +302,7 @@ export const ProjectsView: React.FC = () => {
                         deleteProject(project.id);
                       }
                     }}
-                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200"
+                    className="p-1.5 text-rose-700 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200"
                     title="Xóa dự án"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ export const ProjectsView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-slate-500 hover:text-slate-600 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>

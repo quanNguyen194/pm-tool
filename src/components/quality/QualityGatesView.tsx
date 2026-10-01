@@ -133,13 +133,13 @@ export const QualityGatesView: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                <span className={isSelected ? 'text-indigo-300 dark:text-indigo-100' : 'text-slate-400'}>
+                <span className={isSelected ? 'text-indigo-300 dark:text-indigo-100' : 'text-slate-500'}>
                   GATE 0{idx + 1}
                 </span>
                 {isReady ? (
                   <span className="text-emerald-400 font-bold">✓ ĐẠT</span>
                 ) : (
-                  <span className={isSelected ? 'text-amber-300 dark:text-amber-200' : 'text-amber-600'}>○ CHƯA ĐỦ</span>
+                  <span className={isSelected ? 'text-amber-300 dark:text-amber-200' : 'text-amber-700'}>○ CHƯA ĐỦ</span>
                 )}
               </div>
               <div className="font-bold text-xs truncate">{phase.shortName}</div>
@@ -184,14 +184,14 @@ export const QualityGatesView: React.FC = () => {
           <div className="mt-4">
             {isPhaseGatePassed ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
                 <div>
                   <strong>Đủ Điều Kiện Thông Qua (Gate Passed):</strong> Toàn bộ {mandatoryItems.length} tiêu chuẩn bắt buộc của giai đoạn này đã được thẩm định đạt chuẩn. Dự án đủ điều kiện tiến sang giai đoạn tiếp theo.
                 </div>
               </div>
             ) : (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
                 <div>
                   <strong>Chưa Đủ Điều Kiện Thông Qua (Gate Blocked):</strong> Còn {mandatoryItems.length - mandatoryPassed} tiêu chí bắt buộc chưa đạt. Cần hoàn thành thẩm định trước khi ký duyệt bàn giao giai đoạn tiếp theo.
                 </div>
@@ -241,7 +241,7 @@ export const QualityGatesView: React.FC = () => {
                               BẮT BUỘC
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
                               Khuyến nghị
                             </span>
                           )}
@@ -262,7 +262,7 @@ export const QualityGatesView: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500 pt-1">
                           {item.checkedBy && (
                             <span className="flex items-center gap-1">
-                              <UserCheck className="w-3 h-3 text-emerald-600" />
+                              <UserCheck className="w-3 h-3 text-emerald-700" />
                               <span>Thẩm định: <strong>{item.checkedBy}</strong></span>
                             </span>
                           )}
@@ -307,7 +307,7 @@ export const QualityGatesView: React.FC = () => {
               <h3 className="text-base font-bold text-slate-900">
                 Thêm Tiêu Chuẩn Chất Lượng (DoD Criteria)
               </h3>
-              <button onClick={() => setIsAddItemModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsAddItemModalOpen(false)} className="p-1 text-slate-500 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -393,7 +393,7 @@ export const QualityGatesView: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <h3 className="text-sm font-bold text-slate-900">Ghi Chú Thẩm Định Chất Lượng</h3>
-              <button onClick={() => setIsNotesModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsNotesModalOpen(false)} className="p-1 text-slate-500 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

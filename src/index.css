@@ -26,6 +26,14 @@
   --chart-ring: #0f172a;
 }
 
+/* Người dùng bật "giảm chuyển động": tắt các hiệu ứng lặp. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .toast-in {
     animation: toast-in 0.18s ease-out;

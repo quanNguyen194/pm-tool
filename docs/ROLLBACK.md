@@ -53,6 +53,7 @@ git push origin stable-YYYY-MM-DD
 ```
 
 Mốc hiện tại: **`stable-2026-10-02`** (commit `a440d69`, đủ giai đoạn 0-5).
+Sau khi nâng cấp giao diện (5 bước), hãy gắn mốc mới (vd `stable-2026-10-02-ui`) khi bạn đã duyệt; mốc cũ vẫn dùng được để quay về giao diện trước khi nâng cấp.
 
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
@@ -67,7 +68,7 @@ Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừ
 ## 7. Quy trình khi AI Studio đẩy code mới
 
 1. `git pull --rebase origin main`
-2. `npm run verify` (guard + type check + build; cần Node ≥ 20.19). CI trên GitHub chạy cùng các bước này cho mỗi lần push.
+2. `npm run verify` (guard + type check + build; cần Node ≥ 20.19). CI trên GitHub chạy cùng các bước này cho mỗi lần push. Với thay đổi giao diện, chạy thêm `npm run harness` và `await window.__run()` ở 375/768/1280px (xem `ui-harness/README.md`).
 3. Xem build trên Cloudflare xanh, mở web:
    - Đăng nhập, chọn dự án, Dashboard có biểu đồ
    - Kéo một task sang cột khác, tick một tiêu chí nghiệm thu

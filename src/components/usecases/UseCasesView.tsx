@@ -177,7 +177,7 @@ export const UseCasesView: React.FC = () => {
             className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
             title="Xuất bảng Use Case sang file CSV"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
           </button>
 
           {canManageTasks && (
@@ -201,7 +201,7 @@ export const UseCasesView: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Tìm theo mã UC, tên chức năng, tác nhân..."
-            className="w-full text-xs placeholder:text-slate-400 focus:outline-hidden"
+            className="w-full text-xs placeholder:text-slate-500 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
           />
         </div>
 
@@ -226,7 +226,7 @@ export const UseCasesView: React.FC = () => {
       {/* Use Cases Accordion List */}
       <div className="space-y-4">
         {filteredUseCases.length === 0 ? (
-          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl text-xs text-slate-400">
+          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl text-xs text-slate-500">
             Không tìm thấy Use Case nào phù hợp
           </div>
         ) : (
@@ -324,20 +324,20 @@ export const UseCasesView: React.FC = () => {
                       {/* Alternate Flow */}
                       <div className="bg-white p-4 rounded-xl border border-slate-200">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-2">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
                           <span>Luồng Ngoại Lệ & Xử Lý Lỗi (Alternate Flow)</span>
                         </div>
                         {uc.alternateFlow && uc.alternateFlow.length > 0 ? (
                           <ul className="space-y-1.5 text-xs text-slate-600">
                             {uc.alternateFlow.map((alt, idx) => (
                               <li key={idx} className="flex items-start gap-2">
-                                <span className="text-amber-600 font-bold shrink-0">·</span>
+                                <span className="text-amber-700 font-bold shrink-0">·</span>
                                 <span>{alt}</span>
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <div className="text-xs text-slate-400 italic">Không có luồng ngoại lệ đặc biệt</div>
+                          <div className="text-xs text-slate-500 italic">Không có luồng ngoại lệ đặc biệt</div>
                         )}
                       </div>
                     </div>
@@ -346,7 +346,7 @@ export const UseCasesView: React.FC = () => {
                     <div className="bg-white p-4 rounded-xl border border-slate-200">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                           <h4 className="text-xs font-bold text-slate-900">
                             Tiêu Chí Nghiệm Thu (Acceptance Criteria / Definition of Done)
                           </h4>
@@ -370,7 +370,7 @@ export const UseCasesView: React.FC = () => {
                               type="checkbox"
                               checked={criterion.completed}
                               onChange={() => toggleAcceptanceCriteria(uc.id, criterion.id)}
-                              className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              className="mt-0.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500"
                             />
                             <span className={criterion.completed ? 'line-through text-slate-500' : 'font-medium'}>
                               {criterion.description}
@@ -413,7 +413,7 @@ export const UseCasesView: React.FC = () => {
                               onClick={() => {
                                 if (window.confirm(`Xóa Use Case ${uc.code}?`)) deleteUseCase(uc.id);
                               }}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-rose-600 hover:text-rose-800 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-rose-700 hover:text-rose-800 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Xóa</span>
@@ -438,7 +438,7 @@ export const UseCasesView: React.FC = () => {
               <h3 className="text-base font-bold text-slate-900">
                 {editingUc ? 'Chỉnh Sửa Use Case' : 'Thêm Use Case Mới'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-500 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

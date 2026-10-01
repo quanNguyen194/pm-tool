@@ -9,10 +9,11 @@ Web quản lý dự án: nhiều dự án độc lập, nhiệm vụ (Kanban), u
 | Nhóm | Mô tả |
 |---|---|
 | Dự án | Nhiều dự án, mỗi dự án có PM, ngân sách, giai đoạn hiện tại, tiến độ tự tính (60% nhiệm vụ + 40% use case) |
-| Nhiệm vụ | Kanban kéo thả + bảng, giao người phụ trách, hạn chót, giờ ước tính/thực tế, liên kết use case |
+| Nhiệm vụ | Kanban kéo thả, Gantt (2/4/6 tuần), bảng sắp xếp được, giao người phụ trách, hạn chót, giờ ước tính/thực tế, liên kết use case |
 | Use case | Luồng chính/phụ, tiêu chí nghiệm thu; tick hết tiêu chí thì use case tự hoàn thành |
 | Quality Gates | Checklist 5 giai đoạn, nhân bản từ mẫu cho mỗi dự án mới; server tự ghi người duyệt + ngày duyệt |
-| Dashboard | KPI, phân bổ trạng thái, biểu đồ tiến độ thực tế so với kế hoạch (và burndown) |
+| Dashboard | KPI, giờ công, dự báo hoàn thành (theo tốc độ 7 ngày), khối lượng theo thành viên, biểu đồ tiến độ thực tế so với kế hoạch (và burndown) |
+| Giao diện | Sáng/tối, responsive (thanh bên thành ngăn kéo dưới 1024px), thông báo nổi, đạt tương phản WCAG AA |
 | Nhắc deadline | `pg_cron` quét 8:00 sáng (giờ VN): task quá hạn hoặc còn ≤ 2 ngày; thông báo realtime + âm báo |
 | Báo cáo | In PDF, Excel (CSV), sao lưu JSON; báo cáo tuần/tháng tự động lưu vào lịch sử |
 | Phân quyền | Đăng nhập thật, quản trị viên toàn hệ thống + vai trò theo từng dự án, thực thi bằng RLS ở database |
@@ -65,6 +66,21 @@ Chỉ dùng **anon / publishable key** ở frontend. Tuyệt đối không đưa
 4. Đăng ký tài khoản đầu tiên trên web (thành admin), rồi nạp dữ liệu demo bằng nút "Nạp dữ liệu demo" hoặc `select public.seed_demo_data();`. Muốn biểu đồ có lịch sử minh họa: `select public.backfill_demo_progress();`.
 
 Kiểm tra lịch tự động: `select jobname, schedule, active from cron.job;` (phải có `omni-scan-deadlines`, `omni-snapshot-progress`, `omni-generate-reports`).
+
+## Phát triển giao diện
+
+| Lệnh | Tác dụng |
+|---|---|
+| `npm run verify` | Guard + type check + build (chạy sau khi nhận code giao diện mới) |
+| `npm run harness` | Chạy toàn bộ khung và 7 màn hình với dữ liệu giả để kiểm tra không cần đăng nhập, xem [ui-harness/README.md](ui-harness/README.md) |
+| `npm run gen:dark` | Sinh lại `src/styles/dark-theme.css` (chạy khi thêm màu mới vào giao diện) |
+
+Quy ước màu:
+
+- **Chế độ tối** áp bằng class `dark` trên `<html>` (`ThemeContext`, mặc định sáng, nhớ lựa chọn trên trình duyệt). Bảng màu tối được **sinh tự động** từ `scripts/gen-dark-theme.mjs` nên không cần viết `dark:` cho từng class. Chữ nhấn dùng sắc độ 700 trở lên (`text-amber-700`, `text-emerald-700`...) để đạt tương phản ở cả hai giao diện.
+- Vùng vốn tối sẵn (thanh bên, thanh Gantt, tab đang chọn) thêm class `theme-fixed` để giữ nguyên màu ở cả hai giao diện.
+- Màu dự án suy ra từ mã dự án (`src/utils/projectColor.ts`); màu avatar chuẩn hóa ở `src/api/mappers.ts`.
+- Biểu đồ SVG (`src/utils/chartSvg.ts`) đọc màu từ biến CSS `--chart-*` để đổi theo giao diện.
 
 ## Kiểm thử database
 

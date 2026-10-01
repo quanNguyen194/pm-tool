@@ -187,8 +187,8 @@ export const TasksView: React.FC = () => {
   const priorityBadge: Record<Priority, { label: string; color: string }> = {
     low: { label: 'Thấp', color: 'text-slate-500' },
     medium: { label: 'TB', color: 'text-blue-600' },
-    high: { label: 'Cao', color: 'text-amber-600 font-semibold' },
-    urgent: { label: 'Khẩn Cấp', color: 'text-rose-600 font-bold' }
+    high: { label: 'Cao', color: 'text-amber-700 font-semibold' },
+    urgent: { label: 'Khẩn Cấp', color: 'text-rose-700 font-bold' }
   };
 
   const getStatusFlow = (status: TaskStatus) => {
@@ -259,7 +259,7 @@ export const TasksView: React.FC = () => {
             className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
             title="Xuất danh sách công việc sang Excel/CSV"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
           </button>
 
           {canManageTasks && (
@@ -283,10 +283,10 @@ export const TasksView: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tiêu đề, mã nhiệm vụ (VD: OB-101)..."
-            className="w-full text-xs placeholder:text-slate-400 focus:outline-hidden"
+            className="w-full text-xs placeholder:text-slate-500 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
+            <button onClick={() => setSearchQuery('')} className="text-slate-500 hover:text-slate-600">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -388,7 +388,7 @@ export const TasksView: React.FC = () => {
                 {/* Task Cards Column */}
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {tasksInCol.length === 0 ? (
-                    <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg text-[11px] text-slate-400">
+                    <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg text-[11px] text-slate-500">
                       Chưa có nhiệm vụ
                     </div>
                   ) : (
@@ -428,7 +428,7 @@ export const TasksView: React.FC = () => {
                               </div>
 
                               {isPastDue && (
-                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3" />
                                   <span>Quá hạn</span>
                                 </span>
@@ -452,7 +452,7 @@ export const TasksView: React.FC = () => {
                             )}
 
                             {/* Phase & Use Case Reference */}
-                            <div className="text-[11px] text-slate-400 space-y-0.5 mb-3">
+                            <div className="text-[11px] text-slate-500 space-y-0.5 mb-3">
                               <div className="truncate">Giai đoạn: <span className="text-slate-600">{task.phase}</span></div>
                               {task.useCaseId && (
                                 <div className="text-indigo-600 font-mono text-[10px]">
@@ -467,7 +467,7 @@ export const TasksView: React.FC = () => {
                             <div className="flex items-center justify-between text-[11px] mb-2">
                               <div className="flex items-center gap-1.5">
                                 <div
-                                  className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-slate-400'}`}
+                                  className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-zinc-700'}`}
                                   title={assignee?.name}
                                 >
                                   {assignee?.name.charAt(0) || '?'}
@@ -481,7 +481,7 @@ export const TasksView: React.FC = () => {
                             </div>
 
                             <div className="flex items-center justify-between text-[11px]">
-                              <span className={`font-mono text-[10px] ${isPastDue ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
+                              <span className={`font-mono text-[10px] ${isPastDue ? 'text-rose-700 font-bold' : 'text-slate-500'}`}>
                                 Hạn: {task.dueDate}
                               </span>
 
@@ -526,7 +526,7 @@ export const TasksView: React.FC = () => {
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={() => openEditModal(task)}
-                                    className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                                    className="p-1 text-slate-500 hover:text-slate-700 rounded"
                                     title="Sửa công việc"
                                   >
                                     <Edit3 className="w-3 h-3" />
@@ -535,7 +535,7 @@ export const TasksView: React.FC = () => {
                                     onClick={() => {
                                       if (window.confirm(`Xóa nhiệm vụ ${task.code}?`)) deleteTask(task.id);
                                     }}
-                                    className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                    className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                     title="Xóa"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -692,7 +692,7 @@ export const TasksView: React.FC = () => {
               <tbody className="divide-y divide-slate-100 font-sans">
                 {sortedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={8} className="py-8 text-center text-slate-500">
                       Không tìm thấy nhiệm vụ nào phù hợp
                     </td>
                   </tr>
@@ -732,7 +732,7 @@ export const TasksView: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-4">
                           <div className="flex items-center gap-2">
-                            <div className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-slate-400'}`}>
+                            <div className={`w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-zinc-700'}`}>
                               {assignee?.name.charAt(0) || '?'}
                             </div>
                             <span className="text-slate-800">{assignee?.name}</span>
@@ -742,7 +742,7 @@ export const TasksView: React.FC = () => {
                           {task.actualHours}/{task.estimatedHours}h
                         </td>
                         <td className="py-2.5 px-4 font-mono">
-                          <span className={isPastDue ? 'text-rose-600 font-bold' : 'text-slate-600'}>
+                          <span className={isPastDue ? 'text-rose-700 font-bold' : 'text-slate-600'}>
                             {task.dueDate} {isPastDue && '(Quá Hạn)'}
                           </span>
                         </td>
@@ -751,7 +751,7 @@ export const TasksView: React.FC = () => {
                             {isPastDue && (
                               <button
                                 onClick={() => sendDeadlineReminder(task.id)}
-                                className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+                                className="p-1 text-rose-700 hover:bg-rose-50 rounded"
                                 title="Gửi nhắc nhở deadline"
                               >
                                 <Send className="w-3.5 h-3.5" />
@@ -770,7 +770,7 @@ export const TasksView: React.FC = () => {
                                   onClick={() => {
                                     if (window.confirm(`Xóa nhiệm vụ ${task.code}?`)) deleteTask(task.id);
                                   }}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                  className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                   title="Xóa"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -797,7 +797,7 @@ export const TasksView: React.FC = () => {
               <h3 className="text-base font-bold text-slate-900">
                 {editingTask ? 'Chỉnh Sửa Nhiệm Vụ' : 'Thêm Nhiệm Vụ Mới'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-500 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

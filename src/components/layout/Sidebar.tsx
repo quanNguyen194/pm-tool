@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded-md tabular-nums ${
                         isActive
-                          ? 'bg-white/20 text-white'
+                          ? 'bg-indigo-900/40 text-white'
                           : 'bg-slate-800 text-slate-400 border border-slate-700/50'
                       }`}
                     >

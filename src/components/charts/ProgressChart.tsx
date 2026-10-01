@@ -5,10 +5,10 @@ import { buildProgressChartSvg, ChartMode, plannedProgressToday } from '../../ut
 /** Mức chênh (điểm %) giữa thực tế và kế hoạch, kèm nhãn + màu hiển thị. */
 export function scheduleStatus(actual: number, planned: number): { label: string; className: string } {
   const diff = actual - planned;
-  if (diff >= 5) return { label: `Vượt kế hoạch ${diff} điểm %`, className: 'text-emerald-600' };
-  if (diff <= -10) return { label: `Chậm ${-diff} điểm % so với kế hoạch`, className: 'text-rose-600' };
-  if (diff < 0) return { label: `Hơi chậm ${-diff} điểm % so với kế hoạch`, className: 'text-amber-600' };
-  return { label: 'Đúng kế hoạch', className: 'text-emerald-600' };
+  if (diff >= 5) return { label: `Vượt kế hoạch ${diff} điểm %`, className: 'text-emerald-700' };
+  if (diff <= -10) return { label: `Chậm ${-diff} điểm % so với kế hoạch`, className: 'text-rose-700' };
+  if (diff < 0) return { label: `Hơi chậm ${-diff} điểm % so với kế hoạch`, className: 'text-amber-700' };
+  return { label: 'Đúng kế hoạch', className: 'text-emerald-700' };
 }
 
 export const ProgressChart: React.FC<{ className?: string }> = ({ className = '' }) => {
@@ -84,7 +84,7 @@ export const ProgressChart: React.FC<{ className?: string }> = ({ className = ''
           <span className="inline-block w-4 border-t border-dotted border-amber-500" /> Hôm nay
         </span>
         {projectSnapshots.length < 2 && (
-          <span className="text-slate-400">Biểu đồ sẽ đầy dần theo từng ngày làm việc.</span>
+          <span className="text-slate-500">Biểu đồ sẽ đầy dần theo từng ngày làm việc.</span>
         )}
       </div>
     </div>

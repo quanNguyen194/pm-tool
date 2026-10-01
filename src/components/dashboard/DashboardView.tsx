@@ -120,7 +120,7 @@ export const DashboardView: React.FC = () => {
               <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
                 {activeProject.progressPercent}%
               </div>
-              <div className="text-[11px] text-emerald-600 font-medium mt-0.5">
+              <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
                 {phaseNames[activeProject.currentPhase]}
               </div>
             </div>
@@ -179,7 +179,7 @@ export const DashboardView: React.FC = () => {
         <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-amber-900">
                   Cảnh Báo Deadline Tự Động: Có {overdueTasks.length} nhiệm vụ quá hạn và {approachingTasks.length} nhiệm vụ sắp đến hạn (&lt; 48 giờ)
@@ -195,7 +195,7 @@ export const DashboardView: React.FC = () => {
                           </span>
                           <span className="font-semibold text-slate-800">[{t.code}]</span>
                           <span className="text-slate-700">{t.title}</span>
-                          <span className="text-slate-400">·</span>
+                          <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
                         </div>
                         <button
@@ -218,7 +218,7 @@ export const DashboardView: React.FC = () => {
                           </span>
                           <span className="font-semibold text-slate-800">[{t.code}]</span>
                           <span className="text-slate-700">{t.title}</span>
-                          <span className="text-slate-400">·</span>
+                          <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
                         </div>
                         <button
@@ -247,7 +247,7 @@ export const DashboardView: React.FC = () => {
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Nhiệm Vụ Dự Án</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums">{doneTasks}/{totalTasks}</span>
@@ -328,7 +328,7 @@ export const DashboardView: React.FC = () => {
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Đội Ngũ Dự Án</span>
-            <UserCheck className="w-4 h-4 text-emerald-600" />
+            <UserCheck className="w-4 h-4 text-emerald-700" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
@@ -386,9 +386,9 @@ export const DashboardView: React.FC = () => {
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Cần Chú Ý</span>
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <AlertTriangle className="w-4 h-4 text-rose-700" />
           </div>
-          <div className={`text-2xl font-bold font-mono tabular-nums ${overdueTasks.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+          <div className={`text-2xl font-bold font-mono tabular-nums ${overdueTasks.length > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
             {overdueTasks.length} quá hạn
           </div>
           <div className="text-[11px] text-slate-500 mt-3">
@@ -399,7 +399,7 @@ export const DashboardView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Xong Trong 7 Ngày</span>
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <TrendingUp className="w-4 h-4 text-emerald-700" />
           </div>
           <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
             {forecast.doneLast7 === null ? '—' : `+${forecast.doneLast7} việc`}
@@ -416,7 +416,7 @@ export const DashboardView: React.FC = () => {
           </div>
           {forecast.remaining === 0 ? (
             <>
-              <div className="text-2xl font-bold text-emerald-600 font-mono">Hoàn tất</div>
+              <div className="text-2xl font-bold text-emerald-700 font-mono">Hoàn tất</div>
               <div className="text-[11px] text-slate-500 mt-3">Mọi nhiệm vụ đã xong</div>
             </>
           ) : forecast.etaDate ? (
@@ -424,7 +424,7 @@ export const DashboardView: React.FC = () => {
               <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">{fmtDate(forecast.etaDate)}</div>
               <div
                 className={`text-[11px] mt-3 font-medium ${
-                  (forecast.slackDays ?? 0) > 0 ? 'text-rose-600' : 'text-emerald-600'
+                  (forecast.slackDays ?? 0) > 0 ? 'text-rose-700' : 'text-emerald-700'
                 }`}
               >
                 {(forecast.slackDays ?? 0) > 0
@@ -436,11 +436,11 @@ export const DashboardView: React.FC = () => {
             </>
           ) : (
             <>
-              <div className="text-2xl font-bold text-slate-400 font-mono">—</div>
+              <div className="text-2xl font-bold text-slate-500 font-mono">—</div>
               <div className="text-[11px] text-slate-500 mt-3">Chưa ước tính được (chưa có việc hoàn thành gần đây)</div>
             </>
           )}
-          <div className="text-[10px] text-slate-400 mt-1">Ước tính theo tốc độ 7 ngày gần nhất</div>
+          <div className="text-[10px] text-slate-500 mt-1">Ước tính theo tốc độ 7 ngày gần nhất</div>
         </div>
       </div>
 
@@ -505,7 +505,7 @@ export const DashboardView: React.FC = () => {
                   <div className="font-bold text-amber-800 font-mono">{reviewTasks}</div>
                 </div>
                 <div className="p-2 rounded bg-emerald-50 border border-emerald-100">
-                  <div className="text-[10px] text-emerald-600">Hoàn Thành</div>
+                  <div className="text-[10px] text-emerald-700">Hoàn Thành</div>
                   <div className="font-bold text-emerald-700 font-mono">{doneTasks}</div>
                 </div>
               </div>
@@ -528,7 +528,7 @@ export const DashboardView: React.FC = () => {
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] font-mono text-slate-500">{task.dueDate}</span>
                         <div
-                          className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-slate-400'}`}
+                          className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${assignee?.avatarColor || 'bg-zinc-700'}`}
                           title={assignee?.name}
                         >
                           {assignee?.name.charAt(0) || '?'}

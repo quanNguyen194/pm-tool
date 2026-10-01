@@ -16,11 +16,18 @@ import {
 // để Tailwind không loại bỏ chúng khi build.
 export const AVATAR_COLORS = [
   'bg-indigo-600',
-  'bg-emerald-600',
+  'bg-emerald-700',
   'bg-blue-600',
-  'bg-amber-600',
-  'bg-slate-600'
+  'bg-amber-700',
+  'bg-zinc-700'
 ];
+
+// Giá trị cũ trong DB -> màu đủ tương phản với chữ trắng (zinc không bị đổi khi bật chế độ tối, slate thì có).
+const LEGACY_AVATAR: Record<string, string> = {
+  'bg-emerald-600': 'bg-emerald-700',
+  'bg-amber-600': 'bg-amber-700',
+  'bg-slate-600': 'bg-zinc-700'
+};
 
 // Hàng dữ liệu thô từ PostgREST. Schema nằm ở supabase/migrations.
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -46,7 +53,7 @@ export const mapProfile = (r: Row): Profile => ({
   name: r.name,
   email: r.email ?? '',
   department: r.department ?? '',
-  avatarColor: r.avatar_color || AVATAR_COLORS[0],
+  avatarColor: LEGACY_AVATAR[r.avatar_color] || r.avatar_color || AVATAR_COLORS[0],
   isAdmin: !!r.is_admin
 });
 

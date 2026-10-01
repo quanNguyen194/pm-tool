@@ -13,6 +13,7 @@
     "lint": "tsc --noEmit",
     "guard": "node scripts/guard.mjs",
     "gen:dark": "node scripts/gen-dark-theme.mjs",
+    "harness": "vite --config ui-harness/vite.config.ts --port 4300 --host 127.0.0.1",
     "verify": "npm run guard && npm run lint && npm run build"
   },
   "dependencies": {

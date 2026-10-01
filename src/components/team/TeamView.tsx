@@ -272,7 +272,7 @@ export const TeamView: React.FC = () => {
                           onClick={() => {
                             if (window.confirm(`Gỡ ${user.name} khỏi dự án ${activeProject.code}?`)) removeMember(user.id);
                           }}
-                          className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+                          className="p-1 text-rose-700 hover:bg-rose-50 rounded"
                           title="Gỡ khỏi dự án"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ export const TeamView: React.FC = () => {
                     </span>
                   </div>
                   {(workloadById.get(user.id)?.overdue ?? 0) > 0 && (
-                    <div className="flex items-center justify-between text-rose-600 font-semibold">
+                    <div className="flex items-center justify-between text-rose-700 font-semibold">
                       <span>Quá hạn:</span>
                       <span className="font-mono">{workloadById.get(user.id)?.overdue} việc</span>
                     </div>

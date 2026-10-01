@@ -63,19 +63,19 @@ export const ScheduledReports: React.FC<{ reportType: ReportFrequency }> = ({ re
             />
             <span>
               <span className="block text-xs font-semibold text-slate-900">{s.title}</span>
-              <span className="block text-[11px] text-slate-500">{s.desc}</span>
+              <span className="block text-[11px] text-slate-600">{s.desc}</span>
             </span>
           </label>
         ))}
       </div>
       {!canManageProject && (
-        <p className="text-[11px] text-slate-400 italic">* Chỉ quản trị viên hoặc PM mới đổi được lịch.</p>
+        <p className="text-[11px] text-slate-500 italic">* Chỉ quản trị viên hoặc PM mới đổi được lịch.</p>
       )}
 
       <div>
         <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Lịch sử báo cáo đã tạo</h4>
         {reportRuns.length === 0 ? (
-          <p className="text-xs text-slate-400 py-3">Chưa có báo cáo nào. Bật lịch ở trên hoặc bấm "Tạo báo cáo ngay".</p>
+          <p className="text-xs text-slate-500 py-3">Chưa có báo cáo nào. Bật lịch ở trên hoặc bấm "Tạo báo cáo ngay".</p>
         ) : (
           <div className="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100">
             {reportRuns.slice(0, 10).map(run => {
@@ -91,7 +91,7 @@ export const ScheduledReports: React.FC<{ reportType: ReportFrequency }> = ({ re
                     <div className="text-[11px] text-slate-500 mt-0.5">
                       Tiến độ <strong className="text-slate-800">{run.summary.progress.end}%</strong>
                       {delta !== null && (
-                        <span className={delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                        <span className={delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
                           {' '}
                           ({delta >= 0 ? '+' : ''}
                           {delta})
