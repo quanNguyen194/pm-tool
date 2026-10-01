@@ -4,7 +4,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-admin',
     name: 'Nguyễn Tuấn Minh',
-    email: 'quan.ntm194@gmail.com',
+    email: 'minh.nguyen@omnicorp.vn',
     avatarColor: 'bg-indigo-600',
     role: 'admin',
     department: 'Ban Giám Đốc Công Nghệ (CTO Office)'
