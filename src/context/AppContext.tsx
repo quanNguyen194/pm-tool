@@ -261,18 +261,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setMembers((data || []).map(mapMember));
       },
       projects: async () => {
-        const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('code'); // tiêu chí phụ: bản ghi tạo cùng giao dịch có created_at trùng nhau
         if (error) throw error;
         setProjectRows(data || []);
       },
       tasks: async () => {
-        const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('code');
         if (error) throw error;
         setTasks((data || []).map(mapTask));
       },
       usecases: async () => {
         const [uc, cr] = await Promise.all([
-          supabase.from('use_cases').select('*').order('created_at', { ascending: false }),
+          supabase.from('use_cases').select('*').order('created_at', { ascending: false }).order('code'),
           supabase.from('acceptance_criteria').select('*')
         ]);
         if (uc.error) throw uc.error;
