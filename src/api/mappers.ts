@@ -4,6 +4,8 @@ import {
   Project,
   ProgressSnapshot,
   ProjectQualityGates,
+  ReportRun,
+  ReportSchedule,
   QualityCheckItem,
   QualityGatePhase,
   Task,
@@ -120,7 +122,25 @@ export const mapNotification = (r: Row): NotificationItem => ({
   isRead: !!r.is_read
 });
 
-export const mapSnapshot = (r: Row): ProgressSnapshot & { projectId: string } => ({
+export const mapReportSchedule = (r: Row): ReportSchedule => ({
+  id: r.id,
+  projectId: r.project_id,
+  frequency: r.frequency,
+  enabled: !!r.enabled,
+  lastRunOn: r.last_run_on ?? undefined
+});
+
+export const mapReportRun = (r: Row): ReportRun => ({
+  id: r.id,
+  projectId: r.project_id,
+  frequency: r.frequency,
+  periodStart: r.period_start,
+  periodEnd: r.period_end,
+  createdAt: r.created_at,
+  summary: r.summary
+});
+
+export const mapSnapshot =(r: Row): ProgressSnapshot & { projectId: string } => ({
   projectId: r.project_id,
   date: r.snap_date,
   progressPercent: r.progress_percent ?? 0,

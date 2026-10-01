@@ -20,7 +20,10 @@ import {
   TaskStatus,
   Role,
   MemberRole,
-  ProgressSnapshot
+  ProgressSnapshot,
+  ReportFrequency,
+  ReportRun,
+  ReportSchedule
 } from '../types';
 import { supabase, describeError } from '../lib/supabase';
 import {
@@ -33,6 +36,8 @@ import {
   mapUseCase,
   mapNotification,
   mapSnapshot,
+  mapReportSchedule,
+  mapReportRun,
   buildQualityGates
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
@@ -63,6 +68,9 @@ interface AppContextType {
   unreadNotificationCount: number;
   /** Lịch sử tiến độ của dự án đang chọn (cũ -> mới), dùng vẽ biểu đồ. */
   projectSnapshots: ProgressSnapshot[];
+  /** Lịch báo cáo định kỳ + các bản báo cáo đã tạo của dự án đang chọn (mới nhất trước). */
+  reportSchedules: ReportSchedule[];
+  reportRuns: ReportRun[];
 
   // Trạng thái tải dữ liệu
   isLoading: boolean;
@@ -113,6 +121,9 @@ interface AppContextType {
   seedDemoData: () => void;
   /** Admin: quét ngay các task quá hạn / sắp đến hạn và tạo thông báo (cron cũng chạy việc này hằng ngày). */
   scanDeadlines: () => void;
+  // Báo cáo định kỳ
+  setReportSchedule: (frequency: 'weekly' | 'monthly', enabled: boolean) => void;
+  generateReportNow: (frequency: ReportFrequency) => void;
   soundMuted: boolean;
   toggleSound: () => void;
 }
@@ -139,7 +150,16 @@ const safeSet = (key: string, value: string) => {
   }
 };
 
-type Slice = 'profiles' | 'members' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'notifications' | 'snapshots';
+type Slice =
+  | 'profiles'
+  | 'members'
+  | 'projects'
+  | 'tasks'
+  | 'usecases'
+  | 'quality'
+  | 'notifications'
+  | 'snapshots'
+  | 'reports';
 const ALL_SLICES: Slice[] = [
   'profiles',
   'members',
@@ -148,7 +168,8 @@ const ALL_SLICES: Slice[] = [
   'usecases',
   'quality',
   'notifications',
-  'snapshots'
+  'snapshots',
+  'reports'
 ];
 
 // Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
@@ -160,7 +181,9 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   acceptance_criteria: ['usecases'],
   quality_items: ['quality'],
   notifications: ['notifications'],
-  progress_snapshots: ['snapshots']
+  progress_snapshots: ['snapshots'],
+  report_schedules: ['reports'],
+  report_runs: ['reports']
 };
 
 type Row = Record<string, any>;
@@ -200,6 +223,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [qualityRows, setQualityRows] = useState<Row[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [snapshotRows, setSnapshotRows] = useState<(ProgressSnapshot & { projectId: string })[]>([]);
+  const [scheduleRows, setScheduleRows] = useState<ReportSchedule[]>([]);
+  const [runRows, setRunRows] = useState<ReportRun[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -273,6 +298,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
         setSnapshotRows((data || []).map(mapSnapshot));
+      },
+      reports: async () => {
+        // Phần phụ như biểu đồ: lỗi (vd chưa chạy migration 0007) không được chặn cả app.
+        const [sch, runs] = await Promise.all([
+          supabase.from('report_schedules').select('*'),
+          supabase.from('report_runs').select('*').order('created_at', { ascending: false }).limit(200)
+        ]);
+        if (sch.error || runs.error) {
+          console.warn('Không tải được báo cáo định kỳ:', (sch.error || runs.error)?.message);
+          setScheduleRows([]);
+          setRunRows([]);
+          return;
+        }
+        setScheduleRows((sch.data || []).map(mapReportSchedule));
+        setRunRows((runs.data || []).map(mapReportRun));
       }
     }),
     []
@@ -360,6 +400,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .map(({ projectId: _projectId, ...rest }) => rest),
     [snapshotRows, activeProjectId]
   );
+
+  const reportSchedules = useMemo(
+    () => scheduleRows.filter(s => s.projectId === activeProjectId),
+    [scheduleRows, activeProjectId]
+  );
+  const reportRuns = useMemo(() => runRows.filter(r => r.projectId === activeProjectId), [runRows, activeProjectId]);
 
   const roleIn = useCallback(
     (projectId: string, p: Profile): Role => {
@@ -818,6 +864,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const setReportSchedule = (frequency: 'weekly' | 'monthly', enabled: boolean) => {
+    const existing = scheduleRows.find(s => s.projectId === activeProjectId && s.frequency === frequency);
+    setScheduleRows(prev =>
+      existing
+        ? prev.map(s => (s.id === existing.id ? { ...s, enabled } : s))
+        : [...prev, { id: `tmp-${frequency}`, projectId: activeProjectId, frequency, enabled }]
+    );
+    void run(
+      async () => {
+        if (existing) {
+          check(await supabase.from('report_schedules').update({ enabled }).eq('id', existing.id));
+        } else {
+          check(
+            await supabase
+              .from('report_schedules')
+              .insert({ project_id: activeProjectId, frequency, enabled })
+          );
+        }
+      },
+      ['reports'],
+      false
+    );
+  };
+
+  const generateReportNow = (frequency: ReportFrequency) => {
+    void run(
+      async () => {
+        check(await supabase.rpc('generate_report_now', { p_project: activeProjectId, p_frequency: frequency }));
+        setActionNotice('Đã tạo báo cáo và lưu vào lịch sử báo cáo.');
+      },
+      ['reports'],
+      false
+    );
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -841,6 +922,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         notifications,
         unreadNotificationCount,
         projectSnapshots,
+        reportSchedules,
+        reportRuns,
         isLoading,
         loadError,
         reload,
@@ -877,6 +960,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         markAllNotificationsAsRead,
         seedDemoData,
         scanDeadlines,
+        setReportSchedule,
+        generateReportNow,
         soundMuted,
         toggleSound
       }}

@@ -18,7 +18,7 @@ await db.exec(`
   alter default privileges in schema public grant all on functions to anon, authenticated, public;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
-for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql']) {
+for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql']) {
   await db.exec(fs.readFileSync(new URL(f, MIG), 'utf8'));
   console.log('applied', f);
 }
@@ -154,6 +154,41 @@ const uc1 = (await q(`select progress_percent p, status from use_cases where cod
 ok('tick hết tiêu chí -> use case 100% + completed', uc1.p === 100 && uc1.status === 'completed', JSON.stringify(uc1));
 await q(`select send_task_reminder((select id from tasks where code='OB-101'))`);
 ok('pm gửi nhắc việc', true);
+
+// --- Báo cáo định kỳ ---
+const rid = (await q(`select generate_report_now($1,'weekly') id`, [proj['OMNI-BANK']]))[0].id;
+const rep = (await q(`select summary, period_end - period_start d from report_runs where id=$1`, [rid]))[0];
+ok('pm tạo báo cáo tuần ngay (kỳ 7 ngày)', rep.d === 6, String(rep.d));
+ok('báo cáo có số liệu dự án/nhiệm vụ/tiến độ', rep.summary.project.code === 'OMNI-BANK' && rep.summary.tasks.total === 5 && rep.summary.progress.end > 0, JSON.stringify(rep.summary).slice(0, 160));
+ok('báo cáo liệt kê việc quá hạn cần chú ý (OB-103)', rep.summary.attention.some(a => a.code === 'OB-103'));
+await q(`select generate_report_now($1,'weekly')`, [proj['OMNI-BANK']]);
+ok('tạo lại cùng kỳ thì ghi đè, không nhân đôi', (await q(`select count(*)::int c from report_runs where project_id=$1`, [proj['OMNI-BANK']]))[0].c === 1);
+await throws('loại báo cáo sai bị từ chối', () => q(`select generate_report_now($1,'daily')`, [proj['OMNI-BANK']]), '22023');
+await q(`insert into report_schedules (project_id, frequency) values ($1,'weekly'), ($1,'monthly')`, [proj['OMNI-BANK']]);
+ok('pm bật lịch báo cáo tuần/tháng', (await q(`select count(*)::int c from report_schedules`))[0].c === 2);
+ok('pm tắt được lịch', (await q(`update report_schedules set enabled=false where frequency='monthly' returning id`)).length === 1);
+await q(`update report_schedules set enabled=true where frequency='monthly'`);
+await throws('pm không tự ghi last_run_on', () => q(`update report_schedules set last_run_on=current_date`), 'permission denied');
+await throws('pm không ghi trực tiếp report_runs', () => q(`insert into report_runs (project_id,frequency,period_start,period_end,summary) values ($1,'weekly',current_date,current_date,'{}')`, [proj['OMNI-BANK']]), 'permission denied');
+await as('dev');
+ok('dev xem được báo cáo của dự án mình', (await q(`select count(*)::int c from report_runs`))[0].c === 1);
+await throws('dev không tạo được báo cáo', () => q(`select generate_report_now($1,'weekly')`, [proj['OMNI-BANK']]), '42501');
+await throws('dev không bật lịch báo cáo', () => q(`insert into report_schedules (project_id, frequency) values ($1,'weekly')`, [proj['E-SHOP-B2B']]), 'row-level security');
+await throws('dev không chạy tạo báo cáo định kỳ', () => q(`select generate_due_reports()`), '42501');
+await as('outsider');
+await root();
+await q(`delete from project_members where project_id=$1 and user_id=$2`, [proj['OMNI-BANK'], ids.outsider]);
+await as('outsider');
+ok('người ngoài dự án không thấy báo cáo/lịch', (await q(`select (select count(*) from report_runs)::int + (select count(*) from report_schedules)::int c`))[0].c === 0);
+await as('admin');
+ok('thứ Hai 05/10/2026: tạo đúng 1 báo cáo tuần', (await q(`select generate_due_reports('2026-10-05') n`))[0].n === 1);
+ok('chạy lại cùng ngày không tạo trùng', (await q(`select generate_due_reports('2026-10-05') n`))[0].n === 0);
+ok('ngày 1/11/2026 (Chủ nhật): chỉ tạo báo cáo tháng', (await q(`select generate_due_reports('2026-11-01') n`))[0].n === 1);
+const monthly = (await q(`select period_start::text s, period_end::text e from report_runs where frequency='monthly'`))[0];
+ok('báo cáo tháng phủ cả tháng 10', monthly.s === '2026-10-01' && monthly.e === '2026-10-31', JSON.stringify(monthly));
+await as(null);
+ok('anon gọi được ping() (giữ project không bị tạm dừng)', (await q(`select ping() p`))[0].p !== null);
+await throws('anon không đọc được báo cáo', () => q(`select * from report_runs`), 'permission denied');
 
 // --- Admin ---
 await as('admin');

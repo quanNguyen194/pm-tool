@@ -124,6 +124,44 @@ export interface ProgressSnapshot {
   qualityPassed: number;
 }
 
+export type ReportFrequency = 'weekly' | 'monthly' | 'sprint';
+
+export interface ReportSchedule {
+  id: string;
+  projectId: string;
+  frequency: Exclude<ReportFrequency, 'sprint'>;
+  enabled: boolean;
+  lastRunOn?: string;
+}
+
+/** Bản tóm tắt JSON do DB dựng (hàm build_report_summary). */
+export interface ReportSummary {
+  project: { code: string; name: string; phase: string };
+  progress: { start: number | null; end: number; delta: number | null };
+  tasks: {
+    total: number;
+    done: number;
+    inProgress: number;
+    review: number;
+    todo: number;
+    overdue: number;
+    doneInPeriod: number | null;
+  };
+  useCases: { total: number; completed: number };
+  quality: { total: number; passed: number };
+  attention: { code: string; title: string; dueDate: string; status: TaskStatus }[];
+}
+
+export interface ReportRun {
+  id: string;
+  projectId: string;
+  frequency: ReportFrequency;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  summary: ReportSummary;
+}
+
 export type NavigationTab =
   | 'dashboard' 
   | 'projects' 

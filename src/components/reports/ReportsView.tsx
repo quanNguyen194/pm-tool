@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { printPeriodicReport, exportTasksToCSV, exportUseCasesToCSV } from '../../utils/exportUtils';
 import { ProgressChart, scheduleStatus } from '../charts/ProgressChart';
+import { ScheduledReports } from './ScheduledReports';
 import { plannedProgressToday } from '../../utils/chartSvg';
 
 export const ReportsView: React.FC = () => {
@@ -168,6 +169,8 @@ export const ReportsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <ScheduledReports reportType={reportType} />
 
       {/* Live Formatted Report Document Preview */}
       <div className="bg-white border border-slate-200 rounded-xl p-8 max-w-4xl mx-auto shadow-sm">

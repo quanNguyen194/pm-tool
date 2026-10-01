@@ -1,0 +1,31 @@
+name: Keep Supabase awake
+
+# Project Supabase gói free bị tạm dừng sau 7 ngày không hoạt động.
+# Mỗi tuần gọi hàm public.ping() (migration 0007) để giữ project hoạt động.
+# Cần tạo 2 secret trong GitHub: Settings -> Secrets and variables -> Actions
+#   SUPABASE_URL       ví dụ https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY  publishable / anon key
+# Lưu ý: GitHub tự tắt workflow theo lịch nếu repo không có hoạt động nào trong 60 ngày.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call ping()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Thiếu secret SUPABASE_URL hoặc SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Content-Type: application/json" -d '{}')
+          echo "HTTP $code"
+          test "$code" = "200"

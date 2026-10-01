@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
@@ -12,13 +12,15 @@ import { LoginView } from './components/auth/LoginView';
 import { NoProjectsView } from './components/auth/NoProjectsView';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
-import { DashboardView } from './components/dashboard/DashboardView';
-import { ProjectsView } from './components/projects/ProjectsView';
-import { TasksView } from './components/tasks/TasksView';
-import { UseCasesView } from './components/usecases/UseCasesView';
-import { QualityGatesView } from './components/quality/QualityGatesView';
-import { ReportsView } from './components/reports/ReportsView';
-import { TeamView } from './components/team/TeamView';
+
+// Mỗi màn hình tải riêng khi cần để gói đầu tiên nhẹ hơn.
+const DashboardView = lazy(() => import('./components/dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
+const ProjectsView = lazy(() => import('./components/projects/ProjectsView').then(m => ({ default: m.ProjectsView })));
+const TasksView = lazy(() => import('./components/tasks/TasksView').then(m => ({ default: m.TasksView })));
+const UseCasesView = lazy(() => import('./components/usecases/UseCasesView').then(m => ({ default: m.UseCasesView })));
+const QualityGatesView = lazy(() => import('./components/quality/QualityGatesView').then(m => ({ default: m.QualityGatesView })));
+const ReportsView = lazy(() => import('./components/reports/ReportsView').then(m => ({ default: m.ReportsView })));
+const TeamView = lazy(() => import('./components/team/TeamView').then(m => ({ default: m.TeamView })));
 
 const FullScreenMessage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -49,13 +51,21 @@ const MainLayout: React.FC = () => {
         {/* Content Viewport */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto pb-12">
-            {activeTab === 'dashboard' && <DashboardView />}
-            {activeTab === 'projects' && <ProjectsView />}
-            {activeTab === 'tasks' && <TasksView />}
-            {activeTab === 'usecases' && <UseCasesView />}
-            {activeTab === 'quality' && <QualityGatesView />}
-            {activeTab === 'reports' && <ReportsView />}
-            {activeTab === 'team' && <TeamView />}
+            <Suspense
+              fallback={
+                <div className="py-20 flex justify-center" role="status" aria-label="Đang tải">
+                  <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                </div>
+              }
+            >
+              {activeTab === 'dashboard' && <DashboardView />}
+              {activeTab === 'projects' && <ProjectsView />}
+              {activeTab === 'tasks' && <TasksView />}
+              {activeTab === 'usecases' && <UseCasesView />}
+              {activeTab === 'quality' && <QualityGatesView />}
+              {activeTab === 'reports' && <ReportsView />}
+              {activeTab === 'team' && <TeamView />}
+            </Suspense>
           </div>
         </main>
       </div>

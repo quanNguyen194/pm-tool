@@ -1,4 +1,4 @@
-import { Project, Task, UseCase, QualityGatePhase, User, ProgressSnapshot } from '../types';
+import { Project, Task, UseCase, QualityGatePhase, User, ProgressSnapshot, ReportRun } from '../types';
 import { buildProgressChartSvg } from './chartSvg';
 
 /** Escape văn bản người dùng nhập trước khi chèn vào HTML của cửa sổ in (chống XSS). */
@@ -399,4 +399,94 @@ export function printPeriodicReport(
   setTimeout(() => {
     printWindow.print();
   }, 400);
+}
+
+const FREQUENCY_TITLES: Record<string, string> = {
+  weekly: 'BÁO CÁO TIẾN ĐỘ TUẦN',
+  monthly: 'BÁO CÁO TỔNG HỢP THÁNG',
+  sprint: 'BÁO CÁO TỔNG KẾT SPRINT'
+};
+
+/** In một bản báo cáo đã được hệ thống lưu (dữ liệu chốt tại thời điểm tạo, không đọc lại dữ liệu hiện tại). */
+export function printStoredReport(run: ReportRun, currentUserName: string) {
+  const s = run.summary;
+  const qualityRate = s.quality.total > 0 ? Math.round((s.quality.passed / s.quality.total) * 100) : 100;
+  const delta = s.progress.delta;
+  const deltaText = delta === null ? 'chưa có mốc so sánh' : `${delta >= 0 ? '+' : ''}${delta} điểm % so với đầu kỳ`;
+  const fmtDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('vi-VN');
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    window.print();
+    return;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${FREQUENCY_TITLES[run.frequency] || 'BÁO CÁO'} - ${esc(s.project.name)}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; line-height: 1.5; font-size: 13px; padding: 20px; }
+    .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; }
+    .brand { font-size: 18px; font-weight: 700; }
+    .title { font-size: 16px; font-weight: 700; margin-top: 4px; }
+    .meta { font-size: 12px; color: #475569; margin-top: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; }
+    .card .k { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; }
+    .card .v { font-size: 20px; font-weight: 700; }
+    .card .s { font-size: 11px; color: #475569; margin-top: 4px; }
+    h2 { font-size: 14px; border-left: 4px solid #4f46e5; padding-left: 8px; margin: 20px 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #f1f5f9; text-align: left; padding: 8px 10px; border: 1px solid #cbd5e1; }
+    td { padding: 7px 10px; border: 1px solid #e2e8f0; }
+    .late { color: #dc2626; font-weight: 700; }
+    .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 11px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">OMNIPROJECT ENTERPRISE PMO</div>
+    <div class="title">${FREQUENCY_TITLES[run.frequency] || 'BÁO CÁO'}</div>
+    <div class="meta">
+      Dự án: <strong>[${esc(s.project.code)}] ${esc(s.project.name)}</strong> ·
+      Kỳ báo cáo: <strong>${fmtDate(run.periodStart)} - ${fmtDate(run.periodEnd)}</strong> ·
+      Tạo lúc: ${new Date(run.createdAt).toLocaleString('vi-VN')} · Người in: ${esc(currentUserName)}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">Tiến độ dự án</div><div class="v">${s.progress.end}%</div><div class="s">${esc(deltaText)}</div></div>
+    <div class="card"><div class="k">Nhiệm vụ hoàn thành</div><div class="v">${s.tasks.done}/${s.tasks.total}</div><div class="s">${s.tasks.inProgress} đang chạy · ${s.tasks.overdue} quá hạn${s.tasks.doneInPeriod !== null ? ` · ${s.tasks.doneInPeriod} xong trong kỳ` : ''}</div></div>
+    <div class="card"><div class="k">Use case</div><div class="v">${s.useCases.completed}/${s.useCases.total}</div><div class="s">Đã kiểm thử &amp; hoàn thành</div></div>
+    <div class="card"><div class="k">Quality Gate</div><div class="v">${qualityRate}%</div><div class="s">${s.quality.passed}/${s.quality.total} tiêu chuẩn đạt</div></div>
+  </div>
+
+  <h2>Công việc cần chú ý (quá hạn hoặc đến hạn trong 7 ngày)</h2>
+  ${
+    s.attention.length === 0
+      ? '<p>Không có công việc nào cần chú ý.</p>'
+      : `<table>
+    <thead><tr><th style="width:80px">Mã</th><th>Tiêu đề</th><th style="width:110px">Hạn chót</th><th style="width:110px">Trạng thái</th></tr></thead>
+    <tbody>${s.attention
+      .map(a => {
+        const late = new Date(a.dueDate + 'T23:59:59') < new Date();
+        return `<tr><td><strong>${esc(a.code)}</strong></td><td>${esc(a.title)}</td><td class="${late ? 'late' : ''}">${esc(a.dueDate)}${late ? ' (QUÁ HẠN)' : ''}</td><td>${esc(a.status.toUpperCase())}</td></tr>`;
+      })
+      .join('')}</tbody>
+  </table>`
+  }
+
+  <div class="footer">OmniProject · Báo cáo được hệ thống chốt số liệu tại thời điểm tạo.</div>
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 400);
 }
