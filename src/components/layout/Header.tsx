@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
               {projectInitials(activeProject.code)}
             </span>
             <span className="font-semibold text-slate-900 font-mono shrink-0">{activeProject.code}</span>
-            <span className="truncate max-w-[200px] hidden sm:inline text-slate-600">{activeProject.name}</span>
+            <span className="truncate max-w-[200px] hidden lg:inline text-slate-600">{activeProject.name}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           </button>
 
