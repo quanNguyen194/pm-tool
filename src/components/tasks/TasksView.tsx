@@ -6,6 +6,10 @@ import {
   Search,
   Filter,
   Kanban,
+  CalendarRange,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   Table as TableIcon,
   Clock,
   AlertTriangle,
@@ -19,6 +23,11 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { exportTasksToCSV } from '../../utils/exportUtils';
+import { GanttTimeline } from './GanttTimeline';
+
+type SortKey = 'code' | 'title' | 'status' | 'priority' | 'assignee' | 'hours' | 'due';
+const STATUS_ORDER: Record<TaskStatus, number> = { todo: 0, in_progress: 1, review: 2, done: 3 };
+const PRIORITY_ORDER: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 export const TasksView: React.FC = () => {
   const {
@@ -35,10 +44,15 @@ export const TasksView: React.FC = () => {
     projectUseCases
   } = useApp();
 
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'gantt' | 'table'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'due', dir: 'asc' });
+  // Kéo thả Kanban
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -141,9 +155,27 @@ export const TasksView: React.FC = () => {
 
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
     const matchesAssignee = filterAssignee === 'all' || task.assigneeId === filterAssignee;
+    // Kanban đã chia cột theo trạng thái nên bộ lọc trạng thái chỉ áp dụng cho Gantt và Bảng.
+    const matchesStatus = viewMode === 'kanban' || filterStatus === 'all' || task.status === filterStatus;
 
-    return matchesSearch && matchesPriority && matchesAssignee;
+    return matchesSearch && matchesPriority && matchesAssignee && matchesStatus;
   });
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    let r = 0;
+    switch (sort.key) {
+      case 'code': r = a.code.localeCompare(b.code, 'vi', { numeric: true }); break;
+      case 'title': r = a.title.localeCompare(b.title, 'vi'); break;
+      case 'status': r = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]; break;
+      case 'priority': r = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]; break;
+      case 'assignee': r = (userMap.get(a.assigneeId)?.name || '~').localeCompare(userMap.get(b.assigneeId)?.name || '~', 'vi'); break;
+      case 'hours': r = a.estimatedHours - b.estimatedHours; break;
+      case 'due': r = a.dueDate.localeCompare(b.dueDate); break;
+    }
+    return sort.dir === 'asc' ? r : -r;
+  });
+  const toggleSort = (key: SortKey) =>
+    setSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
   const columns: { id: TaskStatus; title: string; color: string; badgeColor: string }[] = [
     { id: 'todo', title: 'Cần Làm (To Do)', color: 'border-slate-300', badgeColor: 'bg-slate-100 text-slate-700' },
@@ -184,26 +216,41 @@ export const TasksView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200" role="group" aria-label="Chế độ xem">
             <button
               onClick={() => setViewMode('kanban')}
+              aria-pressed={viewMode === 'kanban'}
+              title="Kanban"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 viewMode === 'kanban' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Kanban className="w-3.5 h-3.5" />
-              <span>Kanban</span>
+              <span className="hidden sm:inline">Kanban</span>
+            </button>
+            <button
+              onClick={() => setViewMode('gantt')}
+              aria-pressed={viewMode === 'gantt'}
+              title="Gantt"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                viewMode === 'gantt' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <CalendarRange className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Gantt</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              title="Bảng Chi Tiết"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <TableIcon className="w-3.5 h-3.5" />
-              <span>Bảng Chi Tiết</span>
+              <span className="hidden sm:inline">Bảng Chi Tiết</span>
             </button>
           </div>
 
@@ -245,7 +292,7 @@ export const TasksView: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="flex items-center gap-1.5 text-xs text-slate-600">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <span>Ưu tiên:</span>
@@ -261,6 +308,23 @@ export const TasksView: React.FC = () => {
               <option value="low">Thấp</option>
             </select>
           </div>
+
+          {viewMode !== 'kanban' && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <span>Trạng thái:</span>
+              <select
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+              >
+                <option value="all">Tất cả</option>
+                <option value="todo">Cần làm</option>
+                <option value="in_progress">Đang thực hiện</option>
+                <option value="review">Chờ thẩm định</option>
+                <option value="done">Hoàn thành</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 text-xs text-slate-600">
             <span>Phụ trách:</span>
@@ -287,7 +351,29 @@ export const TasksView: React.FC = () => {
             return (
               <div
                 key={col.id}
-                className="bg-slate-100/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col min-h-[500px]"
+                onDragOver={e => {
+                  if (!canManageTasks || !draggingId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dragOverCol !== col.id) setDragOverCol(col.id);
+                }}
+                onDragLeave={e => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(prev => (prev === col.id ? null : prev));
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  if (!canManageTasks) return;
+                  const id = e.dataTransfer.getData('text/plain') || draggingId;
+                  const dragged = projectTasks.find(t => t.id === id);
+                  if (dragged && dragged.status !== col.id) moveTaskStatus(dragged.id, col.id);
+                  setDraggingId(null);
+                  setDragOverCol(null);
+                }}
+                className={`border rounded-xl p-3.5 flex flex-col min-h-[500px] transition-colors ${
+                  dragOverCol === col.id && draggingId
+                    ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300'
+                    : 'bg-slate-100/70 border-slate-200/80'
+                }`}
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
@@ -318,7 +404,19 @@ export const TasksView: React.FC = () => {
                       return (
                         <div
                           key={task.id}
-                          className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between"
+                          draggable={canManageTasks}
+                          onDragStart={e => {
+                            e.dataTransfer.setData('text/plain', task.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggingId(task.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggingId(null);
+                            setDragOverCol(null);
+                          }}
+                          className={`bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between ${
+                            canManageTasks ? 'cursor-grab active:cursor-grabbing' : ''
+                          } ${draggingId === task.id ? 'opacity-40' : ''}`}
                         >
                           <div>
                             {/* Card Top Metadata (NO PILLS per frontend design constitution) */}
@@ -457,32 +555,149 @@ export const TasksView: React.FC = () => {
         </div>
       )}
 
+      {/* GANTT TIMELINE VIEW */}
+      {viewMode === 'gantt' && (
+        <GanttTimeline tasks={filteredTasks} userMap={userMap} onTaskClick={canManageTasks ? openEditModal : undefined} />
+      )}
+
       {/* TABLE DATA GRID VIEW (High density, per Section 2 of SaaS Guidelines) */}
       {viewMode === 'table' && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4 w-24">Mã</th>
-                  <th className="py-3 px-4">Tiêu Đề Công Việc</th>
-                  <th className="py-3 px-4 w-32">Trạng Thái</th>
-                  <th className="py-3 px-4 w-28">Mức Ưu Tiên</th>
-                  <th className="py-3 px-4 w-40">Người Phụ Trách</th>
-                  <th className="py-3 px-4 w-24 text-right">Giờ Dự Kiến</th>
-                  <th className="py-3 px-4 w-32">Hạn Chót</th>
-                  <th className="py-3 px-4 w-28 text-right">Thao Tác</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'code' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-24"
+                  >
+                    <button
+                      onClick={() => toggleSort('code')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'code' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Mã</span>
+                      {sort.key === 'code' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'title' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4"
+                  >
+                    <button
+                      onClick={() => toggleSort('title')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'title' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Tiêu Đề Công Việc</span>
+                      {sort.key === 'title' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'status' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-32"
+                  >
+                    <button
+                      onClick={() => toggleSort('status')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'status' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Trạng Thái</span>
+                      {sort.key === 'status' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'priority' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-28"
+                  >
+                    <button
+                      onClick={() => toggleSort('priority')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'priority' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Mức Ưu Tiên</span>
+                      {sort.key === 'priority' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'assignee' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-40"
+                  >
+                    <button
+                      onClick={() => toggleSort('assignee')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'assignee' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Người Phụ Trách</span>
+                      {sort.key === 'assignee' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'hours' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-24 text-right"
+                  >
+                    <button
+                      onClick={() => toggleSort('hours')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'hours' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Giờ Dự Kiến</span>
+                      {sort.key === 'hours' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sort.key === 'due' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-3 px-4 w-32"
+                  >
+                    <button
+                      onClick={() => toggleSort('due')}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900 ${sort.key === 'due' ? 'text-slate-900' : ''}`}
+                    >
+                      <span>Hạn Chót</span>
+                      {sort.key === 'due' ? (
+                        sort.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th scope="col" className="py-3 px-4 w-28 text-right uppercase tracking-wider">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {filteredTasks.length === 0 ? (
+                {sortedTasks.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">
                       Không tìm thấy nhiệm vụ nào phù hợp
                     </td>
                   </tr>
                 ) : (
-                  filteredTasks.map(task => {
+                  sortedTasks.map(task => {
                     const assignee = userMap.get(task.assigneeId);
                     const due = new Date(task.dueDate);
                     due.setHours(0, 0, 0, 0);
