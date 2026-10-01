@@ -36,8 +36,9 @@ export function downloadCSV(filename: string, rows: (string | number)[][]) {
 /**
  * Exports current project tasks to CSV
  */
-export function exportTasksToCSV(project: Project, tasks: Task[], users: User[]) {
+export function exportTasksToCSV(project: Project, tasks: Task[], users: User[], useCases: UseCase[] = []) {
   const userMap = new Map(users.map(u => [u.id, u.name]));
+  const useCaseCodes = new Map(useCases.map(u => [u.id, u.code]));
   
   const headers = [
     'Mã Công Việc',
@@ -78,7 +79,7 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[])
     t.actualHours,
     t.startDate,
     t.dueDate,
-    t.useCaseId || 'Không'
+    (t.useCaseId && (useCaseCodes.get(t.useCaseId) ?? t.useCaseId)) || 'Không'
   ]);
 
   downloadCSV(`Danh_sach_cong_viec_${project.code}_${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows]);

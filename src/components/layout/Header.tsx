@@ -138,9 +138,9 @@ export const Header: React.FC = () => {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>Tiến độ: <strong className="font-mono text-slate-900">{activeProject.progressPercent}%</strong></span>
         </span>
-        <span className="text-slate-300">|</span>
+        <span className="text-slate-300 dark:text-slate-500">|</span>
         <span>Hạn chót: <strong className="font-mono text-slate-900">{activeProject.targetEndDate}</strong></span>
-        <span className="text-slate-300">|</span>
+        <span className="text-slate-300 dark:text-slate-500">|</span>
         <span>Nhiệm vụ: <strong className="font-mono text-slate-900">{projectTasks.length} việc</strong></span>
       </div>
 
@@ -167,7 +167,7 @@ export const Header: React.FC = () => {
         </button>
 
         <button
-          onClick={() => exportTasksToCSV(activeProject, projectTasks, users)}
+          onClick={() => exportTasksToCSV(activeProject, projectTasks, users, projectUseCases)}
           className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
           title="Tải tệp CSV tương thích Excel"
         >

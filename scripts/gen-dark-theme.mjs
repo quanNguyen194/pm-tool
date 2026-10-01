@@ -23,7 +23,7 @@ const SLATE_MAP = { 50: 950, 100: 800, 200: 700, 300: 600, 400: 400, 500: 400, 6
 const ACCENT_HUES = ['indigo', 'emerald', 'blue', 'amber', 'rose', 'purple'];
 const ACCENT_MAP = { 50: 950, 100: 900, 200: 800, 300: 700 };
 // Chữ đậm trên nền sáng -> chữ sáng trên nền tối.
-const TEXT_MAP = { 600: 400, 700: 300, 800: 200, 900: 100 };
+const TEXT_MAP = { 600: 400, 700: 300, 800: 200, 900: 100, 950: 50 };
 const SURFACE = val('slate', 900);
 
 const lightVars = [];
@@ -43,15 +43,16 @@ for (const hue of ACCENT_HUES) {
 const walk = d =>
   fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
 const used = new Set();
-const re = /(hover:)?text-(indigo|emerald|blue|amber|rose|purple)-(600|700|800|900)(?![\d/])/g;
+const re = /(hover:)?text-(indigo|emerald|blue|amber|rose|purple)-(600|700|800|900|950)(?![\d/])/g;
 for (const f of walk(path.join(root, 'src')).filter(f => /\.(tsx|ts)$/.test(f))) {
   for (const m of fs.readFileSync(f, 'utf8').matchAll(re)) used.add(m[0]);
 }
 const textRules = [...used].sort().map(cls => {
   const [, hover, hue, shade] = cls.match(/^(hover:)?text-([a-z]+)-(\d+)$/);
   const sel = `.dark .${hover ? 'hover\\:' : ''}text-${hue}-${shade}${hover ? ':hover' : ''}`;
-  return `${sel} { color: ${val(hue, TEXT_MAP[shade])}; }`;
-});
+  const fixedSel = sel.replace('.dark .', '.dark .theme-fixed .');
+  return [`${sel} { color: ${val(hue, TEXT_MAP[shade])}; }`, `${fixedSel} { color: ${val(hue, shade)}; }`];
+}).flat();
 
 const css = `/* TỰ SINH bởi scripts/gen-dark-theme.mjs. Không sửa tay, hãy sửa script rồi chạy lại. */
 
@@ -69,7 +70,7 @@ ${lightVars.join('\n')}
 .dark .bg-white { background-color: ${SURFACE}; }
 .dark .border-white { border-color: ${SURFACE}; }
 
-/* Chữ nhấn đậm -> sáng hơn (${used.size} class đang dùng) */
+/* Chữ nhấn đậm -> sáng hơn (${used.size} class đang dùng); trong .theme-fixed thì giữ màu gốc */
 ${textRules.join('\n')}
 `;
 

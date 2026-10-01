@@ -133,17 +133,17 @@ export const QualityGatesView: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                <span className={isSelected ? 'text-indigo-300' : 'text-slate-400'}>
+                <span className={isSelected ? 'text-indigo-300 dark:text-indigo-100' : 'text-slate-400'}>
                   GATE 0{idx + 1}
                 </span>
                 {isReady ? (
                   <span className="text-emerald-400 font-bold">✓ ĐẠT</span>
                 ) : (
-                  <span className={isSelected ? 'text-amber-300' : 'text-amber-600'}>○ CHƯA ĐỦ</span>
+                  <span className={isSelected ? 'text-amber-300 dark:text-amber-200' : 'text-amber-600'}>○ CHƯA ĐỦ</span>
                 )}
               </div>
               <div className="font-bold text-xs truncate">{phase.shortName}</div>
-              <div className={`text-[10px] mt-1 font-mono tabular-nums ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+              <div className={`text-[10px] mt-1 font-mono tabular-nums ${isSelected ? 'text-slate-300 dark:text-indigo-100' : 'text-slate-500'}`}>
                 {passed}/{total} tiêu chí ({total > 0 ? Math.round((passed / total) * 100) : 0}%)
               </div>
             </button>

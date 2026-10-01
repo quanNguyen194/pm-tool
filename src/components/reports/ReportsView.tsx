@@ -145,7 +145,7 @@ export const ReportsView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => exportTasksToCSV(activeProject, projectTasks, users)}
+            onClick={() => exportTasksToCSV(activeProject, projectTasks, users, projectUseCases)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />

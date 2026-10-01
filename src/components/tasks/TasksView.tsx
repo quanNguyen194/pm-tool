@@ -43,6 +43,7 @@ export const TasksView: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const userMap = new Map(users.map(u => [u.id, u]));
+  const useCaseCodeMap = new Map(projectUseCases.map(u => [u.id, u.code]));
 
   // Form State
   const [formData, setFormData] = useState({
@@ -207,7 +208,7 @@ export const TasksView: React.FC = () => {
           </div>
 
           <button
-            onClick={() => exportTasksToCSV(activeProject, projectTasks, users)}
+            onClick={() => exportTasksToCSV(activeProject, projectTasks, users, projectUseCases)}
             className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
             title="Xuất danh sách công việc sang Excel/CSV"
           >
@@ -357,7 +358,7 @@ export const TasksView: React.FC = () => {
                               <div className="truncate">Giai đoạn: <span className="text-slate-600">{task.phase}</span></div>
                               {task.useCaseId && (
                                 <div className="text-indigo-600 font-mono text-[10px]">
-                                  Gắn với UseCase: {task.useCaseId.toUpperCase()}
+                                  Gắn với UseCase: {useCaseCodeMap.get(task.useCaseId) ?? task.useCaseId}
                                 </div>
                               )}
                             </div>
