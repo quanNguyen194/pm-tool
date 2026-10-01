@@ -18,3 +18,5 @@ npm run build    # build ra dist/
 - Build command: `npm run build`
 - Output directory: `dist`
 - Biến môi trường: xem `.env.example`
+
+> Nhánh chính là `main`. Cloudflare build từ nhánh này, cấu hình trong `wrangler.jsonc`.
