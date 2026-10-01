@@ -15,6 +15,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Guard (khóa bí mật, hợp đồng useApp, CSP)
+        run: npm run guard
       - name: Kiểm tra type
         run: npm run lint
       - name: Build

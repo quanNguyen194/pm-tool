@@ -112,6 +112,12 @@ Bộ test kiểm tra từng vai trò (viewer/developer/qa/pm/admin/người ngo�
 | Không nhận được thông báo deadline | Chưa chạy `0006` (cron), hoặc bấm "Quét deadline" (admin) để chạy ngay |
 | Email xác nhận không đến | Tắt "Confirm email" ở bước cài đặt, hoặc dùng SMTP riêng |
 
+## Chỉnh sửa giao diện bằng công cụ ngoài (Google AI Studio) và roll-back
+
+- Luôn `git pull --rebase origin main` trước khi làm việc, rồi chạy `npm run verify` (guard + type check + build) sau khi nhận code mới.
+- `scripts/guard.mjs` bắt các lỗi mà type check không thấy: lộ khóa bí mật, quay lại `localStorage`, mất export của `useApp()`, tên miền ngoài bị CSP chặn.
+- Sự cố sau khi deploy: xem **[docs/ROLLBACK.md](docs/ROLLBACK.md)** (rollback Cloudflare trong 1 phút, `git revert`, quay về mốc `stable-*`).
+
 ## Chưa làm
 
 - Gửi báo cáo/nhắc deadline qua email (Edge Function + Resend). Báo cáo định kỳ hiện đã được tạo và lưu sẵn trong hệ thống nên chỉ cần thêm bước gửi.

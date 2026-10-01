@@ -10,7 +10,9 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "guard": "node scripts/guard.mjs",
+    "verify": "npm run guard && npm run lint && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
