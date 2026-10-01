@@ -18,7 +18,7 @@ await db.exec(`
   alter default privileges in schema public grant all on functions to anon, authenticated, public;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
-for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql']) {
+for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql']) {
   await db.exec(fs.readFileSync(new URL(f, MIG), 'utf8'));
   console.log('applied', f);
 }
@@ -113,6 +113,9 @@ await throws('dev không ghi progress_percent project', () => q(`update projects
 await throws('dev không ghi progress_percent use case', () => q(`update use_cases set progress_percent=100`), 'permission denied');
 await throws('dev không tự tạo notification', () => q(`insert into notifications (user_id,type,title,message) values (auth.uid(),'system','a','b')`), 'permission denied');
 ok('dev sửa được use case', (await q(`update use_cases set status='in_review' where code='UC-OB-01' returning id`)).length === 1);
+
+const ins = await q(`insert into acceptance_criteria (use_case_id, description, completed) values ((select id from use_cases where code='UC-OB-01'),'x',true) returning completed`);
+ok('dev không chèn sẵn tiêu chí đã hoàn thành', ins[0].completed === false, JSON.stringify(ins));
 
 // --- QA ---
 await as('qa');

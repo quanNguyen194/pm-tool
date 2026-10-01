@@ -1,25 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Role, User } from '../../types';
+import { MemberRole, Role } from '../../types';
 import {
-  Users2,
   Shield,
   CheckCircle2,
   XCircle,
-  Sparkles,
-  Mail,
   Building,
-  UserCheck
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 
 export const TeamView: React.FC = () => {
   const {
     users,
     currentUser,
-    setCurrentUser,
     projectTasks,
-    activeProject
+    activeProject,
+    canManageProject,
+    addMember,
+    setMemberRole,
+    removeMember
   } = useApp();
+
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<MemberRole>('developer');
+  const [inviting, setInviting] = useState(false);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    const ok = await addMember(inviteEmail.trim(), inviteRole);
+    setInviting(false);
+    if (ok) setInviteEmail('');
+  };
 
   const permissionsMatrix: {
     permission: string;
@@ -97,47 +111,53 @@ export const TeamView: React.FC = () => {
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Đội Ngũ Dự Án & Ma Trận Phân Quyền (RBAC)</h1>
         <p className="text-xs text-slate-500 mt-1">
-          Thiết lập quyền hạn chi tiết cho từng vai trò và chuyển đổi nhanh để kiểm thử giao diện phân quyền
+          Quyền hạn theo vai trò trong từng dự án. Quản trị viên và PM thêm thành viên bằng email (người đó cần đăng ký tài khoản trước)
         </p>
       </div>
 
-      {/* Quick Role Tester Bar */}
-      <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-2">
+      {/* Current identity + invite */}
+      <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-600" />
           <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
-            Mô Phỏng Trải Nghiệm Phân Quyền Trực Tiếp
+            Vai Trò Của Bạn Trong Dự Án [{activeProject.code}]
           </h3>
         </div>
-        <p className="text-xs text-indigo-800 mb-3">
-          Nhấp vào các nút bên dưới để đổi sang vai trò tương ứng và kiểm tra ngay quyền truy cập trên toàn hệ thống:
+        <p className="text-xs text-indigo-900">
+          Bạn đăng nhập là <strong>{currentUser.name}</strong> ({currentUser.email}) với vai trò{' '}
+          <strong>{roleNameMap[currentUser.role].name}</strong>. {roleNameMap[currentUser.role].desc}.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {users.map(user => {
-            const isCurrent = user.id === currentUser.id;
-            return (
-              <button
-                key={user.id}
-                onClick={() => setCurrentUser(user)}
-                className={`p-2.5 rounded-lg border text-left transition-all ${
-                  isCurrent
-                    ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/20 shadow-xs'
-                    : 'bg-white/80 border-indigo-200/80 hover:bg-white text-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-mono font-bold uppercase text-indigo-700">
-                    {user.role}
-                  </span>
-                  {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
-                </div>
-                <div className="text-xs font-bold text-slate-900 truncate">{user.name}</div>
-                <div className="text-[10px] text-slate-500 truncate">{roleNameMap[user.role].name}</div>
-              </button>
-            );
-          })}
-        </div>
+        {canManageProject && (
+          <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2 pt-1">
+            <input
+              type="email"
+              required
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="Email thành viên (đã đăng ký tài khoản)"
+              className="flex-1 px-3 py-2 text-xs border border-indigo-200 rounded-lg bg-white focus:outline-indigo-500"
+            />
+            <select
+              value={inviteRole}
+              onChange={e => setInviteRole(e.target.value as MemberRole)}
+              className="px-3 py-2 text-xs border border-indigo-200 rounded-lg bg-white"
+            >
+              <option value="pm">PM</option>
+              <option value="developer">Developer</option>
+              <option value="qa">QA / QC</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <button
+              type="submit"
+              disabled={inviting}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Thêm vào dự án</span>
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Permissions Matrix Table */}
@@ -231,9 +251,34 @@ export const TeamView: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${roleInfo.badge}`}>
-                      {user.role.toUpperCase()}
-                    </span>
+                    {canManageProject && !user.isAdmin && user.id !== currentUser.id ? (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={user.role}
+                          onChange={e => setMemberRole(user.id, e.target.value as MemberRole)}
+                          className="text-[10px] font-mono px-1 py-0.5 rounded border border-slate-300 bg-white"
+                          aria-label={`Vai trò của ${user.name}`}
+                        >
+                          <option value="pm">PM</option>
+                          <option value="developer">DEVELOPER</option>
+                          <option value="qa">QA</option>
+                          <option value="viewer">VIEWER</option>
+                        </select>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Gỡ ${user.name} khỏi dự án ${activeProject.code}?`)) removeMember(user.id);
+                          }}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+                          title="Gỡ khỏi dự án"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${roleInfo.badge}`}>
+                        {user.role.toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   <div className="text-[11px] text-slate-600 mt-2 mb-3">

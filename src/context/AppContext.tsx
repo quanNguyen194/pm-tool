@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode
+} from 'react';
 import {
   User,
   Project,
@@ -9,25 +18,35 @@ import {
   NotificationItem,
   NavigationTab,
   TaskStatus,
-  UseCaseStatus,
-  Role
+  Role,
+  MemberRole
 } from '../types';
+import { supabase, describeError } from '../lib/supabase';
 import {
-  INITIAL_USERS,
-  INITIAL_PROJECTS,
-  INITIAL_TASKS,
-  INITIAL_USE_CASES,
-  INITIAL_QUALITY_GATES,
-  INITIAL_NOTIFICATIONS
-} from '../data/initialData';
+  Profile,
+  MemberRow,
+  mapProfile,
+  mapMember,
+  mapProject,
+  mapTask,
+  mapUseCase,
+  mapNotification,
+  buildQualityGates
+} from '../api/mappers';
+import { useAuth } from './AuthContext';
 import { sound } from '../utils/soundAlert';
 
 interface AppContextType {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
+
+  /** Thành viên của dự án đang chọn (kèm vai trò hiệu lực trong dự án đó). */
   users: User[];
+  /** Mọi người dùng mà bạn nhìn thấy (dùng khi chọn PM cho dự án). */
+  allUsers: User[];
   currentUser: User;
-  setCurrentUser: (user: User) => void;
+  signOut: () => Promise<void>;
+
   projects: Project[];
   activeProjectId: string;
   activeProject: Project;
@@ -40,32 +59,51 @@ interface AppContextType {
   projectQualityGates: ProjectQualityGates | undefined;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
-  
-  // Permissions helpers
+
+  // Trạng thái tải dữ liệu
+  isLoading: boolean;
+  loadError: string | null;
+  reload: () => void;
+  actionError: string | null;
+  clearActionError: () => void;
+
+  // Quyền (tính từ vai trò trong dự án đang chọn; DB (RLS) mới là nơi chốt quyền thật)
+  isAdmin: boolean;
   canManageProject: boolean;
+  canManageProjectId: (projectId: string) => boolean;
   canManageTasks: boolean;
   canApproveQuality: boolean;
   canApproveUseCase: boolean;
   isViewer: boolean;
 
-  // Actions
+  // Dự án
   createProject: (project: Omit<Project, 'id' | 'progressPercent'>) => void;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
+  // Thành viên
+  addMember: (email: string, role: MemberRole) => Promise<boolean>;
+  setMemberRole: (userId: string, role: MemberRole) => void;
+  removeMember: (userId: string) => void;
+  // Nhiệm vụ
   createTask: (task: Omit<Task, 'id'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (id: string) => void;
   moveTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
+  // Use case
   createUseCase: (useCase: Omit<UseCase, 'id' | 'updatedAt'>) => void;
   updateUseCase: (useCase: UseCase) => void;
   deleteUseCase: (id: string) => void;
   toggleAcceptanceCriteria: (useCaseId: string, criteriaId: string) => void;
+  // Quality gates
   toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string) => void;
+  updateQualityNotes: (itemId: string, notes: string) => void;
   addQualityItem: (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => void;
+  // Thông báo
   sendDeadlineReminder: (taskId: string) => void;
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
-  resetToDemoData: () => void;
+  // Quản trị
+  seedDemoData: () => void;
   soundMuted: boolean;
   toggleSound: () => void;
 }
@@ -73,466 +111,650 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  PROJECTS: 'omni_projects_v1',
-  ACTIVE_PROJECT: 'omni_active_proj_id_v1',
-  TASKS: 'omni_tasks_v1',
-  USE_CASES: 'omni_usecases_v1',
-  QUALITY_GATES: 'omni_quality_gates_v1',
-  CURRENT_USER_ID: 'omni_curr_user_id_v1',
-  NOTIFICATIONS: 'omni_notifications_v1',
+  ACTIVE_PROJECT: 'omni_active_proj_id_v2',
   SOUND_MUTED: 'omni_sound_muted_v1'
 };
 
+const safeGet = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const safeSet = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* bỏ qua: chế độ riêng tư / bị chặn lưu trữ */
+  }
+};
+
+type Slice = 'profiles' | 'members' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'notifications';
+const ALL_SLICES: Slice[] = ['profiles', 'members', 'projects', 'tasks', 'usecases', 'quality', 'notifications'];
+
+// Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
+const TABLE_SLICES: Record<string, Slice[]> = {
+  projects: ['projects'],
+  project_members: ['members', 'projects', 'profiles'],
+  tasks: ['tasks'],
+  use_cases: ['usecases'],
+  acceptance_criteria: ['usecases'],
+  quality_items: ['quality'],
+  notifications: ['notifications']
+};
+
+type Row = Record<string, any>;
+
+const toUser = (p: Profile, role: Role): User => ({
+  id: p.id,
+  name: p.name,
+  email: p.email,
+  avatarColor: p.avatarColor,
+  role,
+  isAdmin: p.isAdmin,
+  department: p.department
+});
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { profile, signOut } = useAuth();
+  if (!profile) throw new Error('AppProvider requires a signed-in profile');
+
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
-  const [users] = useState<User[]>(INITIAL_USERS);
-  
-  const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || 'user-admin';
-  });
-
-  const currentUser = useMemo(() => {
-    return users.find(u => u.id === currentUserId) || users[0];
-  }, [users, currentUserId]);
-
-  const [soundMuted, setSoundMuted] = useState<boolean>(() => {
-    return localStorage.getItem(STORAGE_KEYS.SOUND_MUTED) === 'true';
-  });
+  const [soundMuted, setSoundMuted] = useState<boolean>(() => safeGet(STORAGE_KEYS.SOUND_MUTED) === 'true');
 
   const toggleSound = () => {
     const next = !soundMuted;
     setSoundMuted(next);
     sound.setMuted(next);
-    localStorage.setItem(STORAGE_KEYS.SOUND_MUTED, String(next));
+    safeSet(STORAGE_KEYS.SOUND_MUTED, String(next));
   };
 
-  // Projects state
-  const [projects, setProjects] = useState<Project[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-    } catch {
-      return INITIAL_PROJECTS;
-    }
-  });
+  // --- Dữ liệu thô từ DB ---
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [projectRows, setProjectRows] = useState<Row[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [ucRows, setUcRows] = useState<Row[]>([]);
+  const [criteriaRows, setCriteriaRows] = useState<Row[]>([]);
+  const [qualityDefs, setQualityDefs] = useState<Row[]>([]);
+  const [qualityRows, setQualityRows] = useState<Row[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT);
-    return saved && projects.some(p => p.id === saved) ? saved : (projects[0]?.id || 'proj-1');
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [activeProjectIdState, setActiveProjectIdState] = useState<string>(
+    () => safeGet(STORAGE_KEYS.ACTIVE_PROJECT) || ''
+  );
 
-  // Tasks state
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TASKS);
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
-    } catch {
-      return INITIAL_TASKS;
-    }
-  });
+  const fetchers = useMemo<Record<Slice, () => Promise<void>>>(
+    () => ({
+      profiles: async () => {
+        const { data, error } = await supabase.from('profiles').select('*').order('created_at');
+        if (error) throw error;
+        setProfiles((data || []).map(mapProfile));
+      },
+      members: async () => {
+        const { data, error } = await supabase.from('project_members').select('*');
+        if (error) throw error;
+        setMembers((data || []).map(mapMember));
+      },
+      projects: async () => {
+        const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setProjectRows(data || []);
+      },
+      tasks: async () => {
+        const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setTasks((data || []).map(mapTask));
+      },
+      usecases: async () => {
+        const [uc, cr] = await Promise.all([
+          supabase.from('use_cases').select('*').order('created_at', { ascending: false }),
+          supabase.from('acceptance_criteria').select('*')
+        ]);
+        if (uc.error) throw uc.error;
+        if (cr.error) throw cr.error;
+        setUcRows(uc.data || []);
+        setCriteriaRows(cr.data || []);
+      },
+      quality: async () => {
+        const [defs, items] = await Promise.all([
+          supabase.from('quality_phase_defs').select('*'),
+          supabase.from('quality_items').select('*')
+        ]);
+        if (defs.error) throw defs.error;
+        if (items.error) throw items.error;
+        setQualityDefs(defs.data || []);
+        setQualityRows(items.data || []);
+      },
+      notifications: async () => {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        setNotifications((data || []).map(mapNotification));
+      }
+    }),
+    []
+  );
 
-  // Use Cases state
-  const [useCases, setUseCases] = useState<UseCase[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.USE_CASES);
-      return saved ? JSON.parse(saved) : INITIAL_USE_CASES;
-    } catch {
-      return INITIAL_USE_CASES;
-    }
-  });
+  const refresh = useCallback(
+    async (slices: Slice[]) => {
+      await Promise.all([...new Set(slices)].map(s => fetchers[s]()));
+    },
+    [fetchers]
+  );
 
-  // Quality Gates state
-  const [qualityGates, setQualityGates] = useState<ProjectQualityGates[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.QUALITY_GATES);
-      return saved ? JSON.parse(saved) : INITIAL_QUALITY_GATES;
-    } catch {
-      return INITIAL_QUALITY_GATES;
-    }
-  });
+  const reload = useCallback(() => {
+    setIsLoading(true);
+    setLoadError(null);
+    refresh(ALL_SLICES)
+      .catch(e => setLoadError(describeError(e)))
+      .finally(() => setIsLoading(false));
+  }, [refresh]);
 
-  // Notifications state
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
-  });
-
-  // Save changes to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-  }, [projects]);
+    reload();
+  }, [reload, profile.id]);
+
+  // Realtime: người khác sửa dữ liệu thì tự tải lại phần liên quan.
+  useEffect(() => {
+    const pending = new Set<Slice>();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = (slices: Slice[]) => {
+      slices.forEach(s => pending.add(s));
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const list = [...pending];
+        pending.clear();
+        refresh(list).catch(() => undefined);
+      }, 300);
+    };
+    const channel = supabase.channel(`app-changes-${profile.id}`);
+    Object.entries(TABLE_SLICES).forEach(([table, slices]) => {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => schedule(slices));
+    });
+    channel.subscribe();
+    return () => {
+      clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh, profile.id]);
+
+  // --- Dữ liệu suy ra ---
+  const projects = useMemo(() => projectRows.map(r => mapProject(r, members)), [projectRows, members]);
+
+  const activeProject = useMemo(
+    () => projects.find(p => p.id === activeProjectIdState) || projects[0],
+    [projects, activeProjectIdState]
+  );
+  const activeProjectId = activeProject?.id || '';
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
+    if (activeProjectId) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
   }, [activeProjectId]);
 
+  const useCases = useMemo(() => ucRows.map(r => mapUseCase(r, criteriaRows)), [ucRows, criteriaRows]);
+  const qualityGates = useMemo(
+    () => buildQualityGates(projects.map(p => p.id), qualityDefs, qualityRows),
+    [projects, qualityDefs, qualityRows]
+  );
+
+  const projectTasks = useMemo(() => tasks.filter(t => t.projectId === activeProjectId), [tasks, activeProjectId]);
+  const projectUseCases = useMemo(
+    () => useCases.filter(u => u.projectId === activeProjectId),
+    [useCases, activeProjectId]
+  );
+  const projectQualityGates = useMemo(
+    () => qualityGates.find(q => q.projectId === activeProjectId),
+    [qualityGates, activeProjectId]
+  );
+
+  const roleIn = useCallback(
+    (projectId: string, p: Profile): Role => {
+      if (p.isAdmin) return 'admin';
+      return members.find(m => m.projectId === projectId && m.userId === p.id)?.role || 'viewer';
+    },
+    [members]
+  );
+
+  const currentUser = useMemo(() => toUser(profile, roleIn(activeProjectId, profile)), [profile, roleIn, activeProjectId]);
+
+  const allUsers = useMemo(() => {
+    const list = profiles.map(p => toUser(p, roleIn(activeProjectId, p)));
+    return list.some(u => u.id === currentUser.id) ? list : [currentUser, ...list];
+  }, [profiles, roleIn, activeProjectId, currentUser]);
+
+  const users = useMemo(() => {
+    const memberIds = new Set(members.filter(m => m.projectId === activeProjectId).map(m => m.userId));
+    const list = allUsers.filter(u => memberIds.has(u.id));
+    return list.some(u => u.id === currentUser.id) ? list : [currentUser, ...list];
+  }, [allUsers, members, activeProjectId, currentUser]);
+
+  const unreadNotificationCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
+  // Âm báo khi có thông báo mới đến (sau lần tải đầu tiên).
+  const prevUnread = useRef<number | null>(null);
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-  }, [tasks]);
+    if (isLoading) return;
+    if (prevUnread.current !== null && unreadNotificationCount > prevUnread.current) sound.playNotification();
+    prevUnread.current = unreadNotificationCount;
+  }, [unreadNotificationCount, isLoading]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USE_CASES, JSON.stringify(useCases));
-  }, [useCases]);
+  // --- Quyền ---
+  const role = currentUser.role;
+  const isAdmin = profile.isAdmin;
+  const canManageProjectId = (projectId: string) => {
+    const r = roleIn(projectId, profile);
+    return r === 'admin' || r === 'pm';
+  };
+  const canManageProject = role === 'admin' || role === 'pm';
+  const canManageTasks = role === 'admin' || role === 'pm' || role === 'developer';
+  const canApproveQuality = role === 'admin' || role === 'pm' || role === 'qa';
+  const canApproveUseCase = role === 'admin' || role === 'pm';
+  const isViewer = role === 'viewer';
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.QUALITY_GATES, JSON.stringify(qualityGates));
-  }, [qualityGates]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUserId);
-  }, [currentUserId]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
-  }, [notifications]);
-
-  // Derived current active project
-  const activeProject = useMemo(() => {
-    return projects.find(p => p.id === activeProjectId) || projects[0] || INITIAL_PROJECTS[0];
-  }, [projects, activeProjectId]);
-
-  // Project tasks
-  const projectTasks = useMemo(() => {
-    return tasks.filter(t => t.projectId === activeProjectId);
-  }, [tasks, activeProjectId]);
-
-  // Project use cases
-  const projectUseCases = useMemo(() => {
-    return useCases.filter(uc => uc.projectId === activeProjectId);
-  }, [useCases, activeProjectId]);
-
-  // Project quality gates
-  const projectQualityGates = useMemo(() => {
-    return qualityGates.find(qg => qg.projectId === activeProjectId);
-  }, [qualityGates, activeProjectId]);
-
-  // Recalculate project progress dynamically based on tasks and use cases
-  useEffect(() => {
-    if (!activeProject) return;
-    const currentTasks = tasks.filter(t => t.projectId === activeProject.id);
-    const currentUcs = useCases.filter(u => u.projectId === activeProject.id);
-
-    if (currentTasks.length === 0 && currentUcs.length === 0) return;
-
-    let taskDonePercent = 0;
-    if (currentTasks.length > 0) {
-      const doneCount = currentTasks.filter(t => t.status === 'done').length;
-      const inProgressCount = currentTasks.filter(t => t.status === 'in_progress').length;
-      const reviewCount = currentTasks.filter(t => t.status === 'review').length;
-      taskDonePercent = ((doneCount * 1.0 + reviewCount * 0.7 + inProgressCount * 0.4) / currentTasks.length) * 100;
+  // --- Ghi dữ liệu ---
+  const run = async (fn: () => Promise<void>, slices: Slice[], playSound = true): Promise<boolean> => {
+    try {
+      await fn();
+      await refresh(slices);
+      if (playSound) sound.playSuccess();
+      return true;
+    } catch (e) {
+      setActionError(describeError(e));
+      // Đồng bộ lại để bỏ các thay đổi lạc quan bị từ chối.
+      refresh(slices).catch(() => undefined);
+      return false;
     }
-
-    let ucDonePercent = 0;
-    if (currentUcs.length > 0) {
-      const totalUcProgress = currentUcs.reduce((acc, curr) => acc + curr.progressPercent, 0);
-      ucDonePercent = totalUcProgress / currentUcs.length;
-    }
-
-    const calculatedProgress = Math.round(
-      currentUcs.length > 0 ? (taskDonePercent * 0.6 + ucDonePercent * 0.4) : taskDonePercent
-    );
-
-    if (calculatedProgress !== activeProject.progressPercent) {
-      setProjects(prev =>
-        prev.map(p => (p.id === activeProject.id ? { ...p, progressPercent: calculatedProgress } : p))
-      );
-    }
-  }, [tasks, useCases, activeProject?.id]);
-
-  // Auto scan deadlines on mount and add overdue/approaching warnings if not existing
-  useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const newAlerts: NotificationItem[] = [];
-
-    tasks.forEach(task => {
-      if (task.status === 'done') return;
-      const due = new Date(task.dueDate);
-      due.setHours(0, 0, 0, 0);
-      const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (diffDays < 0) {
-        // Overdue
-        const exists = notifications.some(n => n.taskId === task.id && n.type === 'overdue');
-        if (!exists) {
-          newAlerts.push({
-            id: `notif-overdue-${task.id}-${Date.now()}`,
-            projectId: task.projectId,
-            type: 'overdue',
-            title: `Cảnh Báo Quá Hạn: ${task.code}`,
-            message: `Nhiệm vụ "${task.title}" đã quá hạn chót (${task.dueDate}) ${Math.abs(diffDays)} ngày!`,
-            taskId: task.id,
-            createdAt: new Date().toLocaleString('vi-VN'),
-            isRead: false
-          });
-        }
-      } else if (diffDays <= 2) {
-        // Approaching deadline <= 48h
-        const exists = notifications.some(n => n.taskId === task.id && n.type === 'deadline_warning');
-        if (!exists) {
-          newAlerts.push({
-            id: `notif-warning-${task.id}-${Date.now()}`,
-            projectId: task.projectId,
-            type: 'deadline_warning',
-            title: `Nhắc Nhở Deadline: ${task.code}`,
-            message: `Nhiệm vụ "${task.title}" sẽ đến hạn ${diffDays === 0 ? 'trong ngày hôm nay' : `trong ${diffDays} ngày tới (${task.dueDate})`}!`,
-            taskId: task.id,
-            createdAt: new Date().toLocaleString('vi-VN'),
-            isRead: false
-          });
-        }
-      }
-    });
-
-    if (newAlerts.length > 0) {
-      setNotifications(prev => [...newAlerts, ...prev]);
-    }
-  }, [tasks]);
-
-  const unreadNotificationCount = useMemo(() => {
-    return notifications.filter(n => !n.isRead).length;
-  }, [notifications]);
-
-  // RBAC permissions logic
-  const canManageProject = currentUser.role === 'admin' || currentUser.role === 'pm';
-  const canManageTasks = currentUser.role === 'admin' || currentUser.role === 'pm' || currentUser.role === 'developer';
-  const canApproveQuality = currentUser.role === 'admin' || currentUser.role === 'pm' || currentUser.role === 'qa';
-  const canApproveUseCase = currentUser.role === 'admin' || currentUser.role === 'pm';
-  const isViewer = currentUser.role === 'viewer';
-
-  // Project Actions
-  const createProject = (projectData: Omit<Project, 'id' | 'progressPercent'>) => {
-    const newId = `proj-${Date.now()}`;
-    const newProject: Project = {
-      ...projectData,
-      id: newId,
-      progressPercent: 0
-    };
-
-    // Also initialize default Quality Gates for the new project
-    const defaultQualityPhases: ProjectQualityGates = {
-      projectId: newId,
-      phases: INITIAL_QUALITY_GATES[0].phases.map(p => ({
-        ...p,
-        items: p.items.map(item => ({
-          ...item,
-          id: `item-${newId}-${Math.random().toString(36).substring(2, 7)}`,
-          isPassed: false,
-          checkedBy: undefined,
-          checkedAt: undefined,
-          notes: undefined
-        }))
-      }))
-    };
-
-    setProjects(prev => [newProject, ...prev]);
-    setQualityGates(prev => [...prev, defaultQualityPhases]);
-    setActiveProjectId(newId);
-    sound.playSuccess();
+  };
+  const check = (res: { error: unknown }) => {
+    if (res.error) throw res.error;
   };
 
-  const updateProject = (updated: Project) => {
-    setProjects(prev => prev.map(p => (p.id === updated.id ? updated : p)));
-    sound.playSuccess();
+  const setActiveProjectId = (id: string) => setActiveProjectIdState(id);
+
+  // Dự án
+  const createProject = (p: Omit<Project, 'id' | 'progressPercent'>) => {
+    void run(
+      async () => {
+        const res = await supabase
+          .from('projects')
+          .insert({
+            code: p.code,
+            name: p.name,
+            description: p.description,
+            status: p.status,
+            priority: p.priority,
+            manager_id: p.managerId || profile.id,
+            start_date: p.startDate,
+            target_end_date: p.targetEndDate,
+            budget: p.budget,
+            current_phase: p.currentPhase
+          })
+          .select('id')
+          .single();
+        check(res);
+        setActiveProjectIdState(res.data!.id);
+      },
+      ['projects', 'members', 'quality', 'profiles']
+    );
+  };
+
+  const updateProject = (p: Project) => {
+    void run(
+      async () => {
+        check(
+          await supabase
+            .from('projects')
+            .update({
+              code: p.code,
+              name: p.name,
+              description: p.description,
+              status: p.status,
+              priority: p.priority,
+              manager_id: p.managerId || null,
+              start_date: p.startDate,
+              target_end_date: p.targetEndDate,
+              budget: p.budget,
+              current_phase: p.currentPhase
+            })
+            .eq('id', p.id)
+        );
+      },
+      ['projects', 'members']
+    );
   };
 
   const deleteProject = (id: string) => {
-    if (projects.length <= 1) return; // Keep at least one
-    const remaining = projects.filter(p => p.id !== id);
-    setProjects(remaining);
-    setTasks(prev => prev.filter(t => t.projectId !== id));
-    setUseCases(prev => prev.filter(u => u.projectId !== id));
-    setQualityGates(prev => prev.filter(qg => qg.projectId !== id));
-    setActiveProjectId(remaining[0].id);
+    void run(
+      async () => {
+        check(await supabase.from('projects').delete().eq('id', id));
+      },
+      ALL_SLICES
+    );
   };
 
-  // Task Actions
-  const createTask = (taskData: Omit<Task, 'id'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: `task-${Date.now()}`
-    };
-    setTasks(prev => [newTask, ...prev]);
-    sound.playSuccess();
+  // Thành viên
+  const addMember = async (email: string, memberRole: MemberRole) => {
+    if (!activeProjectId) return false;
+    return run(
+      async () => {
+        check(
+          await supabase.rpc('add_project_member', {
+            p_project: activeProjectId,
+            p_email: email,
+            p_role: memberRole
+          })
+        );
+      },
+      ['members', 'profiles']
+    );
   };
 
-  const updateTask = (updated: Task) => {
-    setTasks(prev => prev.map(t => (t.id === updated.id ? updated : t)));
-    sound.playSuccess();
+  const setMemberRole = (userId: string, memberRole: MemberRole) => {
+    void run(
+      async () => {
+        check(
+          await supabase
+            .from('project_members')
+            .update({ role: memberRole })
+            .eq('project_id', activeProjectId)
+            .eq('user_id', userId)
+        );
+      },
+      ['members']
+    );
+  };
+
+  const removeMember = (userId: string) => {
+    void run(
+      async () => {
+        check(
+          await supabase.from('project_members').delete().eq('project_id', activeProjectId).eq('user_id', userId)
+        );
+      },
+      ['members', 'profiles']
+    );
+  };
+
+  // Nhiệm vụ
+  const taskPayload = (t: Omit<Task, 'id'>) => ({
+    code: t.code,
+    title: t.title,
+    description: t.description || null,
+    status: t.status,
+    priority: t.priority,
+    assignee_id: t.assigneeId || null,
+    phase: t.phase,
+    estimated_hours: t.estimatedHours,
+    actual_hours: t.actualHours,
+    start_date: t.startDate,
+    due_date: t.dueDate,
+    tags: t.tags || [],
+    use_case_id: t.useCaseId || null
+  });
+
+  const createTask = (t: Omit<Task, 'id'>) => {
+    void run(
+      async () => {
+        check(await supabase.from('tasks').insert({ project_id: t.projectId, ...taskPayload(t) }));
+      },
+      ['tasks', 'projects']
+    );
+  };
+
+  const updateTask = (t: Task) => {
+    void run(
+      async () => {
+        check(await supabase.from('tasks').update(taskPayload(t)).eq('id', t.id));
+      },
+      ['tasks', 'projects']
+    );
   };
 
   const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    void run(
+      async () => {
+        check(await supabase.from('tasks').delete().eq('id', id));
+      },
+      ['tasks', 'projects', 'notifications'],
+      false
+    );
   };
 
   const moveTaskStatus = (taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev =>
-      prev.map(t => {
-        if (t.id === taskId) {
-          return { ...t, status: newStatus };
-        }
-        return t;
-      })
-    );
+    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status: newStatus } : t)));
     sound.playNotification();
+    void run(
+      async () => {
+        check(await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId));
+      },
+      ['tasks', 'projects'],
+      false
+    );
   };
 
-  // Use Case Actions
-  const createUseCase = (ucData: Omit<UseCase, 'id' | 'updatedAt'>) => {
-    const newUc: UseCase = {
-      ...ucData,
-      id: `uc-${Date.now()}`,
-      updatedAt: new Date().toISOString().split('T')[0]
-    };
-    setUseCases(prev => [newUc, ...prev]);
-    sound.playSuccess();
+  // Use case
+  const ucPayload = (u: Omit<UseCase, 'id' | 'updatedAt'>) => ({
+    code: u.code,
+    title: u.title,
+    actor: u.actor,
+    description: u.description,
+    priority: u.priority,
+    status: u.status,
+    main_flow: u.mainFlow,
+    alternate_flow: u.alternateFlow || [],
+    assigned_to: u.assignedTo || null
+  });
+
+  const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt'>) => {
+    void run(
+      async () => {
+        const res = await supabase
+          .from('use_cases')
+          .insert({ project_id: u.projectId, ...ucPayload(u) })
+          .select('id')
+          .single();
+        check(res);
+        if (u.acceptanceCriteria.length > 0) {
+          check(
+            await supabase.from('acceptance_criteria').insert(
+              u.acceptanceCriteria.map((c, idx) => ({
+                use_case_id: res.data!.id,
+                description: c.description,
+                completed: false,
+                sort: idx
+              }))
+            )
+          );
+        }
+      },
+      ['usecases', 'projects']
+    );
   };
 
-  const updateUseCase = (updated: UseCase) => {
-    const refreshed = {
-      ...updated,
-      updatedAt: new Date().toISOString().split('T')[0]
-    };
-    setUseCases(prev => prev.map(uc => (uc.id === updated.id ? refreshed : uc)));
-    sound.playSuccess();
+  const updateUseCase = (u: UseCase) => {
+    void run(
+      async () => {
+        check(await supabase.from('use_cases').update(ucPayload(u)).eq('id', u.id));
+
+        // Đồng bộ tiêu chí nghiệm thu theo vị trí dòng trong form.
+        const existing = criteriaRows.filter(c => c.use_case_id === u.id);
+        const existingById = new Map(existing.map(c => [c.id, c]));
+        const keptIds = new Set(u.acceptanceCriteria.map(c => c.id));
+
+        const toDelete = existing.filter(c => !keptIds.has(c.id)).map(c => c.id);
+        if (toDelete.length > 0) {
+          check(await supabase.from('acceptance_criteria').delete().in('id', toDelete));
+        }
+        for (const [idx, c] of u.acceptanceCriteria.entries()) {
+          const old = existingById.get(c.id);
+          if (!old) {
+            check(
+              await supabase
+                .from('acceptance_criteria')
+                .insert({ use_case_id: u.id, description: c.description, completed: false, sort: idx })
+            );
+          } else if (old.description !== c.description || old.sort !== idx) {
+            check(
+              await supabase
+                .from('acceptance_criteria')
+                .update({ description: c.description, sort: idx })
+                .eq('id', c.id)
+            );
+          }
+        }
+      },
+      ['usecases', 'projects']
+    );
   };
 
   const deleteUseCase = (id: string) => {
-    setUseCases(prev => prev.filter(uc => uc.id !== id));
+    void run(
+      async () => {
+        check(await supabase.from('use_cases').delete().eq('id', id));
+      },
+      ['usecases', 'tasks', 'projects'],
+      false
+    );
   };
 
   const toggleAcceptanceCriteria = (useCaseId: string, criteriaId: string) => {
-    setUseCases(prev =>
-      prev.map(uc => {
-        if (uc.id !== useCaseId) return uc;
-        const newCriteria = uc.acceptanceCriteria.map(c =>
-          c.id === criteriaId ? { ...c, completed: !c.completed } : c
-        );
-        const completedCount = newCriteria.filter(c => c.completed).length;
-        const autoProgress = Math.round((completedCount / newCriteria.length) * 100);
+    const target = criteriaRows.find(c => c.id === criteriaId);
+    if (!target) return;
+    const next = !target.completed;
 
-        let newStatus: UseCaseStatus = uc.status;
-        if (autoProgress === 100) {
-          newStatus = 'completed';
-        } else if (autoProgress >= 50 && uc.status === 'draft') {
-          newStatus = 'developing';
-        }
-
-        return {
-          ...uc,
-          acceptanceCriteria: newCriteria,
-          progressPercent: autoProgress,
-          status: newStatus,
-          updatedAt: new Date().toISOString().split('T')[0]
-        };
-      })
+    // Cập nhật lạc quan, mô phỏng đúng logic trigger trong DB.
+    const nextCriteria = criteriaRows.map(c => (c.id === criteriaId ? { ...c, completed: next } : c));
+    const mine = nextCriteria.filter(c => c.use_case_id === useCaseId);
+    const pct = mine.length === 0 ? 0 : Math.round((100 * mine.filter(c => c.completed).length) / mine.length);
+    setCriteriaRows(nextCriteria);
+    setUcRows(prev =>
+      prev.map(u =>
+        u.id !== useCaseId
+          ? u
+          : {
+              ...u,
+              progress_percent: pct,
+              status: pct === 100 ? 'completed' : pct >= 50 && u.status === 'draft' ? 'developing' : u.status
+            }
+      )
     );
     sound.playNotification();
-  };
 
-  // Quality Gate Actions
-  const toggleQualityItemPassed = (phaseId: string, itemId: string, notes?: string) => {
-    setQualityGates(prev =>
-      prev.map(qg => {
-        if (qg.projectId !== activeProjectId) return qg;
-        return {
-          ...qg,
-          phases: qg.phases.map(phase => {
-            if (phase.id !== phaseId) return phase;
-            return {
-              ...phase,
-              items: phase.items.map(item => {
-                if (item.id !== itemId) return item;
-                const nextPassed = !item.isPassed;
-                return {
-                  ...item,
-                  isPassed: nextPassed,
-                  checkedBy: nextPassed ? `${currentUser.name} (${currentUser.role.toUpperCase()})` : undefined,
-                  checkedAt: nextPassed ? new Date().toISOString().split('T')[0] : undefined,
-                  notes: notes !== undefined ? notes : item.notes
-                };
-              })
-            };
-          })
-        };
-      })
+    void run(
+      async () => {
+        check(await supabase.from('acceptance_criteria').update({ completed: next }).eq('id', criteriaId));
+      },
+      ['usecases', 'projects'],
+      false
     );
-    sound.playSuccess();
   };
 
-  const addQualityItem = (phaseId: string, itemData: Omit<QualityCheckItem, 'id' | 'isPassed'>) => {
-    setQualityGates(prev =>
-      prev.map(qg => {
-        if (qg.projectId !== activeProjectId) return qg;
-        return {
-          ...qg,
-          phases: qg.phases.map(phase => {
-            if (phase.id !== phaseId) return phase;
-            const newItem: QualityCheckItem = {
-              ...itemData,
-              id: `qg-custom-${Date.now()}`,
-              isPassed: false
-            };
-            return {
-              ...phase,
-              items: [...phase.items, newItem]
-            };
-          })
-        };
-      })
+  // Quality gates
+  const toggleQualityItemPassed = (_phaseId: string, itemId: string, notes?: string) => {
+    const item = qualityRows.find(i => i.id === itemId);
+    if (!item) return;
+    const next = !item.is_passed;
+    const label = `${currentUser.name} (${currentUser.role.toUpperCase()})`;
+    setQualityRows(prev =>
+      prev.map(i =>
+        i.id !== itemId
+          ? i
+          : {
+              ...i,
+              is_passed: next,
+              checked_by: next ? label : null,
+              checked_at: next ? new Date().toISOString().slice(0, 10) : null,
+              notes: notes !== undefined ? notes : i.notes
+            }
+      )
     );
-    sound.playSuccess();
+    void run(
+      async () => {
+        const patch: Record<string, unknown> = { is_passed: next };
+        if (notes !== undefined) patch.notes = notes;
+        check(await supabase.from('quality_items').update(patch).eq('id', itemId));
+      },
+      ['quality']
+    );
   };
 
-  // Deadline Reminders
+  const updateQualityNotes = (itemId: string, notes: string) => {
+    setQualityRows(prev => prev.map(i => (i.id === itemId ? { ...i, notes } : i)));
+    void run(
+      async () => {
+        check(await supabase.from('quality_items').update({ notes }).eq('id', itemId));
+      },
+      ['quality']
+    );
+  };
+
+  const addQualityItem = (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => {
+    void run(
+      async () => {
+        check(
+          await supabase.from('quality_items').insert({
+            project_id: activeProjectId,
+            phase_key: phaseId,
+            title: item.title,
+            description: item.description,
+            is_mandatory: item.isMandatory,
+            notes: item.notes || null
+          })
+        );
+      },
+      ['quality']
+    );
+  };
+
+  // Thông báo
   const sendDeadlineReminder = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    const assignee = users.find(u => u.id === task.assigneeId);
-
-    const reminderNotif: NotificationItem = {
-      id: `reminder-${Date.now()}`,
-      projectId: task.projectId,
-      type: 'deadline_warning',
-      title: `Nhắc việc gửi tới ${assignee?.name || 'thành viên'}`,
-      message: `Quản trị viên đã gửi nhắc nhở deadline nhiệm vụ "${task.title}" (Hạn chót: ${task.dueDate}).`,
-      taskId: task.id,
-      createdAt: new Date().toLocaleString('vi-VN'),
-      isRead: false
-    };
-
-    setNotifications(prev => [reminderNotif, ...prev]);
-    sound.playWarning();
+    void run(
+      async () => {
+        check(await supabase.rpc('send_task_reminder', { p_task: taskId }));
+        sound.playWarning();
+      },
+      ['notifications'],
+      false
+    );
   };
 
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: true } : n)));
+    void run(
+      async () => {
+        check(await supabase.from('notifications').update({ is_read: true }).eq('id', id));
+      },
+      ['notifications'],
+      false
+    );
   };
 
   const markAllNotificationsAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    void run(
+      async () => {
+        check(await supabase.from('notifications').update({ is_read: true }).eq('is_read', false));
+      },
+      ['notifications'],
+      false
+    );
   };
 
-  // Demo Data Reset
-  const resetToDemoData = () => {
-    setProjects(INITIAL_PROJECTS);
-    setActiveProjectId('proj-1');
-    setTasks(INITIAL_TASKS);
-    setUseCases(INITIAL_USE_CASES);
-    setQualityGates(INITIAL_QUALITY_GATES);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    setCurrentUserId('user-admin');
-    sound.playSuccess();
-  };
-
-  const handleSetCurrentUser = (user: User) => {
-    setCurrentUserId(user.id);
-    sound.playNotification();
+  const seedDemoData = () => {
+    void run(
+      async () => {
+        check(await supabase.rpc('seed_demo_data'));
+      },
+      ALL_SLICES
+    );
   };
 
   return (
@@ -541,11 +763,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab,
         setActiveTab,
         users,
+        allUsers,
         currentUser,
-        setCurrentUser: handleSetCurrentUser,
+        signOut,
         projects,
         activeProjectId,
-        activeProject,
+        // Chỉ được dùng khi đã có ít nhất một dự án (App chặn bằng màn hình "chưa có dự án").
+        activeProject: activeProject as Project,
         setActiveProjectId,
         tasks,
         projectTasks,
@@ -555,7 +779,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         projectQualityGates,
         notifications,
         unreadNotificationCount,
+        isLoading,
+        loadError,
+        reload,
+        actionError,
+        clearActionError: () => setActionError(null),
+        isAdmin,
         canManageProject,
+        canManageProjectId,
         canManageTasks,
         canApproveQuality,
         canApproveUseCase,
@@ -563,6 +794,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createProject,
         updateProject,
         deleteProject,
+        addMember,
+        setMemberRole,
+        removeMember,
         createTask,
         updateTask,
         deleteTask,
@@ -572,11 +806,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteUseCase,
         toggleAcceptanceCriteria,
         toggleQualityItemPassed,
+        updateQualityNotes,
         addQualityItem,
         sendDeadlineReminder,
         markNotificationAsRead,
         markAllNotificationsAsRead,
-        resetToDemoData,
+        seedDemoData,
         soundMuted,
         toggleSound
       }}

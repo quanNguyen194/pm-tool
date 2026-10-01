@@ -22,8 +22,10 @@ export const ProjectsView: React.FC = () => {
     createProject,
     updateProject,
     deleteProject,
-    canManageProject,
-    users
+    isAdmin,
+    canManageProjectId,
+    currentUser,
+    allUsers
   } = useApp();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -49,15 +51,15 @@ export const ProjectsView: React.FC = () => {
     description: '',
     status: 'planning',
     priority: 'medium',
-    managerId: users[1]?.id || users[0].id,
+    managerId: currentUser.id,
     startDate: new Date().toISOString().split('T')[0],
     targetEndDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
     budget: 500000000,
     currentPhase: 'phase_1',
-    memberIds: [users[0].id, users[1].id]
+    memberIds: []
   });
 
-  const userMap = new Map(users.map(u => [u.id, u]));
+  const userMap = new Map(allUsers.map(u => [u.id, u]));
 
   const openCreateModal = () => {
     setEditingProject(null);
@@ -67,12 +69,12 @@ export const ProjectsView: React.FC = () => {
       description: '',
       status: 'planning',
       priority: 'high',
-      managerId: users[1]?.id || users[0].id,
+      managerId: currentUser.id,
       startDate: new Date().toISOString().split('T')[0],
       targetEndDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
       budget: 650000000,
       currentPhase: 'phase_1',
-      memberIds: [users[0].id, users[1].id]
+      memberIds: []
     });
     setIsModalOpen(true);
   };
@@ -149,7 +151,7 @@ export const ProjectsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {canManageProject ? (
+          {isAdmin ? (
             <button
               onClick={openCreateModal}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
@@ -159,7 +161,7 @@ export const ProjectsView: React.FC = () => {
             </button>
           ) : (
             <div className="text-xs text-slate-500 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-              * Cần quyền Admin hoặc PM để tạo dự án
+              * Chỉ quản trị viên mới tạo được dự án
             </div>
           )}
         </div>
@@ -283,7 +285,7 @@ export const ProjectsView: React.FC = () => {
                   {isActive ? 'Đang kích hoạt' : 'Chọn dự án này'}
                 </button>
 
-                {canManageProject && (
+                {canManageProjectId(project.id) && (
                   <button
                     onClick={() => openEditModal(project)}
                     className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
@@ -293,7 +295,7 @@ export const ProjectsView: React.FC = () => {
                   </button>
                 )}
 
-                {canManageProject && projects.length > 1 && (
+                {canManageProjectId(project.id) && (
                   <button
                     onClick={() => {
                       if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" cùng mọi dữ liệu liên quan?`)) {
@@ -403,9 +405,9 @@ export const ProjectsView: React.FC = () => {
                     onChange={e => setFormData({ ...formData, managerId: e.target.value })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-indigo-500"
                   >
-                    {users.map(u => (
+                    {allUsers.map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.name} ({u.role.toUpperCase()})
+                        {u.name} ({u.email})
                       </option>
                     ))}
                   </select>

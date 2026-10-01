@@ -1,11 +1,15 @@
 export type Role = 'admin' | 'pm' | 'developer' | 'qa' | 'viewer';
+/** Vai trò gán theo từng dự án (quản trị viên là quyền toàn hệ thống, không nằm ở đây). */
+export type MemberRole = Exclude<Role, 'admin'>;
 
 export interface User {
   id: string;
   name: string;
   email: string;
   avatarColor: string;
+  /** Vai trò hiệu lực trong dự án đang chọn: 'admin' nếu là quản trị viên toàn hệ thống. */
   role: Role;
+  isAdmin: boolean;
   department: string;
 }
 

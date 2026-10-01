@@ -21,6 +21,7 @@ export const QualityGatesView: React.FC = () => {
     activeProject,
     projectQualityGates,
     toggleQualityItemPassed,
+    updateQualityNotes,
     addQualityItem,
     canApproveQuality,
     currentUser
@@ -51,7 +52,7 @@ export const QualityGatesView: React.FC = () => {
 
   const handleSaveNotes = () => {
     if (!selectedItemForNotes) return;
-    toggleQualityItemPassed(selectedItemForNotes.phaseId, selectedItemForNotes.item.id, noteText);
+    updateQualityNotes(selectedItemForNotes.item.id, noteText);
     setIsNotesModalOpen(false);
   };
 

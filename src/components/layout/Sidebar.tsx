@@ -10,6 +10,7 @@ import {
   FileBarChart2,
   Users2,
   RotateCcw,
+  LogOut,
   Sparkles,
   Info
 } from 'lucide-react';
@@ -29,7 +30,9 @@ export const Sidebar: React.FC = () => {
     projectUseCases,
     projectQualityGates,
     currentUser,
-    resetToDemoData
+    isAdmin,
+    seedDemoData,
+    signOut
   } = useApp();
 
   const totalQualityItems = projectQualityGates?.phases.reduce((sum, p) => sum + p.items.length, 0) || 0;
@@ -155,18 +158,28 @@ export const Sidebar: React.FC = () => {
           <div className="text-[10px] text-slate-400 mt-0.5">{currentRoleInfo.desc}</div>
         </div>
 
-        {/* Demo reset action */}
         <div className="mt-2.5 flex items-center justify-between pt-1">
+          {isAdmin ? (
+            <button
+              onClick={() => {
+                if (window.confirm('Nạp thêm 3 dự án demo? (Bỏ qua nếu đã nạp trước đó)')) {
+                  seedDemoData();
+                }
+              }}
+              className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-indigo-400 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Nạp dữ liệu demo</span>
+            </button>
+          ) : (
+            <span />
+          )}
           <button
-            onClick={() => {
-              if (window.confirm('Khôi phục dữ liệu mẫu ban đầu? Mọi thay đổi thử nghiệm sẽ được làm mới.')) {
-                resetToDemoData();
-              }
-            }}
-            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-indigo-400 transition-colors"
+            onClick={() => void signOut()}
+            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-rose-400 transition-colors"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>Khôi phục dữ liệu mẫu</span>
+            <LogOut className="w-3 h-3" />
+            <span>Đăng xuất</span>
           </button>
         </div>
       </div>

@@ -28,6 +28,7 @@ Schema, phân quyền (RLS) và dữ liệu demo nằm trong `supabase/migration
 1. `0001_schema.sql` - bảng, hàm phân quyền, trigger, RLS
 2. `0002_quality_template.sql` - 5 giai đoạn + checklist chất lượng mẫu
 3. `0003_rpc_and_seed.sql` - hàm RPC + `seed_demo_data()`
+4. `0004_criteria_insert_guard.sql` - vá quyền tick tiêu chí nghiệm thu
 
 Người đăng ký đầu tiên tự động là quản trị viên. Nạp dữ liệu demo sau khi có tài khoản: `select public.seed_demo_data();`
 

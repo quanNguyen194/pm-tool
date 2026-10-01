@@ -31,6 +31,7 @@ export const TasksView: React.FC = () => {
     moveTaskStatus,
     sendDeadlineReminder,
     canManageTasks,
+    currentUser,
     projectUseCases
   } = useApp();
 
@@ -50,7 +51,7 @@ export const TasksView: React.FC = () => {
     description: '',
     status: 'todo' as TaskStatus,
     priority: 'medium' as Priority,
-    assigneeId: users[2]?.id || users[0].id,
+    assigneeId: currentUser.id,
     phase: 'Giai đoạn 3: Phát triển Sprint',
     estimatedHours: 16,
     actualHours: 0,
@@ -68,7 +69,7 @@ export const TasksView: React.FC = () => {
       description: '',
       status: 'todo',
       priority: 'high',
-      assigneeId: users[2]?.id || users[0].id,
+      assigneeId: currentUser.id,
       phase: 'Giai đoạn 3: Phát triển Sprint',
       estimatedHours: 20,
       actualHours: 0,

@@ -28,6 +28,7 @@ export const UseCasesView: React.FC = () => {
     toggleAcceptanceCriteria,
     canApproveUseCase,
     canManageTasks,
+    currentUser,
     users
   } = useApp();
 
@@ -49,7 +50,7 @@ export const UseCasesView: React.FC = () => {
     mainFlow: '',
     alternateFlow: '',
     acceptanceCriteria: '',
-    assignedTo: users[2]?.id || users[0].id
+    assignedTo: currentUser.id
   });
 
   const openCreateModal = () => {
@@ -65,7 +66,7 @@ export const UseCasesView: React.FC = () => {
       mainFlow: '1. Người dùng truy cập tính năng\n2. Nhập thông tin yêu cầu\n3. Hệ thống kiểm tra dữ liệu\n4. Xác nhận hoàn tất giao dịch',
       alternateFlow: '3a. Dữ liệu không hợp lệ: Hiển thị thông báo lỗi',
       acceptanceCriteria: 'Đảm bảo thời gian phản hồi dưới 2 giây\nCó mã hóa dữ liệu an toàn\nKiểm thử luồng biên thành công',
-      assignedTo: users[2]?.id || users[0].id
+      assignedTo: currentUser.id
     });
     setIsModalOpen(true);
   };
@@ -83,7 +84,7 @@ export const UseCasesView: React.FC = () => {
       mainFlow: uc.mainFlow.join('\n'),
       alternateFlow: uc.alternateFlow?.join('\n') || '',
       acceptanceCriteria: uc.acceptanceCriteria.map(c => c.description).join('\n'),
-      assignedTo: uc.assignedTo || users[0].id
+      assignedTo: uc.assignedTo || currentUser.id
     });
     setIsModalOpen(true);
   };
