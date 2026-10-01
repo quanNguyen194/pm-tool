@@ -40,8 +40,8 @@ Dùng khi nhiều commit liên tiếp đều lỗi:
 
 ```bash
 git pull --rebase origin main
-git revert --no-commit stable-2026-10-02..HEAD   # hoàn tác mọi thay đổi sau mốc ổn định
-git commit -m "Restore to stable-2026-10-02"
+git revert --no-commit stable-2026-10-02-ui..HEAD   # hoàn tác mọi thay đổi sau mốc ổn định mới nhất
+git commit -m "Restore to stable-2026-10-02-ui"
 git push origin main
 ```
 
@@ -53,7 +53,7 @@ git push origin stable-YYYY-MM-DD
 ```
 
 Mốc hiện tại: **`stable-2026-10-02`** (commit `a440d69`, đủ giai đoạn 0-5).
-Sau khi nâng cấp giao diện (5 bước), hãy gắn mốc mới (vd `stable-2026-10-02-ui`) khi bạn đã duyệt; mốc cũ vẫn dùng được để quay về giao diện trước khi nâng cấp.
+Mốc mới nhất: **`stable-2026-10-02-ui`** (commit `cdd2306`, sau nâng cấp giao diện 5 bước: dark mode, thanh bên/ngăn kéo, Gantt, kéo thả Kanban, dashboard hiệu suất). Mốc `stable-2026-10-02` vẫn dùng được để quay về giao diện trước khi nâng cấp.
 
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
