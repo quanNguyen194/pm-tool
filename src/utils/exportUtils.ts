@@ -1,4 +1,15 @@
-import { Project, Task, UseCase, QualityGatePhase, User } from '../types';
+import { Project, Task, UseCase, QualityGatePhase, User, ProgressSnapshot } from '../types';
+import { buildProgressChartSvg } from './chartSvg';
+
+/** Escape văn bản người dùng nhập trước khi chèn vào HTML của cửa sổ in (chống XSS). */
+function esc(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /**
  * Downloads a UTF-8 CSV string with BOM so that Vietnamese accents render correctly in Excel.
@@ -127,7 +138,8 @@ export function printPeriodicReport(
   useCases: UseCase[],
   phases: QualityGatePhase[],
   reportType: 'weekly' | 'monthly' | 'sprint',
-  currentUserName: string
+  currentUserName: string,
+  snapshots: ProgressSnapshot[] = []
 ) {
   const reportTitles = {
     weekly: 'BÁO CÁO TIẾN ĐỘ ĐỊNH KỲ TUẦN (WEEKLY STATUS REPORT)',
@@ -154,6 +166,12 @@ export function printPeriodicReport(
   });
   const qualityRate = totalQualityItems > 0 ? Math.round((passedQualityItems / totalQualityItems) * 100) : 100;
 
+  const chartSection =
+    snapshots.length > 0
+      ? `<h2>BIỂU ĐỒ TIẾN ĐỘ THEO THỜI GIAN</h2>
+  <div style="margin-bottom: 20px;">${buildProgressChartSvg(snapshots, project, { mode: 'progress' })}</div>`
+      : '';
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     window.print();
@@ -165,7 +183,7 @@ export function printPeriodicReport(
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>${reportTitles[reportType]} - ${project.name}</title>
+  <title>${reportTitles[reportType]} - ${esc(project.name)}</title>
   <style>
     @page { size: A4; margin: 15mm; }
     body {
@@ -238,11 +256,11 @@ export function printPeriodicReport(
     <div>
       <div class="brand">OMNIPROJECT ENTERPRISE PMO</div>
       <div class="report-title">${reportTitles[reportType]}</div>
-      <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">Dự án: [${project.code}] ${project.name}</div>
+      <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">Dự án: [${esc(project.code)}] ${esc(project.name)}</div>
     </div>
     <div class="meta-box">
       <div><strong>Ngày xuất báo cáo:</strong> ${new Date().toLocaleDateString('vi-VN')}</div>
-      <div><strong>Người lập báo cáo:</strong> ${currentUserName}</div>
+      <div><strong>Người lập báo cáo:</strong> ${esc(currentUserName)}</div>
       <div><strong>Thời gian dự án:</strong> ${project.startDate} đến ${project.targetEndDate}</div>
     </div>
   </div>
@@ -270,6 +288,8 @@ export function printPeriodicReport(
     </div>
   </div>
 
+  ${chartSection}
+
   <h2>1. TỔNG QUAN VÀ TIẾN ĐỘ THỰC HIỆN USE CASE NGHIỆP VỤ</h2>
   <table>
     <thead>
@@ -284,9 +304,9 @@ export function printPeriodicReport(
     <tbody>
       ${useCases.map(uc => `
         <tr>
-          <td><strong>${uc.code}</strong></td>
-          <td>${uc.title}</td>
-          <td>${uc.actor}</td>
+          <td><strong>${esc(uc.code)}</strong></td>
+          <td>${esc(uc.title)}</td>
+          <td>${esc(uc.actor)}</td>
           <td>${uc.status.toUpperCase()}</td>
           <td style="text-align: right; font-weight: 600;">${uc.progressPercent}%</td>
         </tr>
@@ -310,8 +330,8 @@ export function printPeriodicReport(
         const isPastDue = t.status !== 'done' && new Date(t.dueDate) < new Date();
         return `
           <tr>
-            <td><strong>${t.code}</strong></td>
-            <td>${t.title}</td>
+            <td><strong>${esc(t.code)}</strong></td>
+            <td>${esc(t.title)}</td>
             <td><span class="badge badge-${t.priority}">${t.priority.toUpperCase()}</span></td>
             <td style="${isPastDue ? 'color: #dc2626; font-weight: 700;' : ''}">${t.dueDate} ${isPastDue ? '(QUÁ HẠN)' : ''}</td>
             <td><span class="badge badge-${t.status}">${t.status.toUpperCase()}</span></td>
@@ -334,11 +354,11 @@ export function printPeriodicReport(
     <tbody>
       ${phases.flatMap(p => p.items.map(item => `
         <tr>
-          <td><strong>${p.shortName}</strong></td>
+          <td><strong>${esc(p.shortName)}</strong></td>
           <td>
-            <div style="font-weight: 600;">${item.title}</div>
-            <div style="font-size: 11px; color: #475569;">${item.description}</div>
-            ${item.notes ? `<div style="font-size: 11px; color: #0284c7; margin-top: 2px;"><em>Ghi chú: ${item.notes}</em></div>` : ''}
+            <div style="font-weight: 600;">${esc(item.title)}</div>
+            <div style="font-size: 11px; color: #475569;">${esc(item.description)}</div>
+            ${item.notes ? `<div style="font-size: 11px; color: #0284c7; margin-top: 2px;"><em>Ghi chú: ${esc(item.notes)}</em></div>` : ''}
           </td>
           <td style="text-align: center;">${item.isMandatory ? 'Bắt buộc' : 'Khuyến nghị'}</td>
           <td style="text-align: center; font-weight: 700; color: ${item.isPassed ? '#166534' : '#b91c1c'};">

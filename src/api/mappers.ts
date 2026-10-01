@@ -2,6 +2,7 @@ import {
   MemberRole,
   NotificationItem,
   Project,
+  ProgressSnapshot,
   ProjectQualityGates,
   QualityCheckItem,
   QualityGatePhase,
@@ -119,7 +120,17 @@ export const mapNotification = (r: Row): NotificationItem => ({
   isRead: !!r.is_read
 });
 
-const mapQualityItem = (r: Row): QualityCheckItem => ({
+export const mapSnapshot = (r: Row): ProgressSnapshot & { projectId: string } => ({
+  projectId: r.project_id,
+  date: r.snap_date,
+  progressPercent: r.progress_percent ?? 0,
+  tasksTotal: r.tasks_total ?? 0,
+  tasksDone: r.tasks_done ?? 0,
+  qualityTotal: r.quality_total ?? 0,
+  qualityPassed: r.quality_passed ?? 0
+});
+
+const mapQualityItem =(r: Row): QualityCheckItem => ({
   id: r.id,
   title: r.title,
   description: r.description ?? '',

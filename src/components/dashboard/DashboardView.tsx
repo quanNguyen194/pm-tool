@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { ProgressChart } from '../charts/ProgressChart';
 import {
   TrendingUp,
   CheckCircle2,
@@ -345,6 +346,9 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Biểu đồ tiến độ theo thời gian */}
+      <ProgressChart />
 
       {/* Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -18,7 +18,7 @@ await db.exec(`
   alter default privileges in schema public grant all on functions to anon, authenticated, public;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
-for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql']) {
+for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql']) {
   await db.exec(fs.readFileSync(new URL(f, MIG), 'utf8'));
   console.log('applied', f);
 }
@@ -63,6 +63,16 @@ const ucs = await q(`select code, progress_percent p, status from use_cases orde
 ok('seed giữ nguyên progress use case', ucs.find(u => u.code === 'UC-OB-02').p === 60, JSON.stringify(ucs));
 ok('quality item đã duyệt có người duyệt', (await q(`select count(*)::int c from quality_items where project_id=$1 and is_passed and checked_by like '%ADMIN%'`, [proj['OMNI-BANK']]))[0].c === 10);
 
+const snapN = (await q(`select count(*)::int c from progress_snapshots`))[0].c;
+ok('seed tạo ảnh chụp tiến độ hôm nay cho 3 dự án', snapN === 3, String(snapN));
+await q(`select backfill_demo_progress()`);
+const snapN2 = (await q(`select count(*)::int c from progress_snapshots`))[0].c;
+ok('backfill dựng lịch sử minh họa', snapN2 > 100, String(snapN2));
+await q(`select backfill_demo_progress()`);
+ok('backfill chạy lại không nhân đôi', (await q(`select count(*)::int c from progress_snapshots`))[0].c === snapN2);
+const lastSnap = (await q(`select s.progress_percent p, pr.progress_percent cur from progress_snapshots s join projects pr on pr.id=s.project_id where pr.code='OMNI-BANK' order by snap_date desc limit 1`))[0];
+ok('điểm hôm nay khớp tiến độ hiện tại', lastSnap.p === lastSnap.cur, JSON.stringify(lastSnap));
+
 // --- Thành viên ---
 await as('admin');
 await q(`select add_project_member($1,'pm@t.vn','pm')`, [proj['OMNI-BANK']]);
@@ -77,6 +87,7 @@ await as('outsider');
 ok('outsider không thấy dự án', (await q(`select count(*)::int c from projects`))[0].c === 0);
 ok('outsider không thấy task', (await q(`select count(*)::int c from tasks`))[0].c === 0);
 ok('outsider chỉ thấy profile của mình', (await q(`select count(*)::int c from profiles`))[0].c === 1);
+ok('outsider không thấy lịch sử tiến độ', (await q(`select count(*)::int c from progress_snapshots`))[0].c === 0);
 ok('outsider không thấy checklist', (await q(`select count(*)::int c from quality_items`))[0].c === 0);
 
 // --- Anon ---
@@ -91,6 +102,9 @@ await throws('viewer không tạo được task', () => q(`insert into tasks (pr
 ok('viewer không sửa được task', (await q(`update tasks set status='done' where project_id=$1 returning id`, [proj['OMNI-BANK']])).length === 0);
 ok('viewer không duyệt được checklist', (await q(`update quality_items set is_passed=true where project_id=$1 returning id`, [proj['OMNI-BANK']])).length === 0);
 ok('viewer không xóa được task', (await q(`delete from tasks where project_id=$1 returning id`, [proj['OMNI-BANK']])).length === 0);
+
+ok('viewer chỉ thấy lịch sử tiến độ của dự án mình', (await q(`select count(distinct project_id)::int c from progress_snapshots`))[0].c === 1);
+await throws('viewer không ghi được lịch sử tiến độ', () => q(`insert into progress_snapshots (project_id,snap_date,progress_percent) values ($1,current_date+5,50)`, [proj['OMNI-BANK']]), 'permission denied');
 
 // --- Developer ---
 await as('dev');
@@ -108,6 +122,8 @@ await throws('dev không tự thành admin', () => q(`update profiles set is_adm
 await throws('dev không đổi email profile', () => q(`update profiles set email='x@x.vn' where id=auth.uid()`), 'permission denied');
 await throws('dev không thêm thành viên', () => q(`select add_project_member($1,'out@t.vn','viewer')`, [proj['OMNI-BANK']]), '42501');
 await throws('dev không gửi nhắc việc', () => q(`select send_task_reminder((select id from tasks where code='OB-101'))`), '42501');
+await throws('dev không chạy quét deadline', () => q(`select scan_deadlines()`), '42501');
+await throws('dev không dựng dữ liệu minh họa', () => q(`select backfill_demo_progress()`), '42501');
 await throws('dev không gọi seed', () => q(`select seed_demo_data()`), '42501');
 await throws('dev không ghi progress_percent project', () => q(`update projects set progress_percent=100 where id=$1`, [proj['OMNI-BANK']]), 'permission denied');
 await throws('dev không ghi progress_percent use case', () => q(`update use_cases set progress_percent=100`), 'permission denied');
@@ -148,6 +164,11 @@ ok('dự án mới được nhân bản 19 mục checklist', (await q(`select co
 const members = await q(`select p.name, m.role from project_members m join profiles p on p.id=m.user_id where project_id=$1 order by 1`, [np[0].id]);
 ok('PM + admin được gán làm thành viên', members.length === 2 && members.every(m => m.role === 'pm'), JSON.stringify(members));
 ok('admin xem được thông báo nhắc việc', (await q(`select count(*)::int c from notifications where type='deadline_warning'`))[0].c === 1);
+const scan1 = (await q(`select scan_deadlines() n`))[0].n;
+ok('quét deadline tạo thông báo (1 quá hạn + 3 sắp đến hạn)', scan1 === 4, String(scan1));
+ok('quét lại không tạo trùng', (await q(`select scan_deadlines() n`))[0].n === 0);
+const kinds = Object.fromEntries((await q(`select type, count(*)::int c from notifications where dedupe_key is not null group by 1`)).map(r => [r.type, r.c]));
+ok('phân loại đúng overdue / deadline_warning', kinds.overdue === 1 && kinds.deadline_warning === 3, JSON.stringify(kinds));
 ok('admin cấp quyền admin cho người khác', (await q(`update profiles set is_admin=true where name='PM' returning id`)).length === 1);
 await q(`update profiles set is_admin=false where name='PM'`);
 const dels = await q(`delete from projects where id=$1 returning id`, [np[0].id]);
@@ -159,6 +180,8 @@ const before = (await q(`select progress_percent p from projects where code='OMN
 await q(`update tasks set status='done' where project_id=$1`, [proj['OMNI-BANK']]);
 const after = (await q(`select progress_percent p from projects where code='OMNI-BANK'`))[0].p;
 ok('tiến độ dự án tăng khi task xong', after > before, `${before} -> ${after}`);
+const todaySnap = (await q(`select progress_percent p from progress_snapshots where project_id=$1 order by snap_date desc limit 1`, [proj['OMNI-BANK']]))[0].p;
+ok('ảnh chụp hôm nay cập nhật theo tiến độ mới', todaySnap === after, `${todaySnap} vs ${after}`);
 
 // --- Thông báo ---
 await as('dev');

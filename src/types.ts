@@ -114,7 +114,17 @@ export interface NotificationItem {
   isRead: boolean;
 }
 
-export type NavigationTab = 
+/** Ảnh chụp tiến độ dự án theo ngày (bảng progress_snapshots), dùng cho biểu đồ. */
+export interface ProgressSnapshot {
+  date: string;
+  progressPercent: number;
+  tasksTotal: number;
+  tasksDone: number;
+  qualityTotal: number;
+  qualityPassed: number;
+}
+
+export type NavigationTab =
   | 'dashboard' 
   | 'projects' 
   | 'tasks' 

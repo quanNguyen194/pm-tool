@@ -19,7 +19,8 @@ import {
   NavigationTab,
   TaskStatus,
   Role,
-  MemberRole
+  MemberRole,
+  ProgressSnapshot
 } from '../types';
 import { supabase, describeError } from '../lib/supabase';
 import {
@@ -31,6 +32,7 @@ import {
   mapTask,
   mapUseCase,
   mapNotification,
+  mapSnapshot,
   buildQualityGates
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
@@ -59,6 +61,8 @@ interface AppContextType {
   projectQualityGates: ProjectQualityGates | undefined;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
+  /** Lịch sử tiến độ của dự án đang chọn (cũ -> mới), dùng vẽ biểu đồ. */
+  projectSnapshots: ProgressSnapshot[];
 
   // Trạng thái tải dữ liệu
   isLoading: boolean;
@@ -66,6 +70,9 @@ interface AppContextType {
   reload: () => void;
   actionError: string | null;
   clearActionError: () => void;
+  /** Thông báo kết quả (màu xanh) cho thao tác thành công đáng chú ý, vd: quét deadline. */
+  actionNotice: string | null;
+  clearActionNotice: () => void;
 
   // Quyền (tính từ vai trò trong dự án đang chọn; DB (RLS) mới là nơi chốt quyền thật)
   isAdmin: boolean;
@@ -104,6 +111,8 @@ interface AppContextType {
   markAllNotificationsAsRead: () => void;
   // Quản trị
   seedDemoData: () => void;
+  /** Admin: quét ngay các task quá hạn / sắp đến hạn và tạo thông báo (cron cũng chạy việc này hằng ngày). */
+  scanDeadlines: () => void;
   soundMuted: boolean;
   toggleSound: () => void;
 }
@@ -130,8 +139,17 @@ const safeSet = (key: string, value: string) => {
   }
 };
 
-type Slice = 'profiles' | 'members' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'notifications';
-const ALL_SLICES: Slice[] = ['profiles', 'members', 'projects', 'tasks', 'usecases', 'quality', 'notifications'];
+type Slice = 'profiles' | 'members' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'notifications' | 'snapshots';
+const ALL_SLICES: Slice[] = [
+  'profiles',
+  'members',
+  'projects',
+  'tasks',
+  'usecases',
+  'quality',
+  'notifications',
+  'snapshots'
+];
 
 // Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
 const TABLE_SLICES: Record<string, Slice[]> = {
@@ -141,7 +159,8 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   use_cases: ['usecases'],
   acceptance_criteria: ['usecases'],
   quality_items: ['quality'],
-  notifications: ['notifications']
+  notifications: ['notifications'],
+  progress_snapshots: ['snapshots']
 };
 
 type Row = Record<string, any>;
@@ -180,10 +199,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [qualityDefs, setQualityDefs] = useState<Row[]>([]);
   const [qualityRows, setQualityRows] = useState<Row[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [snapshotRows, setSnapshotRows] = useState<(ProgressSnapshot & { projectId: string })[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [activeProjectIdState, setActiveProjectIdState] = useState<string>(
     () => safeGet(STORAGE_KEYS.ACTIVE_PROJECT) || ''
   );
@@ -238,6 +259,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           .limit(100);
         if (error) throw error;
         setNotifications((data || []).map(mapNotification));
+      },
+      snapshots: async () => {
+        const { data, error } = await supabase
+          .from('progress_snapshots')
+          .select('*')
+          .order('snap_date')
+          .limit(5000);
+        // Biểu đồ là phần phụ: lỗi (vd chưa chạy migration 0005) chỉ làm biểu đồ trống, không chặn cả app.
+        if (error) {
+          console.warn('Không tải được lịch sử tiến độ:', error.message);
+          setSnapshotRows([]);
+          return;
+        }
+        setSnapshotRows((data || []).map(mapSnapshot));
       }
     }),
     []
@@ -245,7 +280,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refresh = useCallback(
     async (slices: Slice[]) => {
-      await Promise.all([...new Set(slices)].map(s => fetchers[s]()));
+      // Dự án đổi tiến độ thì lịch sử tiến độ cũng đổi theo.
+      const wanted = new Set<Slice>(slices);
+      if (wanted.has('projects')) wanted.add('snapshots');
+      await Promise.all([...wanted].map(s => fetchers[s]()));
     },
     [fetchers]
   );
@@ -313,6 +351,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const projectQualityGates = useMemo(
     () => qualityGates.find(q => q.projectId === activeProjectId),
     [qualityGates, activeProjectId]
+  );
+
+  const projectSnapshots = useMemo<ProgressSnapshot[]>(
+    () =>
+      snapshotRows
+        .filter(s => s.projectId === activeProjectId)
+        .map(({ projectId: _projectId, ...rest }) => rest),
+    [snapshotRows, activeProjectId]
   );
 
   const roleIn = useCallback(
@@ -757,6 +803,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const scanDeadlines = () => {
+    void run(
+      async () => {
+        const res = await supabase.rpc('scan_deadlines');
+        check(res);
+        const n = Number(res.data ?? 0);
+        setActionNotice(
+          n > 0 ? `Đã tạo ${n} thông báo deadline mới.` : 'Không có thông báo deadline mới (mọi cảnh báo đã được gửi trước đó).'
+        );
+      },
+      ['notifications'],
+      false
+    );
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -779,11 +840,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         projectQualityGates,
         notifications,
         unreadNotificationCount,
+        projectSnapshots,
         isLoading,
         loadError,
         reload,
         actionError,
         clearActionError: () => setActionError(null),
+        actionNotice,
+        clearActionNotice: () => setActionNotice(null),
         isAdmin,
         canManageProject,
         canManageProjectId,
@@ -812,6 +876,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         markNotificationAsRead,
         markAllNotificationsAsRead,
         seedDemoData,
+        scanDeadlines,
         soundMuted,
         toggleSound
       }}

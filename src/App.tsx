@@ -34,7 +34,7 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
 );
 
 const MainLayout: React.FC = () => {
-  const { activeTab, actionError, clearActionError } = useApp();
+  const { activeTab, actionError, clearActionError, actionNotice, clearActionNotice } = useApp();
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
@@ -59,6 +59,18 @@ const MainLayout: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {actionNotice && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-4 z-[60] max-w-sm flex items-start gap-3 bg-emerald-600 text-white text-xs rounded-lg shadow-xl px-4 py-3"
+        >
+          <span className="flex-1 leading-relaxed">{actionNotice}</span>
+          <button onClick={clearActionNotice} className="shrink-0 text-white/80 hover:text-white" aria-label="Đóng">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {actionError && (
         <div

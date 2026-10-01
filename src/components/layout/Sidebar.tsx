@@ -10,6 +10,7 @@ import {
   FileBarChart2,
   Users2,
   RotateCcw,
+  Clock,
   LogOut,
   Sparkles,
   Info
@@ -32,6 +33,7 @@ export const Sidebar: React.FC = () => {
     currentUser,
     isAdmin,
     seedDemoData,
+    scanDeadlines,
     signOut
   } = useApp();
 
@@ -158,7 +160,19 @@ export const Sidebar: React.FC = () => {
           <div className="text-[10px] text-slate-400 mt-0.5">{currentRoleInfo.desc}</div>
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between pt-1">
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pt-1">
+          {isAdmin ? (
+            <button
+              onClick={scanDeadlines}
+              className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-amber-400 transition-colors"
+              title="Quét ngay task quá hạn / sắp đến hạn và tạo thông báo (hệ thống cũng tự quét lúc 8:00 mỗi sáng)"
+            >
+              <Clock className="w-3 h-3" />
+              <span>Quét deadline</span>
+            </button>
+          ) : (
+            <span />
+          )}
           {isAdmin ? (
             <button
               onClick={() => {

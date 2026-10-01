@@ -29,6 +29,8 @@ Schema, phân quyền (RLS) và dữ liệu demo nằm trong `supabase/migration
 2. `0002_quality_template.sql` - 5 giai đoạn + checklist chất lượng mẫu
 3. `0003_rpc_and_seed.sql` - hàm RPC + `seed_demo_data()`
 4. `0004_criteria_insert_guard.sql` - vá quyền tick tiêu chí nghiệm thu
+5. `0005_deadlines_and_snapshots.sql` - quét deadline, lịch sử tiến độ (biểu đồ)
+6. `0006_schedule_cron.sql` - lịch tự động bằng pg_cron (8:00 quét deadline, 23:55 chốt tiến độ, giờ VN)
 
 Người đăng ký đầu tiên tự động là quản trị viên. Nạp dữ liệu demo sau khi có tài khoản: `select public.seed_demo_data();`
 

@@ -13,6 +13,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { printPeriodicReport, exportTasksToCSV, exportUseCasesToCSV } from '../../utils/exportUtils';
+import { ProgressChart, scheduleStatus } from '../charts/ProgressChart';
+import { plannedProgressToday } from '../../utils/chartSvg';
 
 export const ReportsView: React.FC = () => {
   const {
@@ -21,6 +23,7 @@ export const ReportsView: React.FC = () => {
     projectUseCases,
     projectQualityGates,
     currentUser,
+    projectSnapshots,
     users
   } = useApp();
 
@@ -53,7 +56,8 @@ export const ReportsView: React.FC = () => {
       projectUseCases,
       phases,
       reportType,
-      currentUser.name
+      currentUser.name,
+      projectSnapshots
     );
   };
 
@@ -63,6 +67,8 @@ export const ReportsView: React.FC = () => {
       tasks: projectTasks,
       useCases: projectUseCases,
       qualityGates: projectQualityGates,
+      members: users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+      progressHistory: projectSnapshots,
       exportedAt: new Date().toISOString(),
       exportedBy: currentUser.name
     };
@@ -189,7 +195,9 @@ export const ReportsView: React.FC = () => {
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
             <div className="text-[11px] font-semibold text-slate-500 uppercase">Tiến Độ Tổng Thể</div>
             <div className="text-2xl font-bold font-mono text-slate-900 mt-1">{activeProject.progressPercent}%</div>
-            <div className="text-[10px] text-emerald-600 font-medium">Theo đúng kế hoạch</div>
+            <div className={`text-[10px] font-medium ${scheduleStatus(activeProject.progressPercent, plannedProgressToday(activeProject)).className}`}>
+              {scheduleStatus(activeProject.progressPercent, plannedProgressToday(activeProject)).label}
+            </div>
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -209,6 +217,10 @@ export const ReportsView: React.FC = () => {
             <div className="text-2xl font-bold font-mono text-slate-900 mt-1">{qualityRate}%</div>
             <div className="text-[10px] text-slate-500">{passedQualityItems}/{totalQualityItems} tiêu chuẩn đạt</div>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <ProgressChart />
         </div>
 
         {/* Section 1: Use Cases Status Table */}

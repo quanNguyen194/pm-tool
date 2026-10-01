@@ -36,7 +36,8 @@ export const Header: React.FC = () => {
     toggleSound,
     projectTasks,
     projectUseCases,
-    projectQualityGates
+    projectQualityGates,
+    projectSnapshots
   } = useApp();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -153,7 +154,8 @@ export const Header: React.FC = () => {
               projectUseCases,
               projectQualityGates?.phases || [],
               'weekly',
-              currentUser.name
+              currentUser.name,
+              projectSnapshots
             );
           }}
           className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
