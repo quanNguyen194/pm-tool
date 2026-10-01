@@ -58,7 +58,7 @@ for (const f of codeFiles) {
     if (r.re.test(text)) (r.level === 'error' ? errors : warnings).push(`${rel(f)}: ${r.msg}`);
   }
   // localStorage chỉ được dùng cho tuỳ chọn giao diện trong AppContext
-  if (/localStorage/.test(text) && rel(f) !== 'src/context/AppContext.tsx' && !rel(f).startsWith('src/lib/supabase')) {
+  if (/localStorage/.test(text) && !['src/context/AppContext.tsx', 'src/context/ThemeContext.tsx'].includes(rel(f)) && !rel(f).startsWith('src/lib/supabase')) {
     warnings.push(`${rel(f)}: dùng localStorage. Dữ liệu nghiệp vụ phải lưu ở Supabase, không lưu ở trình duyệt`);
   }
 }

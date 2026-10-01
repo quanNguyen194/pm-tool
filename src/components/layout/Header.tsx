@@ -16,6 +16,7 @@ import {
   Send
 } from 'lucide-react';
 import { printPeriodicReport, exportTasksToCSV } from '../../utils/exportUtils';
+import { ThemeToggle } from './ThemeToggle';
 
 export const Header: React.FC = () => {
   const {
@@ -182,6 +183,8 @@ export const Header: React.FC = () => {
         >
           {soundMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-indigo-600" />}
         </button>
+
+        <ThemeToggle />
 
         {/* Notification Bell */}
         <div className="relative" ref={notifRef}>

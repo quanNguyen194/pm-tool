@@ -175,7 +175,7 @@ export const DashboardView: React.FC = () => {
                   {overdueTasks.map(t => {
                     const assignee = userMap.get(t.assigneeId);
                     return (
-                      <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 p-2 rounded border border-rose-200">
+                      <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 dark:bg-[#0f172a]/70 p-2 rounded border border-rose-200">
                         <div className="flex items-center gap-2">
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-800">
                             QUÁ HẠN {t.dueDate}
@@ -198,7 +198,7 @@ export const DashboardView: React.FC = () => {
                   {approachingTasks.map(t => {
                     const assignee = userMap.get(t.assigneeId);
                     return (
-                      <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 p-2 rounded border border-amber-200">
+                      <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 dark:bg-[#0f172a]/70 p-2 rounded border border-amber-200">
                         <div className="flex items-center gap-2">
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-100 text-amber-800">
                             HẠN CHÓT {t.dueDate}

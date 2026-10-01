@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+/* Chế độ tối: bật bằng class `dark` trên <html> (xem ThemeContext). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Bảng màu tối cho các màn hình hiện có, sinh bởi scripts/gen-dark-theme.mjs */
+@import "./styles/dark-theme.css";
+
+/* Màu biểu đồ SVG (đọc bởi src/utils/chartSvg.ts; bản in dùng giá trị mặc định) */
+:root {
+  --chart-grid: #e2e8f0;
+  --chart-text: #64748b;
+  --chart-ideal: #94a3b8;
+  --chart-actual: #4f46e5;
+  --chart-area: rgba(79, 70, 229, 0.09);
+  --chart-today: #f59e0b;
+  --chart-ring: #ffffff;
+}
+.dark {
+  --chart-grid: #334155;
+  --chart-text: #94a3b8;
+  --chart-ideal: #64748b;
+  --chart-actual: #818cf8;
+  --chart-area: rgba(129, 140, 248, 0.14);
+  --chart-today: #fbbf24;
+  --chart-ring: #0f172a;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast-in {
+    animation: toast-in 0.18s ease-out;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

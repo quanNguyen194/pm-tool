@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "guard": "node scripts/guard.mjs",
+    "gen:dark": "node scripts/gen-dark-theme.mjs",
     "verify": "npm run guard && npm run lint && npm run build"
   },
   "dependencies": {

@@ -6,11 +6,13 @@
 import React, { Suspense, lazy } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { isSupabaseConfigured } from './lib/supabase';
 import { LoginView } from './components/auth/LoginView';
 import { NoProjectsView } from './components/auth/NoProjectsView';
 import { Header } from './components/layout/Header';
+import { ToastContainer } from './components/layout/ToastContainer';
 import { Sidebar } from './components/layout/Sidebar';
 
 // Mỗi màn hình tải riêng khi cần để gói đầu tiên nhẹ hơn.
@@ -36,7 +38,7 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
 );
 
 const MainLayout: React.FC = () => {
-  const { activeTab, actionError, clearActionError, actionNotice, clearActionNotice } = useApp();
+  const { activeTab } = useApp();
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
@@ -69,30 +71,6 @@ const MainLayout: React.FC = () => {
           </div>
         </main>
       </div>
-
-      {actionNotice && (
-        <div
-          role="status"
-          className="fixed bottom-4 left-4 z-[60] max-w-sm flex items-start gap-3 bg-emerald-600 text-white text-xs rounded-lg shadow-xl px-4 py-3"
-        >
-          <span className="flex-1 leading-relaxed">{actionNotice}</span>
-          <button onClick={clearActionNotice} className="shrink-0 text-white/80 hover:text-white" aria-label="Đóng">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {actionError && (
-        <div
-          role="alert"
-          className="fixed bottom-4 right-4 z-[60] max-w-sm flex items-start gap-3 bg-rose-600 text-white text-xs rounded-lg shadow-xl px-4 py-3"
-        >
-          <span className="flex-1 leading-relaxed">{actionError}</span>
-          <button onClick={clearActionError} className="shrink-0 text-white/80 hover:text-white" aria-label="Đóng">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };
@@ -119,8 +97,12 @@ const DataGate: React.FC = () => {
       </FullScreenMessage>
     );
   }
-  if (projects.length === 0) return <NoProjectsView />;
-  return <MainLayout />;
+  return (
+    <>
+      {projects.length === 0 ? <NoProjectsView /> : <MainLayout />}
+      <ToastContainer />
+    </>
+  );
 };
 
 const AuthGate: React.FC = () => {
@@ -160,8 +142,10 @@ const AuthGate: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

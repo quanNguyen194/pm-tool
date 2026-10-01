@@ -95,7 +95,7 @@ export const Sidebar: React.FC = () => {
   const currentRoleInfo = roleBadgeMap[currentUser.role] || roleBadgeMap.admin;
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
+    <aside className="theme-fixed w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
       {/* Sidebar Header Brand */}
       <div className="h-16 flex items-center px-5 border-b border-slate-800/80">
         <div className="flex items-center gap-2.5">

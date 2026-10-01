@@ -23,7 +23,8 @@ import {
   ProgressSnapshot,
   ReportFrequency,
   ReportRun,
-  ReportSchedule
+  ReportSchedule,
+  Toast
 } from '../types';
 import { supabase, describeError } from '../lib/supabase';
 import {
@@ -76,11 +77,9 @@ interface AppContextType {
   isLoading: boolean;
   loadError: string | null;
   reload: () => void;
-  actionError: string | null;
-  clearActionError: () => void;
-  /** Thông báo kết quả (màu xanh) cho thao tác thành công đáng chú ý, vd: quét deadline. */
-  actionNotice: string | null;
-  clearActionNotice: () => void;
+  /** Thông báo nổi (thành công / lỗi / thông tin). Tự ẩn sau vài giây. */
+  toasts: Toast[];
+  dismissToast: (id: string) => void;
 
   // Quyền (tính từ vai trò trong dự án đang chọn; DB (RLS) mới là nơi chốt quyền thật)
   isAdmin: boolean;
@@ -228,8 +227,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastSeq = useRef(0);
+  // Thông báo thành công của thao tác sắp chạy (do run() đọc và xóa ngay khi bắt đầu).
+  const pendingSuccess = useRef<string | undefined>(undefined);
+  const announce = (message: string) => {
+    pendingSuccess.current = message;
+  };
+
+  const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  const pushToast = useCallback(
+    (type: Toast['type'], message: string) => {
+      const id = `toast-${++toastSeq.current}`;
+      setToasts(prev => [...prev.slice(-3), { id, type, message }]);
+      setTimeout(() => dismissToast(id), type === 'error' ? 8000 : 4500);
+    },
+    [dismissToast]
+  );
   const [activeProjectIdState, setActiveProjectIdState] = useState<string>(
     () => safeGet(STORAGE_KEYS.ACTIVE_PROJECT) || ''
   );
@@ -453,13 +467,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // --- Ghi dữ liệu ---
   const run = async (fn: () => Promise<void>, slices: Slice[], playSound = true): Promise<boolean> => {
+    const successMessage = pendingSuccess.current;
+    pendingSuccess.current = undefined;
     try {
       await fn();
       await refresh(slices);
       if (playSound) sound.playSuccess();
+      if (successMessage) pushToast('success', successMessage);
       return true;
     } catch (e) {
-      setActionError(describeError(e));
+      pushToast('error', describeError(e));
       // Đồng bộ lại để bỏ các thay đổi lạc quan bị từ chối.
       refresh(slices).catch(() => undefined);
       return false;
@@ -473,6 +490,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Dự án
   const createProject = (p: Omit<Project, 'id' | 'progressPercent'>) => {
+    announce('Đã tạo dự án');
     void run(
       async () => {
         const res = await supabase
@@ -499,6 +517,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateProject = (p: Project) => {
+    announce('Đã lưu thông tin dự án');
     void run(
       async () => {
         check(
@@ -524,6 +543,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteProject = (id: string) => {
+    announce('Đã xóa dự án');
     void run(
       async () => {
         check(await supabase.from('projects').delete().eq('id', id));
@@ -535,6 +555,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Thành viên
   const addMember = async (email: string, memberRole: MemberRole) => {
     if (!activeProjectId) return false;
+    announce('Đã thêm thành viên vào dự án');
     return run(
       async () => {
         check(
@@ -550,6 +571,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const setMemberRole = (userId: string, memberRole: MemberRole) => {
+    announce('Đã đổi vai trò thành viên');
     void run(
       async () => {
         check(
@@ -565,6 +587,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removeMember = (userId: string) => {
+    announce('Đã gỡ thành viên khỏi dự án');
     void run(
       async () => {
         check(
@@ -593,6 +616,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const createTask = (t: Omit<Task, 'id'>) => {
+    announce('Đã tạo nhiệm vụ');
     void run(
       async () => {
         check(await supabase.from('tasks').insert({ project_id: t.projectId, ...taskPayload(t) }));
@@ -602,6 +626,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateTask = (t: Task) => {
+    announce('Đã lưu nhiệm vụ');
     void run(
       async () => {
         check(await supabase.from('tasks').update(taskPayload(t)).eq('id', t.id));
@@ -611,6 +636,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteTask = (id: string) => {
+    announce('Đã xóa nhiệm vụ');
     void run(
       async () => {
         check(await supabase.from('tasks').delete().eq('id', id));
@@ -646,6 +672,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt'>) => {
+    announce('Đã tạo use case');
     void run(
       async () => {
         const res = await supabase
@@ -672,6 +699,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateUseCase = (u: UseCase) => {
+    announce('Đã lưu use case');
     void run(
       async () => {
         check(await supabase.from('use_cases').update(ucPayload(u)).eq('id', u.id));
@@ -708,6 +736,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteUseCase = (id: string) => {
+    announce('Đã xóa use case');
     void run(
       async () => {
         check(await supabase.from('use_cases').delete().eq('id', id));
@@ -779,6 +808,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateQualityNotes = (itemId: string, notes: string) => {
+    announce('Đã lưu ghi chú');
     setQualityRows(prev => prev.map(i => (i.id === itemId ? { ...i, notes } : i)));
     void run(
       async () => {
@@ -789,6 +819,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addQualityItem = (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => {
+    announce('Đã thêm tiêu chuẩn mới');
     void run(
       async () => {
         check(
@@ -808,6 +839,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Thông báo
   const sendDeadlineReminder = (taskId: string) => {
+    announce('Đã gửi nhắc nhở deadline');
     void run(
       async () => {
         check(await supabase.rpc('send_task_reminder', { p_task: taskId }));
@@ -841,6 +873,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const seedDemoData = () => {
+    announce('Đã nạp dữ liệu demo');
     void run(
       async () => {
         check(await supabase.rpc('seed_demo_data'));
@@ -855,9 +888,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const res = await supabase.rpc('scan_deadlines');
         check(res);
         const n = Number(res.data ?? 0);
-        setActionNotice(
-          n > 0 ? `Đã tạo ${n} thông báo deadline mới.` : 'Không có thông báo deadline mới (mọi cảnh báo đã được gửi trước đó).'
-        );
+        if (n > 0) pushToast('success', `Đã tạo ${n} thông báo deadline mới.`);
+        else pushToast('info', 'Không có thông báo deadline mới (mọi cảnh báo đã được gửi trước đó).');
       },
       ['notifications'],
       false
@@ -892,7 +924,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     void run(
       async () => {
         check(await supabase.rpc('generate_report_now', { p_project: activeProjectId, p_frequency: frequency }));
-        setActionNotice('Đã tạo báo cáo và lưu vào lịch sử báo cáo.');
+        pushToast('success', 'Đã tạo báo cáo và lưu vào lịch sử báo cáo.');
       },
       ['reports'],
       false
@@ -927,10 +959,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isLoading,
         loadError,
         reload,
-        actionError,
-        clearActionError: () => setActionError(null),
-        actionNotice,
-        clearActionNotice: () => setActionNotice(null),
+        toasts,
+        dismissToast,
         isAdmin,
         canManageProject,
         canManageProjectId,

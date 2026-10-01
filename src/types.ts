@@ -162,6 +162,12 @@ export interface ReportRun {
   summary: ReportSummary;
 }
 
+export interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'info';
+  message: string;
+}
+
 export type NavigationTab =
   | 'dashboard' 
   | 'projects' 

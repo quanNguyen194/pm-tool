@@ -8,13 +8,15 @@ interface ChartProject {
 }
 
 const DAY = 86400000;
+// Màu đọc từ biến CSS (đổi theo chế độ sáng/tối); bản in không có biến nên dùng giá trị dự phòng.
 const COLORS = {
-  actual: '#4f46e5',
-  area: 'rgba(79,70,229,0.09)',
-  ideal: '#94a3b8',
-  grid: '#e2e8f0',
-  text: '#64748b',
-  today: '#f59e0b'
+  actual: 'var(--chart-actual,#4f46e5)',
+  area: 'var(--chart-area,rgba(79,70,229,0.09))',
+  ideal: 'var(--chart-ideal,#94a3b8)',
+  grid: 'var(--chart-grid,#e2e8f0)',
+  text: 'var(--chart-text,#64748b)',
+  today: 'var(--chart-today,#f59e0b)',
+  ring: 'var(--chart-ring,#fff)'
 };
 
 const toDay = (iso: string) => Math.floor(Date.parse(iso + 'T00:00:00Z') / DAY);
@@ -53,7 +55,7 @@ export function buildProgressChartSvg(
 
   const points = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
   if (points.length === 0) {
-    return `${svgOpen}<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${COLORS.text}">Chưa có dữ liệu lịch sử tiến độ</text></svg>`;
+    return `${svgOpen}<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" style="fill:${COLORS.text}">Chưa có dữ liệu lịch sử tiến độ</text></svg>`;
   }
 
   const start = Math.min(toDay(project.startDate), toDay(points[0].date));
@@ -76,8 +78,8 @@ export function buildProgressChartSvg(
   const ticks = opts.mode === 'progress' ? [0, 25, 50, 75, 100] : burndownTicks;
   [...new Set(ticks)].forEach(t => {
     parts.push(
-      `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" stroke="${COLORS.grid}" stroke-width="1"/>`,
-      `<text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" fill="${COLORS.text}">${t}${opts.mode === 'progress' ? '%' : ''}</text>`
+      `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:${COLORS.grid}" stroke-width="1"/>`,
+      `<text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end" font-size="10" style="fill:${COLORS.text}">${t}${opts.mode === 'progress' ? '%' : ''}</text>`
     );
   });
 
@@ -85,7 +87,7 @@ export function buildProgressChartSvg(
   for (let i = 0; i <= 4; i++) {
     const d = Math.round(start + ((end - start) * i) / 4);
     parts.push(
-      `<text x="${x(d)}" y="${H - 10}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" font-size="10" fill="${COLORS.text}">${fmt(d)}</text>`
+      `<text x="${x(d)}" y="${H - 10}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" font-size="10" style="fill:${COLORS.text}">${fmt(d)}</text>`
     );
   }
 
@@ -93,15 +95,15 @@ export function buildProgressChartSvg(
   const idealStart = opts.mode === 'progress' ? 0 : maxTasks;
   const idealEnd = opts.mode === 'progress' ? 100 : 0;
   parts.push(
-    `<line x1="${x(toDay(project.startDate))}" y1="${y(idealStart)}" x2="${x(toDay(project.targetEndDate))}" y2="${y(idealEnd)}" stroke="${COLORS.ideal}" stroke-width="1.5" stroke-dasharray="5 4"><title>Kế hoạch lý tưởng</title></line>`
+    `<line x1="${x(toDay(project.startDate))}" y1="${y(idealStart)}" x2="${x(toDay(project.targetEndDate))}" y2="${y(idealEnd)}" style="stroke:${COLORS.ideal}" stroke-width="1.5" stroke-dasharray="5 4"><title>Kế hoạch lý tưởng</title></line>`
   );
 
   // Đường "hôm nay"
   const t = todayDay();
   if (t >= start && t <= end) {
     parts.push(
-      `<line x1="${x(t)}" x2="${x(t)}" y1="${m.t}" y2="${m.t + ih}" stroke="${COLORS.today}" stroke-width="1" stroke-dasharray="2 3"/>`,
-      `<text x="${x(t)}" y="${m.t + 9}" text-anchor="${x(t) > W - 60 ? 'end' : 'start'}" dx="${x(t) > W - 60 ? -4 : 4}" font-size="10" fill="${COLORS.today}">Hôm nay</text>`
+      `<line x1="${x(t)}" x2="${x(t)}" y1="${m.t}" y2="${m.t + ih}" style="stroke:${COLORS.today}" stroke-width="1" stroke-dasharray="2 3"/>`,
+      `<text x="${x(t)}" y="${m.t + 9}" text-anchor="${x(t) > W - 60 ? 'end' : 'start'}" dx="${x(t) > W - 60 ? -4 : 4}" font-size="10" style="fill:${COLORS.today}">Hôm nay</text>`
     );
   }
 
@@ -111,8 +113,8 @@ export function buildProgressChartSvg(
     const first = x(toDay(points[0].date)).toFixed(1);
     const last = x(toDay(points[points.length - 1].date)).toFixed(1);
     parts.push(
-      `<polygon points="${first},${y(0)} ${coords.join(' ')} ${last},${y(0)}" fill="${COLORS.area}"/>`,
-      `<polyline points="${coords.join(' ')}" fill="none" stroke="${COLORS.actual}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>`
+      `<polygon points="${first},${y(0)} ${coords.join(' ')} ${last},${y(0)}" style="fill:${COLORS.area}"/>`,
+      `<polyline points="${coords.join(' ')}" fill="none" style="stroke:${COLORS.actual}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>`
     );
   }
 
@@ -122,7 +124,7 @@ export function buildProgressChartSvg(
     const isLast = i === points.length - 1;
     if (!isLast && i % step !== 0) return;
     parts.push(
-      `<circle cx="${x(toDay(p.date)).toFixed(1)}" cy="${y(value(p)).toFixed(1)}" r="${isLast ? 4.5 : 3}" fill="${COLORS.actual}" stroke="#fff" stroke-width="1.5"><title>${fmtFull(toDay(p.date))}: ${value(p)}${unit}</title></circle>`
+      `<circle cx="${x(toDay(p.date)).toFixed(1)}" cy="${y(value(p)).toFixed(1)}" r="${isLast ? 4.5 : 3}" style="fill:${COLORS.actual};stroke:${COLORS.ring}" stroke-width="1.5"><title>${fmtFull(toDay(p.date))}: ${value(p)}${unit}</title></circle>`
     );
   });
 

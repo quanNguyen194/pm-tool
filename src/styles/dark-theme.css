@@ -1,0 +1,109 @@
+/* TỰ SINH bởi scripts/gen-dark-theme.mjs. Không sửa tay, hãy sửa script rồi chạy lại. */
+
+.dark {
+  color-scheme: dark;
+  --color-slate-50: oklch(12.9% 0.042 264.695);
+  --color-slate-100: oklch(27.9% 0.041 260.031);
+  --color-slate-200: oklch(37.2% 0.044 257.287);
+  --color-slate-300: oklch(44.6% 0.043 257.281);
+  --color-slate-400: oklch(70.4% 0.04 256.788);
+  --color-slate-500: oklch(70.4% 0.04 256.788);
+  --color-slate-600: oklch(86.9% 0.022 252.894);
+  --color-slate-700: oklch(92.9% 0.013 255.508);
+  --color-slate-800: oklch(96.8% 0.007 247.896);
+  --color-slate-900: oklch(98.4% 0.003 247.858);
+  --color-slate-950: oklch(98.4% 0.003 247.858);
+  --color-indigo-50: oklch(25.7% 0.09 281.288);
+  --color-indigo-100: oklch(35.9% 0.144 278.697);
+  --color-indigo-200: oklch(39.8% 0.195 277.366);
+  --color-indigo-300: oklch(45.7% 0.24 277.023);
+  --color-emerald-50: oklch(26.2% 0.051 172.552);
+  --color-emerald-100: oklch(37.8% 0.077 168.94);
+  --color-emerald-200: oklch(43.2% 0.095 166.913);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-blue-50: oklch(28.2% 0.091 267.935);
+  --color-blue-100: oklch(37.9% 0.146 265.522);
+  --color-blue-200: oklch(42.4% 0.199 265.638);
+  --color-blue-300: oklch(48.8% 0.243 264.376);
+  --color-amber-50: oklch(27.9% 0.077 45.635);
+  --color-amber-100: oklch(41.4% 0.112 45.904);
+  --color-amber-200: oklch(47.3% 0.137 46.201);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-rose-50: oklch(27.1% 0.105 12.094);
+  --color-rose-100: oklch(41% 0.159 10.272);
+  --color-rose-200: oklch(45.5% 0.188 13.697);
+  --color-rose-300: oklch(51.4% 0.222 16.935);
+  --color-purple-50: oklch(29.1% 0.149 302.717);
+  --color-purple-100: oklch(38.1% 0.176 304.987);
+  --color-purple-200: oklch(43.8% 0.218 303.724);
+  --color-purple-300: oklch(49.6% 0.265 301.924);
+}
+
+/* Vùng vốn đã tối sẵn (thanh bên, tab đang chọn): giữ nguyên bảng màu sáng. */
+.dark .theme-fixed {
+  --color-slate-50: oklch(98.4% 0.003 247.858);
+  --color-slate-100: oklch(96.8% 0.007 247.896);
+  --color-slate-200: oklch(92.9% 0.013 255.508);
+  --color-slate-300: oklch(86.9% 0.022 252.894);
+  --color-slate-400: oklch(70.4% 0.04 256.788);
+  --color-slate-500: oklch(55.4% 0.046 257.417);
+  --color-slate-600: oklch(44.6% 0.043 257.281);
+  --color-slate-700: oklch(37.2% 0.044 257.287);
+  --color-slate-800: oklch(27.9% 0.041 260.031);
+  --color-slate-900: oklch(20.8% 0.042 265.755);
+  --color-slate-950: oklch(12.9% 0.042 264.695);
+  --color-indigo-50: oklch(96.2% 0.018 272.314);
+  --color-indigo-100: oklch(93% 0.034 272.788);
+  --color-indigo-200: oklch(87% 0.065 274.039);
+  --color-indigo-300: oklch(78.5% 0.115 274.713);
+  --color-emerald-50: oklch(97.9% 0.021 166.113);
+  --color-emerald-100: oklch(95% 0.052 163.051);
+  --color-emerald-200: oklch(90.5% 0.093 164.15);
+  --color-emerald-300: oklch(84.5% 0.143 164.978);
+  --color-blue-50: oklch(97% 0.014 254.604);
+  --color-blue-100: oklch(93.2% 0.032 255.585);
+  --color-blue-200: oklch(88.2% 0.059 254.128);
+  --color-blue-300: oklch(80.9% 0.105 251.813);
+  --color-amber-50: oklch(98.7% 0.022 95.277);
+  --color-amber-100: oklch(96.2% 0.059 95.617);
+  --color-amber-200: oklch(92.4% 0.12 95.746);
+  --color-amber-300: oklch(87.9% 0.169 91.605);
+  --color-rose-50: oklch(96.9% 0.015 12.422);
+  --color-rose-100: oklch(94.1% 0.03 12.58);
+  --color-rose-200: oklch(89.2% 0.058 10.001);
+  --color-rose-300: oklch(81% 0.117 11.638);
+  --color-purple-50: oklch(97.7% 0.014 308.299);
+  --color-purple-100: oklch(94.6% 0.033 307.174);
+  --color-purple-200: oklch(90.2% 0.063 306.703);
+  --color-purple-300: oklch(82.7% 0.119 306.383);
+}
+
+/* Bề mặt */
+.dark .bg-white { background-color: oklch(20.8% 0.042 265.755); }
+.dark .border-white { border-color: oklch(20.8% 0.042 265.755); }
+
+/* Chữ nhấn đậm -> sáng hơn (24 class đang dùng) */
+.dark .hover\:text-indigo-600:hover { color: oklch(67.3% 0.182 276.935); }
+.dark .hover\:text-indigo-800:hover { color: oklch(87% 0.065 274.039); }
+.dark .hover\:text-indigo-900:hover { color: oklch(93% 0.034 272.788); }
+.dark .hover\:text-rose-600:hover { color: oklch(71.2% 0.194 13.428); }
+.dark .hover\:text-rose-800:hover { color: oklch(89.2% 0.058 10.001); }
+.dark .hover\:text-rose-900:hover { color: oklch(94.1% 0.03 12.58); }
+.dark .text-amber-600 { color: oklch(82.8% 0.189 84.429); }
+.dark .text-amber-700 { color: oklch(87.9% 0.169 91.605); }
+.dark .text-amber-800 { color: oklch(92.4% 0.12 95.746); }
+.dark .text-amber-900 { color: oklch(96.2% 0.059 95.617); }
+.dark .text-blue-600 { color: oklch(70.7% 0.165 254.624); }
+.dark .text-blue-800 { color: oklch(88.2% 0.059 254.128); }
+.dark .text-emerald-600 { color: oklch(76.5% 0.177 163.223); }
+.dark .text-emerald-700 { color: oklch(84.5% 0.143 164.978); }
+.dark .text-emerald-800 { color: oklch(90.5% 0.093 164.15); }
+.dark .text-emerald-900 { color: oklch(95% 0.052 163.051); }
+.dark .text-indigo-600 { color: oklch(67.3% 0.182 276.935); }
+.dark .text-indigo-700 { color: oklch(78.5% 0.115 274.713); }
+.dark .text-indigo-800 { color: oklch(87% 0.065 274.039); }
+.dark .text-indigo-900 { color: oklch(93% 0.034 272.788); }
+.dark .text-purple-800 { color: oklch(90.2% 0.063 306.703); }
+.dark .text-rose-600 { color: oklch(71.2% 0.194 13.428); }
+.dark .text-rose-700 { color: oklch(81% 0.117 11.638); }
+.dark .text-rose-800 { color: oklch(89.2% 0.058 10.001); }
