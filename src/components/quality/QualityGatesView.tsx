@@ -137,7 +137,7 @@ export const QualityGatesView: React.FC = () => {
                   GATE 0{idx + 1}
                 </span>
                 {isReady ? (
-                  <span className="text-emerald-400 font-bold">✓ ĐẠT</span>
+                  <span className={`font-bold ${isSelected ? "text-emerald-300 dark:text-emerald-200" : "text-emerald-700"}`}>✓ ĐẠT</span>
                 ) : (
                   <span className={isSelected ? 'text-amber-300 dark:text-amber-200' : 'text-amber-700'}>○ CHƯA ĐỦ</span>
                 )}

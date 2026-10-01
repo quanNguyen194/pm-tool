@@ -45,7 +45,7 @@ const useCases = [
 ];
 const items = (p: string, titles: string[]) =>
   titles.map((t, i) => ({
-    id: p + i, title: t, description: 'Mô tả tiêu chuẩn ' + (i + 1) + ' của giai đoạn.', isMandatory: i % 3 !== 2, isPassed: i % 2 === 0,
+    id: p + i, title: t, description: 'Mô tả tiêu chuẩn ' + (i + 1) + ' của giai đoạn.', isMandatory: i % 3 !== 2, isPassed: p === "phase_1" ? true : i % 2 === 0,
     checkedBy: i % 2 === 0 ? 'quan.ntm194 (ADMIN)' : undefined, checkedAt: i % 2 === 0 ? iso(-9) : undefined, notes: i === 0 ? 'Đã ký kết hợp đồng tài trợ và cam kết mốc tiến độ.' : undefined
   }));
 const phases = ['phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5'].map((id, i) => ({
