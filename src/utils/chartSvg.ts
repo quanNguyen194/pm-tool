@@ -52,7 +52,7 @@ export function buildProgressChartSvg(
   const ih = H - m.t - m.b;
 
   const label = opts.mode === 'progress' ? 'Biểu đồ tiến độ theo thời gian' : 'Biểu đồ burndown công việc';
-  const svgOpen = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${label}" style="display:block;max-width:100%;height:auto;font-family:system-ui,sans-serif">`;
+  const svgOpen = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${label}" style="display:block;max-width:100%;height:auto;font-family:var(--font-sans,system-ui,sans-serif)">`;
 
   const points = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
   if (points.length === 0) {

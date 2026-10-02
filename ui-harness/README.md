@@ -1,6 +1,6 @@
 # UI harness - kiểm tra giao diện không cần đăng nhập
 
-Chạy toàn bộ khung ứng dụng (`MainLayout`: thanh trên, thanh bên và 7 màn hình thật) với **dữ liệu giả**, không kết nối Supabase.
+Chạy toàn bộ khung ứng dụng (`MainLayout`: thanh trên, menu ngang, danh sách dự án và 7 màn hình thật) với **dữ liệu giả**, không kết nối Supabase.
 Dùng để kiểm tra giao diện sau mỗi lần chỉnh sửa (đặc biệt khi nhận code mới từ Google AI Studio).
 
 ```bash

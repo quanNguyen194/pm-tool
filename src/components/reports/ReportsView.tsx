@@ -119,7 +119,7 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* Report Type Selector & Export Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-700">Mẫu báo cáo:</span>
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
@@ -173,7 +173,7 @@ export const ReportsView: React.FC = () => {
       <ScheduledReports reportType={reportType} />
 
       {/* Live Formatted Report Document Preview */}
-      <div className="bg-white border border-slate-200 rounded-xl p-8 max-w-4xl mx-auto shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-4xl mx-auto shadow-sm">
         {/* Document Header */}
         <div className="border-b-2 border-slate-900 pb-5 mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>

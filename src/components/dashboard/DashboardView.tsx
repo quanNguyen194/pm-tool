@@ -98,7 +98,7 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner / Hero Card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 mb-1">
@@ -114,7 +114,7 @@ export const DashboardView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 bg-slate-50 border border-slate-200/80 rounded-xl p-4 shrink-0">
+          <div className="flex items-center gap-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shrink-0">
             <div>
               <div className="text-xs text-slate-500 font-medium">Tiến Độ Dự Án</div>
               <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
@@ -176,7 +176,7 @@ export const DashboardView: React.FC = () => {
 
       {/* Overdue / Approaching Deadline Alert Box (if applicable) */}
       {(overdueTasks.length > 0 || approachingTasks.length > 0) && (
-        <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4">
+        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
@@ -243,7 +243,7 @@ export const DashboardView: React.FC = () => {
         {/* Card 1: Nhiệm vụ */}
         <div
           onClick={() => setActiveTab('tasks')}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
+          className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Nhiệm Vụ Dự Án</span>
@@ -270,7 +270,7 @@ export const DashboardView: React.FC = () => {
         {/* Card 2: Use Cases */}
         <div
           onClick={() => setActiveTab('usecases')}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
+          className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Use Cases Nghiệp Vụ</span>
@@ -297,7 +297,7 @@ export const DashboardView: React.FC = () => {
         {/* Card 3: Quality Gates */}
         <div
           onClick={() => setActiveTab('quality')}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
+          className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Quality Gates (DoD)</span>
@@ -324,7 +324,7 @@ export const DashboardView: React.FC = () => {
         {/* Card 4: Thành viên */}
         <div
           onClick={() => setActiveTab('team')}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
+          className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Đội Ngũ Dự Án</span>
@@ -362,7 +362,7 @@ export const DashboardView: React.FC = () => {
 
       {/* Hàng chỉ số hiệu suất */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Giờ Công</span>
             <Clock className="w-4 h-4 text-blue-600" />
@@ -382,7 +382,7 @@ export const DashboardView: React.FC = () => {
 
         <div
           onClick={() => setActiveTab('tasks')}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer"
+          className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Cần Chú Ý</span>
@@ -396,7 +396,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Xong Trong 7 Ngày</span>
             <TrendingUp className="w-4 h-4 text-emerald-700" />
@@ -409,7 +409,7 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Dự Báo Hoàn Thành</span>
             <Calendar className="w-4 h-4 text-indigo-600" />
@@ -450,7 +450,7 @@ export const DashboardView: React.FC = () => {
       {/* Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Column 1: Biểu đồ phân bổ trạng thái công việc & Nhiệm vụ ưu tiên */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -543,7 +543,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Column 2: Tiến độ Use Cases Nghiệp Vụ */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>

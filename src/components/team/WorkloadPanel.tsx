@@ -30,7 +30,7 @@ export const WorkloadPanel: React.FC = () => {
   const maxActive = Math.max(1, ...rows.map(r => r.active));
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-indigo-600" />

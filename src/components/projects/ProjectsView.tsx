@@ -199,7 +199,7 @@ export const ProjectsView: React.FC = () => {
           return (
             <div
               key={project.id}
-              className={`bg-white border rounded-xl p-5 flex flex-col justify-between transition-all ${
+              className={`bg-white border rounded-2xl p-5 flex flex-col justify-between transition-all ${
                 isActive
                   ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-sm'
                   : 'border-slate-200 hover:border-slate-300'

@@ -120,7 +120,7 @@ export const TeamView: React.FC = () => {
       </div>
 
       {/* Current identity + invite */}
-      <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 space-y-3">
+      <div className="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-600" />
           <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
@@ -165,7 +165,7 @@ export const TeamView: React.FC = () => {
       </div>
 
       {/* Permissions Matrix Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-200 bg-slate-50/80">
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
             Ma Trận Phân Quyền Chi Tiết (Role-Based Access Control)
@@ -218,7 +218,7 @@ export const TeamView: React.FC = () => {
       </div>
 
       {/* Team Members Directory */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
@@ -239,7 +239,7 @@ export const TeamView: React.FC = () => {
             return (
               <div
                 key={user.id}
-                className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 flex flex-col justify-between"
+                className="p-4 rounded-2xl border border-slate-200 bg-slate-50/40 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">

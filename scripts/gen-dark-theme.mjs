@@ -6,7 +6,7 @@
 //  2. `text-<màu>-600..900` vốn là chữ đậm trên nền sáng => thay bằng sắc độ sáng hơn (class riêng, vì cùng sắc độ
 //     đó còn dùng làm nền nút đặc `bg-indigo-600` cần giữ nguyên).
 //  3. `bg-white` => màu bề mặt tối. `text-white` giữ nguyên.
-//  4. `.theme-fixed` đặt lại biến về giá trị sáng cho vùng vốn đã tối sẵn (thanh bên, tab đang chọn).
+//  4. `.theme-fixed` đặt lại biến về giá trị sáng cho vùng vốn đã tối sẵn (thanh Gantt, tab đang chọn).
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -61,7 +61,7 @@ const css = `/* TỰ SINH bởi scripts/gen-dark-theme.mjs. Không sửa tay, h�
 ${darkVars.join('\n')}
 }
 
-/* Vùng vốn đã tối sẵn (thanh bên, tab đang chọn): giữ nguyên bảng màu sáng. */
+/* Vùng vốn đã tối sẵn (thanh Gantt, tab đang chọn): giữ nguyên bảng màu sáng. */
 .dark .theme-fixed {
 ${lightVars.join('\n')}
 }

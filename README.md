@@ -13,7 +13,7 @@ Web quản lý dự án: nhiều dự án độc lập, nhiệm vụ (Kanban), u
 | Use case | Luồng chính/phụ, tiêu chí nghiệm thu; tick hết tiêu chí thì use case tự hoàn thành |
 | Quality Gates | Checklist 5 giai đoạn, nhân bản từ mẫu cho mỗi dự án mới; server tự ghi người duyệt + ngày duyệt |
 | Dashboard | KPI, giờ công, dự báo hoàn thành (theo tốc độ 7 ngày), khối lượng theo thành viên, biểu đồ tiến độ thực tế so với kế hoạch (và burndown) |
-| Giao diện | Sáng/tối, responsive (thanh bên thành ngăn kéo dưới 1024px), thông báo nổi, đạt tương phản WCAG AA |
+| Giao diện | Font Plus Jakarta Sans + JetBrains Mono, menu điều hướng ngang phía trên (cuộn ngang trên điện thoại), danh sách dự án bên trái từ 1024px, sáng/tối, thông báo nổi, đạt tương phản WCAG AA |
 | Nhắc deadline | `pg_cron` quét 8:00 sáng (giờ VN): task quá hạn hoặc còn ≤ 2 ngày; thông báo realtime + âm báo |
 | Báo cáo | In PDF, Excel (CSV), sao lưu JSON; báo cáo tuần/tháng tự động lưu vào lịch sử |
 | Phân quyền | Đăng nhập thật, quản trị viên toàn hệ thống + vai trò theo từng dự án, thực thi bằng RLS ở database |
@@ -78,7 +78,9 @@ Kiểm tra lịch tự động: `select jobname, schedule, active from cron.job;
 Quy ước màu:
 
 - **Chế độ tối** áp bằng class `dark` trên `<html>` (`ThemeContext`, mặc định sáng, nhớ lựa chọn trên trình duyệt). Bảng màu tối được **sinh tự động** từ `scripts/gen-dark-theme.mjs` nên không cần viết `dark:` cho từng class. Chữ nhấn dùng sắc độ 700 trở lên (`text-amber-700`, `text-emerald-700`...) để đạt tương phản ở cả hai giao diện.
-- Vùng vốn tối sẵn (thanh bên, thanh Gantt, tab đang chọn) thêm class `theme-fixed` để giữ nguyên màu ở cả hai giao diện.
+- Vùng vốn tối sẵn (thanh Gantt, tab đang chọn) thêm class `theme-fixed` để giữ nguyên màu ở cả hai giao diện.
+- **Bố cục:** `Header` (thương hiệu, chọn dự án, tài khoản) → `TopNav` (7 mục điều hướng ngang) → `ProjectPanel` (danh sách dự án, từ lg) + nội dung. Công cụ quản trị (Quét deadline, Nạp dữ liệu demo) nằm trong menu tài khoản.
+- **Font** khai báo bằng `@theme` ở `src/index.css` (`--font-sans`, `--font-mono`); file font tải từ Google Fonts trong `index.html` (CSP đã cho phép `fonts.googleapis.com` và `fonts.gstatic.com`).
 - Màu dự án suy ra từ mã dự án (`src/utils/projectColor.ts`); màu avatar chuẩn hóa ở `src/api/mappers.ts`.
 - Biểu đồ SVG (`src/utils/chartSvg.ts`) đọc màu từ biến CSS `--chart-*` để đổi theo giao diện.
 

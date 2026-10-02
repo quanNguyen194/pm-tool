@@ -66,7 +66,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({ tasks, userMap, on
   const todayCol = today - start;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
       {/* Thanh điều khiển */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
         <div className="flex items-center gap-1.5">

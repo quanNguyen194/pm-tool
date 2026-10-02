@@ -24,7 +24,7 @@ export const ScheduledReports: React.FC<{ reportType: ReportFrequency }> = ({ re
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

@@ -193,7 +193,7 @@ export const UseCasesView: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-2xl">
         <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 text-slate-400" />
           <input
@@ -226,7 +226,7 @@ export const UseCasesView: React.FC = () => {
       {/* Use Cases Accordion List */}
       <div className="space-y-4">
         {filteredUseCases.length === 0 ? (
-          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl text-xs text-slate-500">
+          <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-xs text-slate-500">
             Không tìm thấy Use Case nào phù hợp
           </div>
         ) : (
@@ -239,7 +239,7 @@ export const UseCasesView: React.FC = () => {
             return (
               <div
                 key={uc.id}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden transition-all shadow-xs"
+                className="bg-white border border-slate-200 rounded-2xl overflow-hidden transition-all shadow-xs"
               >
                 {/* Header Row */}
                 <div
@@ -306,7 +306,7 @@ export const UseCasesView: React.FC = () => {
                     {/* Flows Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Main Flow */}
-                      <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-2">
                           <ListOrdered className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Luồng Xử Lý Chính (Main Flow)</span>
@@ -322,7 +322,7 @@ export const UseCasesView: React.FC = () => {
                       </div>
 
                       {/* Alternate Flow */}
-                      <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-2">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
                           <span>Luồng Ngoại Lệ & Xử Lý Lỗi (Alternate Flow)</span>
@@ -343,7 +343,7 @@ export const UseCasesView: React.FC = () => {
                     </div>
 
                     {/* Interactive Acceptance Criteria Checklist */}
-                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-emerald-700" />

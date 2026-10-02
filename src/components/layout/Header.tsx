@@ -12,19 +12,14 @@ import {
   Clock,
   Shield,
   LogOut,
-  Menu,
+  RotateCcw,
   Send
 } from 'lucide-react';
 import { printPeriodicReport, exportTasksToCSV } from '../../utils/exportUtils';
 import { ThemeToggle } from './ThemeToggle';
 import { projectColor, projectInitials } from '../../utils/projectColor';
 
-interface HeaderProps {
-  onOpenSidebar: () => void;
-  sidebarOpen: boolean;
-}
-
-export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) => {
+export const Header: React.FC = () => {
   const {
     projects,
     activeProjectId,
@@ -32,6 +27,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
     activeProject,
     currentUser,
     signOut,
+    isAdmin,
+    scanDeadlines,
+    seedDemoData,
     canManageProject,
     users,
     notifications,
@@ -81,21 +79,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-3 h-16 px-3 sm:px-6 bg-white border-b border-slate-200">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-3 h-14 px-3 sm:px-6 bg-white border-b border-slate-200">
       {/* Zone 1: Nút menu (màn hình nhỏ), thương hiệu và chọn dự án */}
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-        <button
-          type="button"
-          onClick={onOpenSidebar}
-          className="lg:hidden p-2 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg shrink-0"
-          aria-label="Mở menu điều hướng"
-          aria-controls="app-sidebar"
-          aria-expanded={sidebarOpen}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        <div className="lg:hidden hidden sm:flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900 shrink-0">
+        <div className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900 shrink-0">
           <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
             OP
           </span>
@@ -123,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
 
           {isProjectDropdownOpen && (
             <div
-              className="absolute left-0 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50"
+              className="absolute left-0 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50"
               role="listbox"
               aria-label="Chọn dự án"
             >
@@ -243,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
 
           {/* Notification Dropdown Panel */}
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-xl shadow-2xl py-3 z-50">
+            <div className="absolute right-0 mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl py-3 z-50">
               <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <h4 className="font-semibold text-xs text-slate-900 uppercase tracking-wider">Thông Báo Deadline & Cảnh Báo</h4>
@@ -332,7 +319,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
 
           {/* Account dropdown */}
           {isUserDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-xl shadow-2xl py-2 z-50">
+            <div className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50">
               <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Shield className="w-3 h-3 text-indigo-600" />
                 <span>Tài khoản đang đăng nhập</span>
@@ -349,6 +336,32 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar, sidebarOpen }) =>
                   </div>
                 </div>
               </div>
+              {isAdmin && (
+                <div className="border-t border-slate-100 mt-1 pt-1">
+                  <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Quản trị</div>
+                  <button
+                    onClick={() => {
+                      setIsUserDropdownOpen(false);
+                      scanDeadlines();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    title="Quét ngay task quá hạn / sắp đến hạn và tạo thông báo (hệ thống cũng tự quét lúc 8:00 mỗi sáng)"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Quét deadline ngay</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsUserDropdownOpen(false);
+                      if (window.confirm('Nạp thêm 3 dự án demo? (Bỏ qua nếu đã nạp trước đó)')) seedDemoData();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Nạp dữ liệu demo</span>
+                  </button>
+                </div>
+              )}
               <div className="border-t border-slate-100 mt-1 pt-1">
                 <button
                   onClick={() => {

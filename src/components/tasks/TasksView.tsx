@@ -275,7 +275,7 @@ export const TasksView: React.FC = () => {
       </div>
 
       {/* Filters Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-2xl">
         <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 text-slate-400" />
           <input
@@ -369,7 +369,7 @@ export const TasksView: React.FC = () => {
                   setDraggingId(null);
                   setDragOverCol(null);
                 }}
-                className={`border rounded-xl p-3.5 flex flex-col min-h-[500px] transition-colors ${
+                className={`border rounded-2xl p-3.5 flex flex-col min-h-[500px] transition-colors ${
                   dragOverCol === col.id && draggingId
                     ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300'
                     : 'bg-slate-100/70 border-slate-200/80'
@@ -414,7 +414,7 @@ export const TasksView: React.FC = () => {
                             setDraggingId(null);
                             setDragOverCol(null);
                           }}
-                          className={`bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between ${
+                          className={`bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between ${
                             canManageTasks ? 'cursor-grab active:cursor-grabbing' : ''
                           } ${draggingId === task.id ? 'opacity-40' : ''}`}
                         >
@@ -562,7 +562,7 @@ export const TasksView: React.FC = () => {
 
       {/* TABLE DATA GRID VIEW (High density, per Section 2 of SaaS Guidelines) */}
       {viewMode === 'table' && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>

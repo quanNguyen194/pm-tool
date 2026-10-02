@@ -126,7 +126,7 @@ export const QualityGatesView: React.FC = () => {
             <button
               key={phase.id}
               onClick={() => setSelectedPhaseId(phase.id)}
-              className={`text-left p-3 rounded-xl border transition-all ${
+              className={`text-left p-3 rounded-2xl border transition-all ${
                 isSelected
                   ? 'theme-fixed bg-slate-900 dark:bg-indigo-600 text-white border-slate-900 dark:border-indigo-600 shadow-sm'
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -153,7 +153,7 @@ export const QualityGatesView: React.FC = () => {
 
       {/* Active Phase Information Card */}
       {selectedPhase && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <div className="text-xs font-mono font-semibold text-indigo-600 mb-0.5">
@@ -163,7 +163,7 @@ export const QualityGatesView: React.FC = () => {
               <p className="text-xs text-slate-600 mt-1 max-w-2xl">{selectedPhase.description}</p>
             </div>
 
-            <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80 shrink-0">
+            <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shrink-0">
               <div>
                 <div className="text-[11px] text-slate-500">Tỷ Lệ Đạt Tiêu Chuẩn</div>
                 <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
@@ -205,7 +205,7 @@ export const QualityGatesView: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-xl border transition-all ${
+                  className={`p-4 rounded-2xl border transition-all ${
                     item.isPassed
                       ? 'bg-emerald-50/40 border-emerald-200'
                       : 'bg-white border-slate-200 hover:border-slate-300'

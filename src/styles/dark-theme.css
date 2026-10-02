@@ -39,7 +39,7 @@
   --color-purple-300: oklch(49.6% 0.265 301.924);
 }
 
-/* Vùng vốn đã tối sẵn (thanh bên, tab đang chọn): giữ nguyên bảng màu sáng. */
+/* Vùng vốn đã tối sẵn (thanh Gantt, tab đang chọn): giữ nguyên bảng màu sáng. */
 .dark .theme-fixed {
   --color-slate-50: oklch(98.4% 0.003 247.858);
   --color-slate-100: oklch(96.8% 0.007 247.896);
