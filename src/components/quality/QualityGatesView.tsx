@@ -90,7 +90,7 @@ export const QualityGatesView: React.FC = () => {
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Tiêu Chuẩn Đầu Ra Quality Gates & Definition of Done
             </h1>
-            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded break-all min-w-0">
               [{activeProject.code}]
             </span>
           </div>

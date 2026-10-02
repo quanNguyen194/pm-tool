@@ -52,10 +52,10 @@ export const ProjectPanel: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.bg}`} />
-                <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
-                <span className="text-[10px] font-mono text-slate-500 shrink-0">{p.code}</span>
+                <span className="text-xs font-semibold truncate flex-1" title={p.name}>{p.name}</span>
               </div>
-              <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 pl-[18px]">
+              <div className="mt-0.5 pl-[18px] text-[10px] font-mono text-slate-500 truncate" title={p.code}>{p.code}</div>
+              <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 pl-[18px]">
                 <span>{taskCountByProject.get(p.id) || 0} việc</span>
                 <span className="font-mono tabular-nums">{p.progressPercent}%</span>
               </div>

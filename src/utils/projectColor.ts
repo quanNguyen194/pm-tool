@@ -2,9 +2,9 @@
 // Liệt kê nguyên văn các class để Tailwind không loại bỏ chúng khi build.
 export const PROJECT_COLORS = [
   { bg: 'bg-indigo-600', text: 'text-indigo-600' },
-  { bg: 'bg-emerald-600', text: 'text-emerald-600' },
+  { bg: 'bg-emerald-700', text: 'text-emerald-700' },
   { bg: 'bg-blue-600', text: 'text-blue-600' },
-  { bg: 'bg-amber-600', text: 'text-amber-600' },
+  { bg: 'bg-amber-700', text: 'text-amber-700' },
   { bg: 'bg-rose-600', text: 'text-rose-600' },
   { bg: 'bg-purple-600', text: 'text-purple-600' }
 ] as const;

@@ -103,14 +103,14 @@ export const Header: React.FC = () => {
             >
               {projectInitials(activeProject.code)}
             </span>
-            <span className="font-semibold text-slate-900 font-mono shrink-0">{activeProject.code}</span>
+            <span className="font-semibold text-slate-900 font-mono truncate max-w-[9rem] sm:max-w-[16rem]">{activeProject.code}</span>
             <span className="truncate max-w-[200px] hidden lg:inline text-slate-600">{activeProject.name}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           </button>
 
           {isProjectDropdownOpen && (
             <div
-              className="absolute left-0 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50"
+              className="fixed left-3 right-3 top-16 sm:absolute sm:inset-auto sm:left-0 sm:top-full sm:mt-2 sm:w-[22rem] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50"
               role="listbox"
               aria-label="Chọn dự án"
             >
@@ -139,10 +139,8 @@ export const Header: React.FC = () => {
                         {projectInitials(p.code)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold flex items-center gap-1.5">
-                          <span className="text-indigo-600 font-mono shrink-0">[{p.code}]</span>
-                          <span className="truncate">{p.name}</span>
-                        </div>
+                        <div className="font-semibold truncate">{p.name}</div>
+                        <div className="text-[10px] text-indigo-600 font-mono truncate">[{p.code}]</div>
                         <div className="mt-1.5 h-1 rounded-full bg-slate-200 overflow-hidden" aria-hidden="true">
                           <div className={`h-full rounded-full ${color.bg}`} style={{ width: `${p.progressPercent}%` }} />
                         </div>
@@ -160,7 +158,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Zone 2: Chỉ số nhanh của dự án (chỉ hiện trên màn hình rộng) */}
-      <div className="hidden xl:flex items-center gap-3 text-xs text-slate-600">
+      <div className="hidden xl:flex shrink-0 items-center gap-3 text-xs text-slate-600 whitespace-nowrap">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>Tiến độ: <strong className="font-mono text-slate-900">{activeProject.progressPercent}%</strong></span>
@@ -230,7 +228,7 @@ export const Header: React.FC = () => {
 
           {/* Notification Dropdown Panel */}
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl py-3 z-50">
+            <div className="fixed left-3 right-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl py-3 z-50">
               <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <h4 className="font-semibold text-xs text-slate-900 uppercase tracking-wider">Thông Báo Deadline & Cảnh Báo</h4>

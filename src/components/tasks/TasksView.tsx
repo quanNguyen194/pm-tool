@@ -207,7 +207,7 @@ export const TasksView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Nhiệm Vụ & Bảng Kanban Dự Án</h1>
-            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+            <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded break-all min-w-0">
               [{activeProject.code}]
             </span>
           </div>

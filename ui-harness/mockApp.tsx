@@ -26,7 +26,7 @@ const proj = (id: string, code: string, name: string, p: number, status = 'in_pr
 const projects = [
   proj('p1', 'OMNI-BANK', 'Hệ Thống Ngân Hàng Số Omni-Channel', 53),
   proj('p2', 'E-SHOP-B2B', 'Sàn Thương Mại Điện Tử & Phân Phối B2B', 78),
-  proj('p3', 'TELE-HEALTH', 'Hệ Thống Y Tế & Khám Bệnh Trực Tuyến TeleHealth', 36, 'planning')
+  proj('p3', 'GPDN_DNMB_EVNNPC_QTVT_251004', 'Hệ Thống Y Tế & Khám Bệnh Trực Tuyến TeleHealth', 36, 'planning')
 ];
 const crit = (id: string, d: string, c: boolean) => ({ id, description: d, completed: c });
 const useCases = [

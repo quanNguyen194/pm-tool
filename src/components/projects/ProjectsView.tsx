@@ -208,7 +208,7 @@ export const ProjectsView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                    <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded break-all min-w-0">
                       [{project.code}]
                     </span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${statusInfo.color}`}>
