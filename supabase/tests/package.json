@@ -2,6 +2,6 @@
   "name": "omni-db-tests",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node rls.test.mjs && node rollback.test.mjs && node import.test.mjs && node stages.test.mjs && node origin.test.mjs" },
+  "scripts": { "test": "node rls.test.mjs && node rollback.test.mjs && node import.test.mjs && node stages.test.mjs && node origin.test.mjs && node task_use_cases.test.mjs" },
   "devDependencies": { "@electric-sql/pglite": "^0.3.0" }
 }

@@ -114,9 +114,22 @@ function overflowAudit() {
       if (clickText('button', 'Thêm Nhiệm Vụ')) {
         await wait(400);
         res['tasks:form'] = snap();
-        if (clickText('button', 'Không liên kết')) {
+        res['tasks:form-nhiều-uc'] = snap();
+        if (clickText('button', 'Tìm nhanh để thêm')) {
           await wait(300);
-          res['tasks:chọn-use-case'] = snap();
+          res['tasks:tìm-nhanh'] = snap();
+        }
+        if (clickText('button', 'Chọn từ danh sách')) {
+          await wait(400);
+          res['tasks:chọn-từ-danh-sách'] = snap();
+          // tick cả cụm theo module đầu tiên rồi mở hết
+          document.querySelector<HTMLInputElement>('[role="dialog"][aria-label="Chọn use case từ danh sách"] input[type="checkbox"]')?.click();
+          await wait(200);
+          clickText('[role="dialog"] button', 'Mở hết');
+          await wait(300);
+          res['tasks:chọn-từ-danh-sách-mở-hết'] = snap();
+          clickText('[role="dialog"] button', 'Hủy');
+          await wait(300);
         }
         clickText('button', 'Hủy bỏ');
         await wait(300);

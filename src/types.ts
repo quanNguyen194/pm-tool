@@ -74,7 +74,8 @@ export interface Task {
   deliverable: string;
   notes: string;
   tags?: string[];
-  useCaseId?: string;
+  /** Các use case liên kết (nhiều). */
+  useCaseIds: string[];
 }
 
 export type UseCaseStatus = 'draft' | 'in_review' | 'approved' | 'developing' | 'tested' | 'completed' | 'cancelled';

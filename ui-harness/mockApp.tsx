@@ -12,10 +12,10 @@ const mk = (id: string, code: string, title: string, status: string, priority: s
   collaboratorIds: [], department: 'dev', phase: 'Giai đoạn 3: Phát triển Sprint', estimatedEffort: est, actualEffort: act, startDate: iso(s), dueDate: iso(d),
   actualEndDate: status === 'done' ? iso(d - 1) : undefined, progressPercent: status === 'done' ? 100 : status === 'review' ? 70 : status === 'in_progress' ? 40 : 0,
   assessment: undefined, deliverable: 'Tài liệu thiết kế và mã nguồn đã được review, kèm báo cáo kiểm thử.', notes: 'Phụ thuộc vào đội hạ tầng cấp môi trường.',
-  tags: ['Security', 'Backend'], useCaseId: uc, ...extra
+  tags: ['Security', 'Backend'], useCaseIds: uc ? [uc] : [], ...extra
 });
 const tasks = [
-  mk('t1', 'OB-101', 'Tích hợp Module Xác thực sinh trắc học eKYC và CCCD gắn chip', 'in_progress', 'urgent', 'u1', -7, 1, 5, 3.5, 'uc1', { collaboratorIds: ['u2', 'u3', 'u4'], department: 'dev', progressPercent: 40, assessment: 'at_risk' }),
+  mk('t1', 'OB-101', 'Tích hợp Module Xác thực sinh trắc học eKYC và CCCD gắn chip', 'in_progress', 'urgent', 'u1', -7, 1, 5, 3.5, 'uc1', { collaboratorIds: ['u2', 'u3', 'u4'], department: 'dev', progressPercent: 40, assessment: 'at_risk', useCaseIds: ['uc1', 'uc2', 'uc11', 'uc12', 'uc121', 'uc122', 'b1', 'b2', 'b3', 'b4', 'b5'] }),
   mk('t2', 'OB-102', 'Xây dựng dịch vụ Chuyển tiền nhanh NAPAS 24/7 qua mã QR VietQR', 'in_progress', 'high', 'u2', -6, 3, 4, 2.5, 'uc2', { collaboratorIds: ['u3'], progressPercent: 75 }),
   mk('t3', 'OB-103', 'Thực hiện kiểm thử xâm nhập bảo mật chuẩn PCI-DSS', 'todo', 'urgent', 'u2', -3, -1, 4.5, 0, 'uc1', { department: 'tester' }),
   mk('t4', 'OB-104', 'Thiết kế giao diện Dark Mode màn hình tổng quan', 'review', 'medium', 'u3', -16, 2, 2.5, 2.8, undefined, { department: 'ba', collaboratorIds: ['u1'], progressPercent: 90 }),

@@ -26,7 +26,7 @@ import { GanttTimeline } from './GanttTimeline';
 import { AssessmentBadge, OwnerAvatars, TaskProgress } from './TaskParts';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS, ASSESSMENT_STYLES, effectiveAssessment, suggestAssessment } from '../../utils/taskAssessment';
 import { DEPARTMENT_LABELS, ROLE_SHORT } from '../../utils/roles';
-import { UseCasePicker } from './UseCasePicker';
+import { UseCaseLinks } from './UseCaseLinks';
 
 type SortKey = 'code' | 'title' | 'status' | 'priority' | 'assignee' | 'progress' | 'effort' | 'due';
 const STATUS_ORDER: Record<TaskStatus, number> = { todo: 0, in_progress: 1, review: 2, done: 3 };
@@ -67,7 +67,7 @@ interface TaskForm {
   progressPercent: number;
   assessment: TaskAssessment | '';
   tags: string;
-  useCaseId: string;
+  useCaseIds: string[];
 }
 
 export const TasksView: React.FC = () => {
@@ -128,7 +128,7 @@ export const TasksView: React.FC = () => {
     progressPercent: 0,
     assessment: '',
     tags: '',
-    useCaseId: ''
+    useCaseIds: []
   });
 
   const [formData, setFormData] = useState<TaskForm>(emptyForm);
@@ -162,7 +162,7 @@ export const TasksView: React.FC = () => {
       progressPercent: task.progressPercent,
       assessment: task.assessment || '',
       tags: task.tags?.join(', ') || '',
-      useCaseId: task.useCaseId || ''
+      useCaseIds: task.useCaseIds
     });
     setIsModalOpen(true);
   };
@@ -232,7 +232,7 @@ export const TasksView: React.FC = () => {
       progressPercent: formData.progressPercent,
       assessment: formData.assessment || undefined,
       tags: tagsArray,
-      useCaseId: formData.useCaseId || undefined
+      useCaseIds: formData.useCaseIds
     };
 
     if (editingTask) {
@@ -653,9 +653,13 @@ export const TasksView: React.FC = () => {
                                   Bộ phận: <span className="text-slate-700 font-semibold">{DEPARTMENT_LABELS[task.department]}</span>
                                 </div>
                               )}
-                              {task.useCaseId && (
-                                <div className="text-indigo-600 font-mono text-[10px] truncate">
-                                  Use Case: {useCaseCodeMap.get(task.useCaseId) ?? task.useCaseId}
+                              {task.useCaseIds.length > 0 && (
+                                <div
+                                  className="text-indigo-600 font-mono text-[10px] truncate"
+                                  title={task.useCaseIds.map(id => useCaseCodeMap.get(id) ?? id).join(', ')}
+                                >
+                                  Use Case: {useCaseCodeMap.get(task.useCaseIds[0]) ?? task.useCaseIds[0]}
+                                  {task.useCaseIds.length > 1 && ` +${task.useCaseIds.length - 1}`}
                                 </div>
                               )}
                             </div>
@@ -948,10 +952,23 @@ export const TasksView: React.FC = () => {
                 <dt className="text-slate-500">Ngày hoàn thành thực tế</dt>
                 <dd className="mt-0.5 font-mono text-slate-900">{detailTask.actualEndDate || '—'}</dd>
               </div>
-              <div>
-                <dt className="text-slate-500">Liên kết Use Case</dt>
-                <dd className="mt-0.5 font-mono text-slate-900">
-                  {detailTask.useCaseId ? useCaseCodeMap.get(detailTask.useCaseId) ?? '—' : '—'}
+              <div className="sm:col-span-2">
+                <dt className="text-slate-500">Liên kết Use Case ({detailTask.useCaseIds.length})</dt>
+                <dd className="mt-1">
+                  {detailTask.useCaseIds.length === 0 ? (
+                    <span className="text-slate-900">—</span>
+                  ) : (
+                    <ul className="max-h-40 overflow-y-auto space-y-0.5 text-slate-900">
+                      {detailTask.useCaseIds.map(id => {
+                        const uc = projectUseCases.find(u => u.id === id);
+                        return (
+                          <li key={id} className="text-xs">
+                            <span className="font-mono font-bold text-indigo-600">[{uc?.code ?? id}]</span> {uc?.title ?? ''}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </dd>
               </div>
               <div>
@@ -1267,9 +1284,9 @@ export const TasksView: React.FC = () => {
                 </div>
                 <div>
                   <label className={labelCls}>Liên Kết Use Case</label>
-                  <UseCasePicker
-                    value={formData.useCaseId}
-                    onChange={id => setFormData({ ...formData, useCaseId: id })}
+                  <UseCaseLinks
+                    value={formData.useCaseIds}
+                    onChange={ids => setFormData({ ...formData, useCaseIds: ids })}
                     useCases={projectUseCases}
                   />
                 </div>

@@ -80,6 +80,11 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Gỡ hẳn trong DB: `supabase/imports/qtvt_usecases_origin_rollback.sql` (xóa KTH-xxx, trả nguồn gốc về mặc định) rồi `supabase/rollback/0011_rollback.sql`. Thứ tự gỡ khi cần quay về trước 0009: 0011 → 0010 → import/rollback → 0009.
 - Giao diện bản mới ghi các cột `origin`, `change_note`, `agreed_when` khi lưu use case: luôn chạy `0011` trước khi deploy.
 
+## 4e. Hoàn tác migration `0012` (nhiệm vụ liên kết nhiều use case)
+
+- `0012` chỉ thêm bảng `task_use_cases`; cột `tasks.use_case_id` vẫn được giữ (luôn là use case đầu tiên) nên bản giao diện cũ vẫn chạy và thấy một use case cho mỗi nhiệm vụ. Rollback Cloudflare/git là đủ để khôi phục dịch vụ.
+- Gỡ hẳn trong DB: `supabase/rollback/0012_rollback.sql` (mất các liên kết use case thứ hai trở đi). Giao diện bản mới đọc/ghi bảng này: chạy `0012` trước khi deploy; nếu chưa chạy, giao diện vẫn mở và xem được (dùng cột cũ) nhưng sẽ báo lỗi khi lưu nhiều liên kết.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

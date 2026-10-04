@@ -80,7 +80,7 @@ export const mapProject = (r: Row, members: MemberRow[]): Project => ({
   memberIds: members.filter(m => m.projectId === r.id).map(m => m.userId)
 });
 
-export const mapTask = (r: Row, collaborators: Row[] = []): Task => ({
+export const mapTask = (r: Row, collaborators: Row[] = [], taskUseCases: Row[] = []): Task => ({
   id: r.id,
   projectId: r.project_id,
   code: r.code,
@@ -102,7 +102,13 @@ export const mapTask = (r: Row, collaborators: Row[] = []): Task => ({
   deliverable: r.deliverable_description ?? '',
   notes: r.notes ?? '',
   tags: r.tags ?? [],
-  useCaseId: r.use_case_id ?? undefined
+  // Bảng liên kết là nguồn chính; cột cũ use_case_id phòng khi bảng liên kết chưa có dữ liệu.
+  useCaseIds: [
+    ...new Set([
+      ...taskUseCases.filter(l => l.task_id === r.id).map(l => l.use_case_id as string),
+      ...(r.use_case_id ? [r.use_case_id as string] : [])
+    ])
+  ]
 });
 
 export const mapUseCase = (r: Row, criteria: Row[], stages: Row[] = []): UseCase => ({

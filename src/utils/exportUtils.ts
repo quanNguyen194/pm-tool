@@ -99,7 +99,7 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[],
     t.actualEffort,
     priorityMap[t.priority] || t.priority,
     t.phase,
-    (t.useCaseId && (useCaseCodes.get(t.useCaseId) ?? t.useCaseId)) || 'Không'
+    t.useCaseIds.length > 0 ? t.useCaseIds.map(id => useCaseCodes.get(id) ?? id).join('; ') : 'Không'
   ]);
 
   downloadCSV(`Danh_sach_cong_viec_${project.code}_${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows]);

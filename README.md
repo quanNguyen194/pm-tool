@@ -39,6 +39,7 @@ Vai trò cũ `developer` được đổi tên thành `dev`, `qa` thành `tester`
 - **Nhiệm vụ**: nội dung, mô tả, người chủ trì (1), người phối hợp (nhiều), bộ phận (PM/BA/DEV/Tester), ngày bắt đầu dự kiến, deadline, ngày hoàn thành thực tế (tự ghi khi chuyển sang Hoàn thành), trạng thái, tiến độ %, đánh giá (Vượt/Đúng tiến độ, Rủi ro chậm, Chậm tiến độ; để trống thì hệ thống gợi ý từ ngày và %), mô tả yêu cầu đầu ra, ghi chú, nỗ lực dự kiến/thực tế tính theo **ngày công**.
 - **Use case** phân cấp tối đa **3 cấp** (use case lớn → con → chi tiết). Use case cha có tiến độ = trung bình các con; tiến độ dự án (40% phần use case) chỉ tính các use case lá.
 - Tiến độ dự án = 60% trung bình tiến độ % của nhiệm vụ + 40% trung bình **có trọng số** (độ phức tạp 5/10/15) của use case lá; module/nhóm không tính.
+- **Liên kết nhiệm vụ ↔ use case:** một nhiệm vụ gắn được nhiều use case. Trong form nhiệm vụ: "Tìm nhanh để thêm" (gõ mã/tên/module/nhãn, Enter thêm kết quả đầu) hoặc "Chọn từ danh sách…" (cửa sổ phụ dạng cây, tick module/nhóm/use case cha để chọn cả cụm).
 - **Cách tính tiến độ use case** chọn theo từng dự án (Dự án → Sửa → "Cách tính tiến độ use case"):
   - *Theo tiêu chí nghiệm thu* (mặc định): % tiêu chí đã tick, chỉ PM/Admin tick.
   - *Theo 5 bước chuẩn*: Phân tích 10 + Thiết kế 10 + Lập trình 40 + Kiểm thử 25 + Nghiệm thu 15. Quyền tick: BA (Phân tích, Thiết kế), DEV (Lập trình), Tester (Kiểm thử), PM/Admin mọi bước. Có chọn nhiều use case để đánh dấu hàng loạt.
@@ -76,6 +77,7 @@ Chỉ dùng **anon / publishable key** ở frontend. Tuyệt đối không đưa
 | `0005_deadlines_and_snapshots.sql` | Quét deadline, lịch sử tiến độ cho biểu đồ |
 | `0006_schedule_cron.sql` | Lịch `pg_cron`: 8:00 quét deadline, 23:55 chốt tiến độ |
 | `0007_report_schedules.sql` | Báo cáo định kỳ tự động, `ping()`; cron 8:10 tạo báo cáo |
+| `0012_task_use_cases.sql` | Một nhiệm vụ liên kết được nhiều use case (bảng `task_use_cases`, cột cũ `tasks.use_case_id` giữ lại và đồng bộ). **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0012_rollback.sql` |
 | `0011_usecase_origin.sql` | Nguồn gốc use case (theo hợp đồng/bổ sung/điều chỉnh), lý do, thời điểm thống nhất, trạng thái "Không thực hiện" (không tính vào số lượng/UCP/tiến độ). **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0011_rollback.sql` |
 | `0010_usecase_stages.sql` | Tiến độ use case theo 5 bước chuẩn, cập nhật hàng loạt, tổng hợp có trọng số. **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0010_rollback.sql` |
 | `0009_usecase_attributes.sql` | Thuộc tính use case: loại (module/nhóm/use case), nhãn, độ phức tạp, số transaction. Hoàn tác: `supabase/rollback/0009_rollback.sql` |

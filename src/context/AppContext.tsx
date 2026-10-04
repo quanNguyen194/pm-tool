@@ -184,6 +184,7 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   project_members: ['members', 'projects', 'profiles'],
   tasks: ['tasks'],
   task_collaborators: ['tasks'],
+  task_use_cases: ['tasks'],
   use_cases: ['usecases'],
   acceptance_criteria: ['usecases'],
   use_case_stages: ['usecases'],
@@ -226,6 +227,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [projectRows, setProjectRows] = useState<Row[]>([]);
   const [taskRows, setTaskRows] = useState<Row[]>([]);
   const [collabRows, setCollabRows] = useState<Row[]>([]);
+  const [taskUcRows, setTaskUcRows] = useState<Row[]>([]);
   const [ucRows, setUcRows] = useState<Row[]>([]);
   const [criteriaRows, setCriteriaRows] = useState<Row[]>([]);
   const [stageRows, setStageRows] = useState<Row[]>([]);
@@ -281,14 +283,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setProjectRows(data || []);
       },
       tasks: async () => {
-        const [tk, co] = await Promise.all([
+        const [tk, co, tu] = await Promise.all([
           supabase.from('tasks').select('*').order('created_at', { ascending: false }).order('code'),
-          supabase.from('task_collaborators').select('*')
+          supabase.from('task_collaborators').select('*'),
+          supabase.from('task_use_cases').select('*')
         ]);
         if (tk.error) throw tk.error;
         if (co.error) throw co.error;
+        // Liên kết nhiều use case là phần phụ: lỗi (vd chưa chạy migration 0012) thì dùng cột cũ use_case_id.
+        if (tu.error) console.warn('Không tải được liên kết use case của nhiệm vụ:', tu.error.message);
         setTaskRows(tk.data || []);
         setCollabRows(co.data || []);
+        setTaskUcRows(tu.error ? [] : tu.data || []);
       },
       usecases: async () => {
         const [uc, cr, st] = await Promise.all([
@@ -415,7 +421,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (activeProjectId) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
   }, [activeProjectId]);
 
-  const tasks = useMemo(() => taskRows.map(r => mapTask(r, collabRows)), [taskRows, collabRows]);
+  const tasks = useMemo(() => taskRows.map(r => mapTask(r, collabRows, taskUcRows)), [taskRows, collabRows, taskUcRows]);
   const useCases = useMemo(
     () => ucRows.map(r => mapUseCase(r, criteriaRows, stageRows)),
     [ucRows, criteriaRows, stageRows]
@@ -650,7 +656,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     deliverable_description: t.deliverable,
     notes: t.notes,
     tags: t.tags || [],
-    use_case_id: t.useCaseId || null
+    // Cột cũ giữ use case đầu tiên để bản giao diện cũ vẫn hiển thị được
+    use_case_id: t.useCaseIds[0] || null
   });
 
   // Người phối hợp: không trùng người chủ trì.
@@ -670,6 +677,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const ids = cleanCollaborators(t);
         if (ids.length > 0) {
           check(await supabase.from('task_collaborators').insert(ids.map(user_id => ({ task_id: res.data!.id, user_id }))));
+        }
+        const ucIds = [...new Set(t.useCaseIds)];
+        if (ucIds.length > 0) {
+          // Liên kết đầu tiên đã được trigger tạo từ cột use_case_id; on conflict bỏ qua trùng.
+          check(
+            await supabase
+              .from('task_use_cases')
+              .upsert(ucIds.map(use_case_id => ({ task_id: res.data!.id, use_case_id })), { onConflict: 'task_id,use_case_id', ignoreDuplicates: true })
+          );
         }
       },
       ['tasks', 'projects']
@@ -692,6 +708,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
         if (add.length > 0) {
           check(await supabase.from('task_collaborators').insert(add.map(user_id => ({ task_id: t.id, user_id }))));
+        }
+
+        // Đồng bộ các use case liên kết (thêm trước rồi mới bỏ để không có lúc nhiệm vụ bị mất liên kết).
+        const wantedUc = new Set(t.useCaseIds);
+        const currentUc = new Set(taskUcRows.filter(l => l.task_id === t.id).map(l => l.use_case_id as string));
+        const addUc = [...wantedUc].filter(id => !currentUc.has(id));
+        const removeUc = [...currentUc].filter(id => !wantedUc.has(id));
+        if (addUc.length > 0) {
+          check(
+            await supabase
+              .from('task_use_cases')
+              .upsert(addUc.map(use_case_id => ({ task_id: t.id, use_case_id })), { onConflict: 'task_id,use_case_id', ignoreDuplicates: true })
+          );
+        }
+        if (removeUc.length > 0) {
+          check(await supabase.from('task_use_cases').delete().eq('task_id', t.id).in('use_case_id', removeUc));
         }
       },
       ['tasks', 'projects']
