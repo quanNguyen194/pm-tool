@@ -210,9 +210,15 @@ const UseCaseSelectDialog: React.FC<DialogProps> = ({ useCases, initial, onCance
   const targetsOf = (n: (typeof nodes)[number]) =>
     n.childCount > 0 ? n.leafIds : isLinkable(n.useCase, false) ? [n.useCase.id] : [];
 
+  // Ẩn nút không chọn được: use case "Không thực hiện" và nhóm chỉ chứa chúng.
+  const usableNodes = useMemo(
+    () => nodes.filter(n => (n.childCount > 0 ? n.leafIds.length > 0 : isLinkable(n.useCase, false))),
+    [nodes]
+  );
+
   // Khi lọc: giữ use case khớp và các nút cha của nó.
   const filteredNodes = useMemo(() => {
-    if (!isFiltering) return nodes;
+    if (!isFiltering) return usableNodes;
     const q = query.trim().toLowerCase();
     const hit = (u: UseCase) => u.title.toLowerCase().includes(q) || u.code.toLowerCase().includes(q) || u.actor.toLowerCase().includes(q);
     const textMatch = (u: UseCase) => {
@@ -237,7 +243,7 @@ const UseCaseSelectDialog: React.FC<DialogProps> = ({ useCases, initial, onCance
     });
     return nodes.filter(n => keep.has(n.useCase.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, byId, query, tag, isFiltering]);
+  }, [nodes, usableNodes, byId, query, tag, isFiltering]);
 
   const effectiveOpen = useMemo(() => {
     if (open) return open;
