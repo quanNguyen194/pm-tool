@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { ProgressChart } from '../charts/ProgressChart';
 import { WorkloadPanel } from '../team/WorkloadPanel';
 import { computeForecast } from '../../utils/workload';
+import { flattenUseCaseTree, leafUseCases } from '../../utils/useCaseTree';
 import {
   TrendingUp,
   CheckCircle2,
@@ -71,17 +72,19 @@ export const DashboardView: React.FC = () => {
   const qualityRate = totalQualityItems > 0 ? Math.round((passedQualityItems / totalQualityItems) * 100) : 100;
 
   // Use Case metrics
-  const totalUseCases = projectUseCases.length;
-  const completedUseCases = projectUseCases.filter(u => u.status === 'completed' || u.status === 'tested').length;
+  // Chỉ tính use case lá (use case cha chỉ tổng hợp từ các con).
+  const leaves = leafUseCases(projectUseCases);
+  const totalUseCases = leaves.length;
+  const completedUseCases = leaves.filter(u => u.status === 'completed' || u.status === 'tested').length;
   const ucAvgProgress = totalUseCases > 0
-    ? Math.round(projectUseCases.reduce((sum, u) => sum + u.progressPercent, 0) / totalUseCases)
+    ? Math.round(leaves.reduce((sum, u) => sum + u.progressPercent, 0) / totalUseCases)
     : 0;
 
-  // Giờ công, việc cần chú ý và dự báo hoàn thành
-  const totalEstimatedHours = projectTasks.reduce((s, t) => s + (t.estimatedHours || 0), 0);
-  const totalActualHours = projectTasks.reduce((s, t) => s + (t.actualHours || 0), 0);
+  // Ngày công, việc cần chú ý và dự báo hoàn thành
+  const totalEstimatedHours = Math.round(projectTasks.reduce((s, t) => s + (t.estimatedEffort || 0), 0) * 10) / 10;
+  const totalActualHours = Math.round(projectTasks.reduce((s, t) => s + (t.actualEffort || 0), 0) * 10) / 10;
   const hoursPct = totalEstimatedHours > 0 ? Math.round((totalActualHours / totalEstimatedHours) * 100) : 0;
-  const overrunTasks = projectTasks.filter(t => t.estimatedHours > 0 && t.actualHours > t.estimatedHours).length;
+  const overrunTasks = projectTasks.filter(t => t.estimatedEffort > 0 && t.actualEffort > t.estimatedEffort).length;
   const hoursBarColor = hoursPct > 100 ? 'bg-rose-500' : hoursPct > 85 ? 'bg-amber-500' : 'bg-indigo-600';
   const urgentOpen = projectTasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
   const forecast = computeForecast(projectSnapshots, projectTasks, activeProject.targetEndDate);
@@ -364,19 +367,19 @@ export const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Giờ Công</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Ngày Công</span>
             <Clock className="w-4 h-4 text-blue-600" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
-              {totalActualHours}h / {totalEstimatedHours}h
+              {totalActualHours} / {totalEstimatedHours} ngày
             </span>
           </div>
-          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden" role="img" aria-label={`Đã dùng ${hoursPct}% giờ dự kiến`}>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden" role="img" aria-label={`Đã dùng ${hoursPct}% nỗ lực dự kiến`}>
             <div className={`${hoursBarColor} h-full rounded-full transition-all`} style={{ width: `${Math.min(hoursPct, 100)}%` }} />
           </div>
           <div className="text-[11px] text-slate-500 mt-2">
-            Đã dùng {hoursPct}% giờ dự kiến{overrunTasks > 0 ? ` · ${overrunTasks} việc vượt giờ` : ''}
+            Đã dùng {hoursPct}% nỗ lực dự kiến{overrunTasks > 0 ? ` · ${overrunTasks} việc vượt nỗ lực` : ''}
           </div>
         </div>
 
@@ -559,12 +562,16 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {projectUseCases.map(uc => {
+              {flattenUseCaseTree(projectUseCases).map(({ useCase: uc, depth }) => {
                 const totalCriteria = uc.acceptanceCriteria.length;
                 const completedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
 
                 return (
-                  <div key={uc.id} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div
+                    key={uc.id}
+                    className="p-3 rounded-lg border border-slate-100 bg-slate-50/50"
+                    style={{ marginLeft: (depth - 1) * 14 }}
+                  >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs font-bold text-indigo-600">[{uc.code}]</span>

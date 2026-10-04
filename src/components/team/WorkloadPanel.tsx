@@ -22,7 +22,7 @@ export const WorkloadBar: React.FC<{ active: number; done: number; className?: s
   );
 };
 
-/** Bảng khối lượng công việc và giờ công theo từng thành viên của dự án đang chọn. */
+/** Bảng khối lượng công việc và ngày công theo từng thành viên của dự án đang chọn. */
 export const WorkloadPanel: React.FC = () => {
   const { users, projectTasks, setActiveTab } = useApp();
   const rows = computeWorkload(users, projectTasks);
@@ -36,7 +36,7 @@ export const WorkloadPanel: React.FC = () => {
           <Users className="w-4 h-4 text-indigo-600" />
           <div>
             <h3 className="text-sm font-bold text-slate-900">Khối Lượng Công Việc Theo Thành Viên</h3>
-            <p className="text-xs text-slate-500">Việc đang mở, đã xong và giờ công của từng người</p>
+            <p className="text-xs text-slate-500">Việc đang mở, đã xong và ngày công của từng người</p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-500">
@@ -73,7 +73,7 @@ export const WorkloadPanel: React.FC = () => {
               </div>
               <div className="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-500">
                 <span className="font-mono tabular-nums">
-                  {r.actualHours}/{r.estimatedHours}h
+                  {r.actualEffort}/{r.estimatedEffort} ngày
                 </span>
                 {r.overdue > 0 ? (
                   <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">

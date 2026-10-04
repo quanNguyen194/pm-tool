@@ -55,6 +55,16 @@ git push origin stable-YYYY-MM-DD
 Mốc hiện tại: **`stable-2026-10-02`** (commit `a440d69`, đủ giai đoạn 0-5).
 Mốc mới nhất: **`stable-2026-10-02-ui`** (commit `cdd2306`, sau nâng cấp giao diện 5 bước: dark mode, thanh bên/ngăn kéo, Gantt, kéo thả Kanban, dashboard hiệu suất). Mốc `stable-2026-10-02` vẫn dùng được để quay về giao diện trước khi nâng cấp.
 
+## 4b. Hoàn tác migration `0008` (vai trò mới, use case phân cấp, trường nhiệm vụ)
+
+Migration `0008` đổi tên vai trò (`developer`→`dev`, `qa`→`tester`) nên **chỉ revert giao diện là chưa đủ**: bản giao diện cũ không nhận ra vai trò mới (thành viên DEV/Tester sẽ mất quyền thao tác trên giao diện).
+Thứ tự đúng khi cần quay về trước `0008`:
+
+1. Cloudflare rollback (phương án A) hoặc `git revert` (phương án B/C) về bản giao diện trước `0008`.
+2. Chạy `supabase/rollback/0008_rollback.sql` trong SQL Editor (đã có test: `supabase/tests/rollback.test.mjs`). Vai trò `dev`/`ba` gộp thành `developer`, `tester` thành `qa`; các cột/bảng mới được giữ lại để không mất dữ liệu.
+
+Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là đủ: Admin và PM dùng bình thường (hai vai trò này không đổi tên); chỉ thành viên DEV/BA/Tester tạm chưa thao tác được trên giao diện cũ cho đến khi làm bước 2.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

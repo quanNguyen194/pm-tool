@@ -13,7 +13,7 @@ URL tham số:
 |---|---|---|
 | `theme` | `light` / `dark` | Giao diện sáng / tối |
 | `page` | `dashboard`, `projects`, `tasks`, `usecases`, `quality`, `reports`, `team` | Màn hình mở đầu |
-| `role` | `admin` (mặc định), `pm`, `developer`, `qa`, `viewer` | Vai trò giả lập (ảnh hưởng nút thao tác) |
+| `role` | `admin` (mặc định), `pm`, `dev`, `ba`, `tester`, `viewer` | Vai trò giả lập (ảnh hưởng nút thao tác) |
 
 ## Kiểm tra tự động
 

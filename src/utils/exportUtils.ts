@@ -1,5 +1,7 @@
 import { Project, Task, UseCase, QualityGatePhase, User, ProgressSnapshot, ReportRun } from '../types';
 import { buildProgressChartSvg } from './chartSvg';
+import { flattenUseCaseTree, leafUseCases } from './useCaseTree';
+import { ASSESSMENT_LABELS, effectiveAssessment } from './taskAssessment';
 
 /** Escape văn bản người dùng nhập trước khi chèn vào HTML của cửa sổ in (chống XSS). */
 function esc(value: unknown): string {
@@ -42,17 +44,27 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[],
   
   const headers = [
     'Mã Công Việc',
-    'Tiêu Đề',
+    'Nội Dung',
+    'Mô Tả',
+    'Người Chủ Trì',
+    'Người Phối Hợp',
+    'Bộ Phận Thực Hiện',
+    'Ngày Bắt Đầu Dự Kiến',
+    'Deadline',
+    'Ngày Hoàn Thành Thực Tế',
     'Trạng Thái',
+    'Tiến Độ (%)',
+    'Đánh Giá',
+    'Mô Tả Yêu Cầu Đầu Ra',
+    'Ghi Chú',
+    'Nỗ Lực Dự Kiến (ngày công)',
+    'Nỗ Lực Thực Tế (ngày công)',
     'Mức Độ Ưu Tiên',
     'Giai Đoạn',
-    'Người Phụ Trách',
-    'Giờ Dự Kiến',
-    'Giờ Thực Tế',
-    'Ngày Bắt Đầu',
-    'Hạn Chót',
     'Liên Kết Use Case'
   ];
+
+  const departmentMap: Record<string, string> = { pm: 'PM', ba: 'BA', dev: 'DEV', tester: 'Tester' };
 
   const statusMap: Record<string, string> = {
     todo: 'Cần làm (To Do)',
@@ -71,14 +83,22 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[],
   const rows = tasks.map(t => [
     t.code,
     t.title,
-    statusMap[t.status] || t.status,
-    priorityMap[t.priority] || t.priority,
-    t.phase,
+    t.description || '',
     userMap.get(t.assigneeId) || 'Chưa phân công',
-    t.estimatedHours,
-    t.actualHours,
+    t.collaboratorIds.map(id => userMap.get(id) || id).join('; '),
+    (t.department && departmentMap[t.department]) || '',
     t.startDate,
     t.dueDate,
+    t.actualEndDate || '',
+    statusMap[t.status] || t.status,
+    t.progressPercent,
+    ASSESSMENT_LABELS[effectiveAssessment(t).value],
+    t.deliverable,
+    t.notes,
+    t.estimatedEffort,
+    t.actualEffort,
+    priorityMap[t.priority] || t.priority,
+    t.phase,
     (t.useCaseId && (useCaseCodes.get(t.useCaseId) ?? t.useCaseId)) || 'Không'
   ]);
 
@@ -90,7 +110,9 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[],
  */
 export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
   const headers = [
+    'Cấp',
     'Mã Use Case',
+    'Mã Use Case Cha',
     'Tên Chức Năng',
     'Tác Nhân (Actor)',
     'Trạng Thái',
@@ -110,12 +132,15 @@ export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
     completed: 'Hoàn thành'
   };
 
-  const rows = useCases.map(uc => {
+  const codeById = new Map(useCases.map(u => [u.id, u.code]));
+  const rows = flattenUseCaseTree(useCases).map(({ useCase: uc, depth }) => {
     const totalCriteria = uc.acceptanceCriteria.length;
     const passedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
 
     return [
+      depth,
       uc.code,
+      (uc.parentId && codeById.get(uc.parentId)) || '',
       uc.title,
       uc.actor,
       statusMap[uc.status] || uc.status,
@@ -153,8 +178,9 @@ export function printPeriodicReport(
   const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
   const overdueTasks = tasks.filter(t => t.status !== 'done' && new Date(t.dueDate) < new Date()).length;
 
-  const totalUseCases = useCases.length;
-  const completedUseCases = useCases.filter(uc => uc.status === 'completed' || uc.status === 'tested').length;
+  const leaves = leafUseCases(useCases);
+  const totalUseCases = leaves.length;
+  const completedUseCases = leaves.filter(uc => uc.status === 'completed' || uc.status === 'tested').length;
 
   // Calculate Quality Gate passing rate
   let totalQualityItems = 0;
@@ -303,10 +329,10 @@ export function printPeriodicReport(
       </tr>
     </thead>
     <tbody>
-      ${useCases.map(uc => `
+      ${flattenUseCaseTree(useCases).map(({ useCase: uc, depth }) => `
         <tr>
           <td><strong>${esc(uc.code)}</strong></td>
-          <td>${esc(uc.title)}</td>
+          <td style="padding-left: ${10 + (depth - 1) * 16}px;">${esc(uc.title)}</td>
           <td>${esc(uc.actor)}</td>
           <td>${uc.status.toUpperCase()}</td>
           <td style="text-align: right; font-weight: 600;">${uc.progressPercent}%</td>
@@ -324,6 +350,7 @@ export function printPeriodicReport(
         <th style="width: 90px;">Ưu Tiên</th>
         <th style="width: 100px;">Hạn Chót</th>
         <th style="width: 100px;">Trạng Thái</th>
+        <th style="width: 120px;">Tiến Độ / Đánh Giá</th>
       </tr>
     </thead>
     <tbody>
@@ -336,6 +363,7 @@ export function printPeriodicReport(
             <td><span class="badge badge-${t.priority}">${t.priority.toUpperCase()}</span></td>
             <td style="${isPastDue ? 'color: #dc2626; font-weight: 700;' : ''}">${t.dueDate} ${isPastDue ? '(QUÁ HẠN)' : ''}</td>
             <td><span class="badge badge-${t.status}">${t.status.toUpperCase()}</span></td>
+            <td>${t.progressPercent}% · ${esc(ASSESSMENT_LABELS[effectiveAssessment(t).value])}</td>
           </tr>
         `;
       }).join('')}

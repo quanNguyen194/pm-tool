@@ -93,10 +93,47 @@ function overflowAudit() {
   const res: Record<string, unknown> = { width: innerWidth, dark: document.documentElement.classList.contains('dark') };
   const errors: string[] = [];
   window.addEventListener('error', e => errors.push(e.message));
+  const snap = () => ({ hScroll: document.documentElement.scrollWidth > innerWidth, overflow: overflowAudit(), contrast: contrastAudit() });
+  const clickText = (sel: string, text: string) => {
+    const el = [...document.querySelectorAll<HTMLElement>(sel)].find(e => (e.textContent || '').includes(text));
+    el?.click();
+    return !!el;
+  };
   for (const tab of ['dashboard', 'projects', 'tasks', 'usecases', 'quality', 'reports', 'team']) {
     (window as any).__setTab(tab);
     await wait(1300);
-    res[tab] = { hScroll: document.documentElement.scrollWidth > innerWidth, overflow: overflowAudit(), contrast: contrastAudit() };
+    res[tab] = snap();
+    // Các lớp phủ / vùng ẩn của từng màn hình
+    if (tab === 'tasks') {
+      if (clickText('main button, [role="tree"] button, button', 'Tích hợp Module')) {
+        await wait(400);
+        res['tasks:chi-tiết'] = snap();
+        clickText('button', 'Đóng');
+        await wait(300);
+      }
+      if (clickText('button', 'Thêm Nhiệm Vụ')) {
+        await wait(400);
+        res['tasks:form'] = snap();
+        clickText('button', 'Hủy bỏ');
+        await wait(300);
+      }
+      if (clickText('button', 'Bảng Chi Tiết')) {
+        await wait(500);
+        res['tasks:bảng'] = snap();
+      }
+    }
+    if (tab === 'usecases') {
+      if (clickText('[role="treeitem"] h3', 'Đăng ký tài khoản')) {
+        await wait(400);
+        res['usecases:mở-chi-tiết'] = snap();
+      }
+      if (clickText('button', 'Thêm Use Case')) {
+        await wait(400);
+        res['usecases:form'] = snap();
+        clickText('button', 'Hủy bỏ');
+        await wait(300);
+      }
+    }
   }
   res.errors = errors;
   return res;

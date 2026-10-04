@@ -18,14 +18,14 @@ await db.exec(`
   alter default privileges in schema public grant all on functions to anon, authenticated, public;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
-for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql']) {
+for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql']) {
   await db.exec(fs.readFileSync(new URL(f, MIG), 'utf8'));
   console.log('applied', f);
 }
 
 const ids = {};
 for (const [k, email] of Object.entries({
-  admin: 'admin@t.vn', pm: 'pm@t.vn', dev: 'dev@t.vn', qa: 'qa@t.vn', viewer: 'viewer@t.vn', outsider: 'out@t.vn',
+  admin: 'admin@t.vn', pm: 'pm@t.vn', dev: 'dev@t.vn', qa: 'qa@t.vn', viewer: 'viewer@t.vn', ba: 'ba@t.vn', outsider: 'out@t.vn',
 })) {
   const r = await db.query(`insert into auth.users (email, raw_user_meta_data) values ($1, $2::jsonb) returning id`,
     [email, JSON.stringify({ name: k.toUpperCase() })]);
@@ -76,8 +76,8 @@ ok('điểm hôm nay khớp tiến độ hiện tại', lastSnap.p === lastSnap.
 // --- Thành viên ---
 await as('admin');
 await q(`select add_project_member($1,'pm@t.vn','pm')`, [proj['OMNI-BANK']]);
-await q(`select add_project_member($1,'dev@t.vn','developer')`, [proj['OMNI-BANK']]);
-await q(`select add_project_member($1,'qa@t.vn','qa')`, [proj['OMNI-BANK']]);
+await q(`select add_project_member($1,'dev@t.vn','dev')`, [proj['OMNI-BANK']]);
+await q(`select add_project_member($1,'qa@t.vn','tester')`, [proj['OMNI-BANK']]);
 await q(`select add_project_member($1,'VIEWER@t.vn','viewer')`, [proj['OMNI-BANK']]);
 await q(`select add_project_member($1,'dev@t.vn','viewer')`, [proj['E-SHOP-B2B']]);
 await throws('email chưa đăng ký bị từ chối', () => q(`select add_project_member($1,'ghost@t.vn','viewer')`, [proj['OMNI-BANK']]), 'P0002');
@@ -108,9 +108,9 @@ await throws('viewer không ghi được lịch sử tiến độ', () => q(`ins
 
 // --- Developer ---
 await as('dev');
-ok('dev thấy 2 dự án (P1 developer, P2 viewer)', (await q(`select count(*)::int c from projects`))[0].c === 2);
+ok('dev thấy 2 dự án (P1 dev, P2 viewer)', (await q(`select count(*)::int c from projects`))[0].c === 2);
 const newTask = await q(`insert into tasks (project_id,code,title,start_date,due_date) values ($1,'DEV-1','Task của dev',current_date,current_date+3) returning id`, [proj['OMNI-BANK']]);
-ok('dev tạo được task ở dự án mình làm developer', newTask.length === 1);
+ok('dev tạo được task ở dự án mình làm dev', newTask.length === 1);
 ok('dev kéo task sang done', (await q(`update tasks set status='done' where id=$1 returning id`, [newTask[0].id])).length === 1);
 await throws('dev không tạo task ở dự án mình chỉ là viewer', () => q(`insert into tasks (project_id,code,title,start_date,due_date) values ($1,'DEV-2','x',current_date,current_date)`, [proj['E-SHOP-B2B']]), 'row-level security');
 ok('dev xóa task của mình', (await q(`delete from tasks where id=$1 returning id`, [newTask[0].id])).length === 1);
@@ -136,12 +136,12 @@ ok('dev không chèn sẵn tiêu chí đã hoàn thành', ins[0].completed === f
 // --- QA ---
 await as('qa');
 const toggled = await q(`update quality_items set is_passed=true, notes='ok' where project_id=$1 and phase_key='phase_4' and sort=1 returning checked_by, checked_at`, [proj['OMNI-BANK']]);
-ok('qa duyệt được checklist, server ghi người duyệt', toggled.length === 1 && toggled[0].checked_by === 'QA (QA)' && toggled[0].checked_at, JSON.stringify(toggled));
+ok('qa duyệt được checklist, server ghi người duyệt', toggled.length === 1 && toggled[0].checked_by === 'QA (TESTER)' && toggled[0].checked_at, JSON.stringify(toggled));
 await throws('qa không tự ghi checked_by', () => q(`update quality_items set checked_by='Sếp' where project_id=$1`, [proj['OMNI-BANK']]), 'permission denied');
 ok('qa bỏ duyệt thì xóa checked_by', (await q(`update quality_items set is_passed=false where project_id=$1 and phase_key='phase_4' and sort=1 returning checked_by`, [proj['OMNI-BANK']]))[0].checked_by === null);
 const custom = await q(`insert into quality_items (project_id,phase_key,title) values ($1,'phase_5','Mục tùy chỉnh') returning sort`, [proj['OMNI-BANK']]);
 ok('qa thêm được mục tùy chỉnh (sort sau mẫu)', custom[0].sort === 1000);
-ok('qa không sửa được task', (await q(`update tasks set status='done' where project_id=$1 returning id`, [proj['OMNI-BANK']])).length === 0);
+ok('tester sửa được task (ghi chú), không xóa trạng thái của người khác', (await q(`update tasks set notes='qa' where project_id=$1 returning id`, [proj['OMNI-BANK']])).length === 5);
 
 // --- PM ---
 await as('pm');
@@ -224,6 +224,90 @@ ok('dev không thấy thông báo của người khác', (await q(`select count(
 await as('admin');
 const n = await q(`update notifications set is_read=true where user_id=auth.uid() returning id`);
 ok('người nhận đánh dấu đã đọc', n.length >= 1);
+
+// ============================================================
+// 0008: vai trò mới, use case phân cấp, nhiệm vụ mở rộng
+// ============================================================
+await as('admin');
+const OB = proj['OMNI-BANK'];
+await q(`select add_project_member($1,'ba@t.vn','ba')`, [OB]);
+await throws('vai trò cũ developer bị từ chối', () => q(`select add_project_member($1,'ba@t.vn','developer')`, [OB]), '22023');
+await throws('vai trò cũ qa bị từ chối', () => q(`select add_project_member($1,'ba@t.vn','qa')`, [OB]), '22023');
+await root();
+await q(`update project_members set role='tester' where project_id=$1 and user_id=$2`, [OB, ids.qa]);
+
+// --- BA: use case + nhiệm vụ, không duyệt checklist ---
+await as('ba');
+const ucRoot = await q(`insert into use_cases (project_id, code, title) values ($1,'UC-T-1','Gốc') returning id`, [OB]);
+ok('ba tạo được use case', ucRoot.length === 1);
+const ba2 = await q(`insert into use_cases (project_id, code, title, parent_id) values ($1,'UC-T-1.1','Cấp 2',$2) returning id`, [OB, ucRoot[0].id]);
+const ba3 = await q(`insert into use_cases (project_id, code, title, parent_id) values ($1,'UC-T-1.1.1','Cấp 3',$2) returning id`, [OB, ba2[0].id]);
+ok('tạo được use case 3 cấp', ba3.length === 1);
+await throws('cấp 4 bị chặn', () => q(`insert into use_cases (project_id, code, title, parent_id) values ($1,'UC-T-1.1.1.1','Cấp 4',$2)`, [OB, ba3[0].id]), '22023');
+await throws('không đặt cha là chính nó', () => q(`update use_cases set parent_id=id where id=$1`, [ucRoot[0].id]), '22023');
+await throws('không chuyển vào nhánh con của mình (vòng lặp)', () => q(`update use_cases set parent_id=$2 where id=$1`, [ucRoot[0].id, ba3[0].id]), '22023');
+const other = await q(`insert into use_cases (project_id, code, title) values ($1,'UC-T-2','Gốc khác') returning id`, [OB]);
+await throws('chuyển nhánh 2 cấp xuống dưới một gốc khác làm vượt 3 cấp', () => q(`update use_cases set parent_id=$2 where id=$1`, [ucRoot[0].id, other[0].id]), '22023');
+await throws('cha ở dự án khác bị từ chối', () => q(`insert into use_cases (project_id, code, title, parent_id) values ($1,'UC-X','x',$2)`, [proj['E-SHOP-B2B'], ucRoot[0].id]), 'cùng dự án');
+ok('ba tạo được nhiệm vụ', (await q(`insert into tasks (project_id,code,title,start_date,due_date) values ($1,'BA-1','Việc của BA',current_date,current_date+2) returning id`, [OB])).length === 1);
+ok('ba không duyệt được checklist', (await q(`update quality_items set is_passed=true where project_id=$1 returning id`, [OB])).length === 0);
+
+// --- Tiến độ use case cha tổng hợp từ con ---
+await root();
+const tree = (await q(`select code, id, progress_percent p, status from use_cases where code like 'UC-T-1%' order by code`));
+const byCode = Object.fromEntries(tree.map(t => [t.code, t]));
+await q(`insert into acceptance_criteria (use_case_id, description, completed, sort) values ($1,'a',false,1), ($1,'b',false,2)`, [byCode['UC-T-1.1.1'].id]);
+await q(`update acceptance_criteria set completed=true where use_case_id=$1 and sort=1`, [byCode['UC-T-1.1.1'].id]);
+let t2 = Object.fromEntries((await q(`select code, progress_percent p from use_cases where code like 'UC-T-1%'`)).map(r => [r.code, r.p]));
+ok('use case lá 50% theo tiêu chí', t2['UC-T-1.1.1'] === 50, JSON.stringify(t2));
+ok('use case cha cấp 2 lấy 50% từ con', t2['UC-T-1.1'] === 50, JSON.stringify(t2));
+ok('use case gốc lấy 50% từ nhánh', t2['UC-T-1'] === 50, JSON.stringify(t2));
+await q(`update acceptance_criteria set completed=true where use_case_id=$1`, [byCode['UC-T-1.1.1'].id]);
+t2 = Object.fromEntries((await q(`select code, progress_percent p, status from use_cases where code like 'UC-T-1%'`)).map(r => [r.code, r.p + ':' + r.status]));
+ok('tất cả con xong thì cha hoàn thành', t2['UC-T-1.1'] === '100:completed' && t2['UC-T-1'].startsWith('100:'), JSON.stringify(t2));
+await q(`update acceptance_criteria set completed=false where use_case_id=$1 and sort=2`, [byCode['UC-T-1.1.1'].id]);
+t2 = Object.fromEntries((await q(`select code, progress_percent p, status from use_cases where code like 'UC-T-1%'`)).map(r => [r.code, r.p + ':' + r.status]));
+ok('bỏ tick thì cha hạ về developing', t2['UC-T-1'] === '50:developing', JSON.stringify(t2));
+const projP = (await q(`select progress_percent p from projects where id=$1`, [OB]))[0].p;
+const expectUc = (await q(`select round(avg(progress_percent))::int a from use_cases u where project_id=$1 and not exists (select 1 from use_cases c where c.parent_id=u.id)`, [OB]))[0].a;
+const expectTask = (await q(`select avg(progress_percent) a from tasks where project_id=$1`, [OB]))[0].a;
+ok('tiến độ dự án = 60% task + 40% use case lá', projP === Math.round(Number(expectTask) * 0.6 + expectUc * 0.4), `${projP} vs task ${expectTask} uc ${expectUc}`);
+await q(`delete from use_cases where id=$1`, [byCode['UC-T-1'].id]);
+ok('xóa use case gốc xóa cả nhánh con', (await q(`select count(*)::int c from use_cases where code like 'UC-T-1%'`))[0].c === 0);
+
+// --- Tester / Dev: quyền ---
+await as('qa');
+ok('tester sửa được nhiệm vụ', (await q(`update tasks set notes='kiểm thử xong' where code='BA-1' returning id`)).length === 1);
+await throws('tester không tạo được use case', () => q(`insert into use_cases (project_id, code, title) values ($1,'UC-Q','x')`, [OB]), 'row-level security');
+ok('tester duyệt được checklist', (await q(`update quality_items set is_passed=true where project_id=$1 and phase_key='phase_5' and sort=1 returning id`, [OB])).length === 1);
+await as('dev');
+ok('dev tạo được use case', (await q(`insert into use_cases (project_id, code, title) values ($1,'UC-D','x') returning id`, [OB])).length === 1);
+
+// --- Nhiệm vụ mở rộng ---
+await as('pm');
+const nt = await q(`insert into tasks (project_id, code, title, start_date, due_date, assignee_id, department, status, deliverable_description, notes, estimated_effort, actual_effort, assessment)
+  values ($1,'NT-1','Việc mới',current_date,current_date+5,$2,'ba','in_progress','Tài liệu SRS','Ghi chú',3.5,1.5,'at_risk') returning id, progress_percent p, actual_end_date`, [OB, ids.pm]);
+ok('nhiệm vụ mới ở trạng thái đang làm mặc định 40%', nt[0].p === 40 && nt[0].actual_end_date === null, JSON.stringify(nt[0]));
+await throws('bộ phận không hợp lệ bị từ chối', () => q(`update tasks set department='ops' where id=$1`, [nt[0].id]), 'check');
+await throws('đánh giá không hợp lệ bị từ chối', () => q(`update tasks set assessment='tot' where id=$1`, [nt[0].id]), 'check');
+await throws('tiến độ ngoài 0-100 bị từ chối', () => q(`update tasks set progress_percent=120 where id=$1`, [nt[0].id]), 'check');
+ok('thêm 2 người phối hợp', (await q(`insert into task_collaborators (task_id, user_id) values ($1,$2), ($1,$3) returning user_id`, [nt[0].id, ids.dev, ids.qa])).length === 2);
+await throws('người phối hợp phải là thành viên dự án', () => q(`insert into task_collaborators (task_id, user_id) values ($1,$2)`, [nt[0].id, ids.outsider]), '22023');
+await q(`update tasks set status='done' where id=$1`, [nt[0].id]);
+const done = (await q(`select progress_percent p, actual_end_date::text d, (now() at time zone 'Asia/Ho_Chi_Minh')::date::text today from tasks where id=$1`, [nt[0].id]))[0];
+ok('chuyển sang Hoàn thành -> 100% + ngày hoàn thành thực tế', done.p === 100 && done.d === done.today, JSON.stringify(done));
+await q(`update tasks set status='in_progress' where id=$1`, [nt[0].id]);
+const reopened = (await q(`select progress_percent p, actual_end_date d from tasks where id=$1`, [nt[0].id]))[0];
+ok('mở lại việc đã xong -> xóa ngày hoàn thành, tiến độ 90%', reopened.p === 90 && reopened.d === null, JSON.stringify(reopened));
+await as('viewer');
+ok('viewer xem được người phối hợp', (await q(`select count(*)::int c from task_collaborators`))[0].c === 2);
+await throws('viewer không thêm được người phối hợp', () => q(`insert into task_collaborators (task_id, user_id) values ($1,$2)`, [nt[0].id, ids.pm]), 'row-level security');
+await as('outsider');
+ok('người ngoài không thấy người phối hợp', (await q(`select count(*)::int c from task_collaborators`))[0].c === 0);
+await as('dev');
+ok('dev bỏ được người phối hợp', (await q(`delete from task_collaborators where task_id=$1 and user_id=$2 returning user_id`, [nt[0].id, ids.qa])).length === 1);
+await root();
+ok('báo cáo chỉ đếm use case lá', (await q(`select (build_report_summary($1, current_date-6, current_date)->'useCases'->>'total')::int t`, [OB]))[0].t === (await q(`select count(*)::int c from use_cases u where project_id=$1 and not exists (select 1 from use_cases c where c.parent_id=u.id)`, [OB]))[0].c);
 
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

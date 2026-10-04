@@ -22,14 +22,23 @@ Web quản lý dự án: nhiều dự án độc lập, nhiệm vụ (Kanban), u
 
 `is_admin` (toàn hệ thống) và vai trò theo từng dự án (`project_members.role`):
 
-| Quyền | Admin | PM | Developer | QA | Viewer |
-|---|:-:|:-:|:-:|:-:|:-:|
-| Tạo dự án | ✓ | | | | |
-| Sửa/xóa dự án, quản lý thành viên, tạo báo cáo, gửi nhắc việc | ✓ | ✓ | | | |
-| Tạo/sửa/xóa nhiệm vụ và use case | ✓ | ✓ | ✓ | | |
-| Tick tiêu chí nghiệm thu | ✓ | ✓ | | | |
-| Duyệt checklist chất lượng | ✓ | ✓ | | ✓ | |
-| Xem dữ liệu của dự án | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Quyền | Admin | PM | DEV | BA | Tester | Quan sát |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Tạo dự án | ✓ | | | | | |
+| Sửa/xóa dự án, quản lý thành viên, tạo báo cáo, gửi nhắc việc | ✓ | ✓ | | | | |
+| Tạo/sửa/xóa nhiệm vụ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| Tạo/sửa/xóa use case và tiêu chí | ✓ | ✓ | ✓ | ✓ | | |
+| Tick tiêu chí nghiệm thu | ✓ | ✓ | | | | |
+| Duyệt checklist chất lượng | ✓ | ✓ | | | ✓ | |
+| Xem dữ liệu của dự án | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Vai trò cũ `developer` được đổi tên thành `dev`, `qa` thành `tester` (migration `0008`).
+
+### Nhiệm vụ và use case
+
+- **Nhiệm vụ**: nội dung, mô tả, người chủ trì (1), người phối hợp (nhiều), bộ phận (PM/BA/DEV/Tester), ngày bắt đầu dự kiến, deadline, ngày hoàn thành thực tế (tự ghi khi chuyển sang Hoàn thành), trạng thái, tiến độ %, đánh giá (Vượt/Đúng tiến độ, Rủi ro chậm, Chậm tiến độ; để trống thì hệ thống gợi ý từ ngày và %), mô tả yêu cầu đầu ra, ghi chú, nỗ lực dự kiến/thực tế tính theo **ngày công**.
+- **Use case** phân cấp tối đa **3 cấp** (use case lớn → con → chi tiết). Use case cha có tiến độ = trung bình các con; tiến độ dự án (40% phần use case) chỉ tính các use case lá.
+- Tiến độ dự án = 60% trung bình tiến độ % của nhiệm vụ + 40% trung bình use case lá.
 
 Người đăng ký **đầu tiên** của hệ thống tự động là quản trị viên. Người đăng ký sau chỉ thấy các dự án họ được thêm vào (Đội ngũ & Phân quyền → thêm bằng email).
 
@@ -62,6 +71,7 @@ Chỉ dùng **anon / publishable key** ở frontend. Tuyệt đối không đưa
 | `0005_deadlines_and_snapshots.sql` | Quét deadline, lịch sử tiến độ cho biểu đồ |
 | `0006_schedule_cron.sql` | Lịch `pg_cron`: 8:00 quét deadline, 23:55 chốt tiến độ |
 | `0007_report_schedules.sql` | Báo cáo định kỳ tự động, `ping()`; cron 8:10 tạo báo cáo |
+| `0008_roles_usecase_tree_task_fields.sql` | Vai trò PM/DEV/BA/Tester/Quan sát, use case phân cấp 3 cấp, trường nhiệm vụ mở rộng, người phối hợp. **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0008_rollback.sql` |
 
 4. Đăng ký tài khoản đầu tiên trên web (thành admin), rồi nạp dữ liệu demo bằng nút "Nạp dữ liệu demo" hoặc `select public.seed_demo_data();`. Muốn biểu đồ có lịch sử minh họa: `select public.backfill_demo_progress();`.
 
@@ -92,7 +102,7 @@ Schema + RLS được kiểm thử trên Postgres chạy trong Node (PGlite), gi
 cd supabase/tests && npm install && npm test
 ```
 
-Bộ test kiểm tra từng vai trò (viewer/developer/qa/pm/admin/người ngoài dự án) làm được và **không** làm được gì, trigger tiến độ, quét deadline và báo cáo định kỳ. `pg_cron` không có trong PGlite nên các lịch cron ở `0006`/`0007` chỉ kiểm tra được trên Supabase thật.
+Bộ test kiểm tra từng vai trò (quan sát/dev/ba/tester/pm/admin/người ngoài dự án), cây use case, trường nhiệm vụ, và việc hoàn tác 0008 chạy được (`rollback.test.mjs`); làm được và **không** làm được gì, trigger tiến độ, quét deadline và báo cáo định kỳ. `pg_cron` không có trong PGlite nên các lịch cron ở `0006`/`0007` chỉ kiểm tra được trên Supabase thật.
 
 ## Deploy
 

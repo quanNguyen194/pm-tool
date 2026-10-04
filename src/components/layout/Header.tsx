@@ -18,6 +18,7 @@ import {
 import { printPeriodicReport, exportTasksToCSV } from '../../utils/exportUtils';
 import { ThemeToggle } from './ThemeToggle';
 import { projectColor, projectInitials } from '../../utils/projectColor';
+import { ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
 
 export const Header: React.FC = () => {
   const {
@@ -70,13 +71,7 @@ export const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const roleNameMap: Record<string, string> = {
-    admin: 'Quản trị viên (Admin)',
-    pm: 'Quản lý dự án (PM)',
-    developer: 'Lập trình viên (Dev)',
-    qa: 'Kiểm thử viên (QA)',
-    viewer: 'Khách hàng / Quan sát (Viewer)'
-  };
+  const roleNameMap = ROLE_NAMES;
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-3 h-14 px-3 sm:px-6 bg-white border-b border-slate-200">
@@ -307,7 +302,7 @@ export const Header: React.FC = () => {
               <div className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
                 <span>{currentUser.name}</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                  {currentUser.role.toUpperCase()}
+                  {ROLE_SHORT[currentUser.role]}
                 </span>
               </div>
               <div className="text-[10px] text-slate-500 truncate max-w-[140px]">{currentUser.department}</div>

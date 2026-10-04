@@ -8,8 +8,8 @@ export interface MemberWorkload {
   done: number;
   overdue: number;
   urgentActive: number;
-  estimatedHours: number;
-  actualHours: number;
+  estimatedEffort: number;
+  actualEffort: number;
 }
 
 const startOfToday = () => {
@@ -39,8 +39,8 @@ export function computeWorkload(users: User[], tasks: Task[]): MemberWorkload[] 
         done: mine.length - open.length,
         overdue: mine.filter(t => isOverdue(t, today)).length,
         urgentActive: open.filter(t => t.priority === 'urgent').length,
-        estimatedHours: mine.reduce((s, t) => s + (t.estimatedHours || 0), 0),
-        actualHours: mine.reduce((s, t) => s + (t.actualHours || 0), 0)
+        estimatedEffort: mine.reduce((s, t) => s + (t.estimatedEffort || 0), 0),
+        actualEffort: mine.reduce((s, t) => s + (t.actualEffort || 0), 0)
       };
     })
     .sort((a, b) => b.active - a.active || a.user.name.localeCompare(b.user.name, 'vi'));

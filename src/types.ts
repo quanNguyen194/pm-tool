@@ -1,6 +1,10 @@
-export type Role = 'admin' | 'pm' | 'developer' | 'qa' | 'viewer';
+/** pm = Quản lý dự án, dev = Lập trình, ba = Phân tích nghiệp vụ, tester = Kiểm thử, viewer = Quan sát (chỉ xem). */
+export type Role = 'admin' | 'pm' | 'dev' | 'ba' | 'tester' | 'viewer';
 /** Vai trò gán theo từng dự án (quản trị viên là quyền toàn hệ thống, không nằm ở đây). */
 export type MemberRole = Exclude<Role, 'admin'>;
+/** Bộ phận thực hiện nhiệm vụ. */
+export type Department = 'pm' | 'ba' | 'dev' | 'tester';
+export const DEPARTMENTS: Department[] = ['pm', 'ba', 'dev', 'tester'];
 
 export interface User {
   id: string;
@@ -33,6 +37,8 @@ export interface Project {
 }
 
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
+/** Đánh giá tiến độ: vượt tiến độ / đúng tiến độ / rủi ro chậm / chậm tiến độ. */
+export type TaskAssessment = 'ahead' | 'on_track' | 'at_risk' | 'delayed';
 
 export interface Task {
   id: string;
@@ -42,12 +48,27 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: Priority;
+  /** Người chủ trì (1 người). */
   assigneeId: string;
+  /** Người phối hợp (nhiều người). */
+  collaboratorIds: string[];
+  department?: Department;
   phase: string;
-  estimatedHours: number;
-  actualHours: number;
+  /** Nỗ lực tính theo ngày công (man-day). */
+  estimatedEffort: number;
+  actualEffort: number;
+  /** Ngày bắt đầu dự kiến. */
   startDate: string;
+  /** Ngày kết thúc (deadline). */
   dueDate: string;
+  /** Ngày hoàn thành thực tế (tự ghi khi chuyển sang Hoàn thành). */
+  actualEndDate?: string;
+  progressPercent: number;
+  /** Đánh giá do người dùng chọn; để trống thì hệ thống gợi ý (xem utils/taskAssessment.ts). */
+  assessment?: TaskAssessment;
+  /** Mô tả yêu cầu đầu ra. */
+  deliverable: string;
+  notes: string;
   tags?: string[];
   useCaseId?: string;
 }
@@ -57,6 +78,8 @@ export type UseCaseStatus = 'draft' | 'in_review' | 'approved' | 'developing' | 
 export interface UseCase {
   id: string;
   projectId: string;
+  /** Use case cha (phân tối đa 3 cấp). */
+  parentId?: string;
   code: string;
   title: string;
   actor: string;

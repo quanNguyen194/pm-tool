@@ -16,6 +16,7 @@ import { printPeriodicReport, exportTasksToCSV, exportUseCasesToCSV } from '../.
 import { ProgressChart, scheduleStatus } from '../charts/ProgressChart';
 import { ScheduledReports } from './ScheduledReports';
 import { plannedProgressToday } from '../../utils/chartSvg';
+import { flattenUseCaseTree, leafUseCases } from '../../utils/useCaseTree';
 
 export const ReportsView: React.FC = () => {
   const {
@@ -36,8 +37,9 @@ export const ReportsView: React.FC = () => {
   const reviewTasks = projectTasks.filter(t => t.status === 'review').length;
   const overdueTasks = projectTasks.filter(t => t.status !== 'done' && new Date(t.dueDate) < new Date()).length;
 
-  const totalUseCases = projectUseCases.length;
-  const completedUseCases = projectUseCases.filter(u => u.status === 'completed' || u.status === 'tested').length;
+  const leaves = leafUseCases(projectUseCases);
+  const totalUseCases = leaves.length;
+  const completedUseCases = leaves.filter(u => u.status === 'completed' || u.status === 'tested').length;
 
   const phases = projectQualityGates?.phases || [];
   let totalQualityItems = 0;
@@ -243,10 +245,10 @@ export const ReportsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {projectUseCases.map(uc => (
+                {flattenUseCaseTree(projectUseCases).map(({ useCase: uc, depth }) => (
                   <tr key={uc.id}>
                     <td className="py-2 px-3 font-mono font-bold text-indigo-600">{uc.code}</td>
-                    <td className="py-2 px-3 font-medium text-slate-900">{uc.title}</td>
+                    <td className="py-2 px-3 font-medium text-slate-900" style={{ paddingLeft: 12 + (depth - 1) * 16 }}>{uc.title}</td>
                     <td className="py-2 px-3 text-slate-600">{uc.actor}</td>
                     <td className="py-2 px-3 font-mono uppercase text-[10px]">{uc.status}</td>
                     <td className="py-2 px-3 text-right font-mono font-bold">{uc.progressPercent}%</td>

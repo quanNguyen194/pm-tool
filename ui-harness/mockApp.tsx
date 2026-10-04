@@ -3,20 +3,24 @@ import React, { createContext, useContext, useMemo, useState } from 'react';
 const iso = (n: number) => new Date(Date.now() + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10);
 const users = [
   { id: 'u1', name: 'quan.ntm194', email: 'quan@example.com', avatarColor: 'bg-blue-600', role: 'admin', isAdmin: true, department: 'PMO' },
-  { id: 'u2', name: 'Lê Hoàng Long Rất Dài Để Thử Cắt Chữ', email: 'long.le.hoang.dai@example.com', avatarColor: 'bg-emerald-700', role: 'developer', isAdmin: false, department: 'Khối Kỹ Thuật & Phát Triển Phần Mềm' },
-  { id: 'u3', name: 'Đỗ Bích Ngọc', email: 'ngoc@example.com', avatarColor: 'bg-amber-700', role: 'qa', isAdmin: false, department: 'QA' }
+  { id: 'u2', name: 'Lê Hoàng Long Rất Dài Để Thử Cắt Chữ', email: 'long.le.hoang.dai@example.com', avatarColor: 'bg-emerald-700', role: 'dev', isAdmin: false, department: 'Khối Kỹ Thuật & Phát Triển Phần Mềm' },
+  { id: 'u3', name: 'Đỗ Bích Ngọc', email: 'ngoc@example.com', avatarColor: 'bg-amber-700', role: 'tester', isAdmin: false, department: 'QA' },
+  { id: 'u4', name: 'Phạm Minh Anh', email: 'anh@example.com', avatarColor: 'bg-blue-600', role: 'ba', isAdmin: false, department: 'BA' }
 ];
-const mk = (id: string, code: string, title: string, status: string, priority: string, a: string, s: number, d: number, est: number, act: number, uc?: string) => ({
+const mk = (id: string, code: string, title: string, status: string, priority: string, a: string, s: number, d: number, est: number, act: number, uc?: string, extra: any = {}) => ({
   id, projectId: 'p1', code, title, description: 'Mô tả chi tiết của nhiệm vụ ' + code + ' để kiểm tra việc cắt dòng trên màn hình nhỏ.', status, priority, assigneeId: a,
-  phase: 'Giai đoạn 3: Phát triển Sprint', estimatedHours: est, actualHours: act, startDate: iso(s), dueDate: iso(d), tags: ['Security', 'Backend'], useCaseId: uc
+  collaboratorIds: [], department: 'dev', phase: 'Giai đoạn 3: Phát triển Sprint', estimatedEffort: est, actualEffort: act, startDate: iso(s), dueDate: iso(d),
+  actualEndDate: status === 'done' ? iso(d - 1) : undefined, progressPercent: status === 'done' ? 100 : status === 'review' ? 70 : status === 'in_progress' ? 40 : 0,
+  assessment: undefined, deliverable: 'Tài liệu thiết kế và mã nguồn đã được review, kèm báo cáo kiểm thử.', notes: 'Phụ thuộc vào đội hạ tầng cấp môi trường.',
+  tags: ['Security', 'Backend'], useCaseId: uc, ...extra
 });
 const tasks = [
-  mk('t1', 'OB-101', 'Tích hợp Module Xác thực sinh trắc học eKYC và CCCD gắn chip', 'in_progress', 'urgent', 'u1', -7, 1, 40, 26, 'uc1'),
-  mk('t2', 'OB-102', 'Xây dựng dịch vụ Chuyển tiền nhanh NAPAS 24/7 qua mã QR VietQR', 'in_progress', 'high', 'u2', -6, 3, 32, 18, 'uc2'),
-  mk('t3', 'OB-103', 'Thực hiện kiểm thử xâm nhập bảo mật chuẩn PCI-DSS', 'todo', 'urgent', 'u2', -3, -1, 35, 0, 'uc1'),
-  mk('t4', 'OB-104', 'Thiết kế giao diện Dark Mode màn hình tổng quan', 'review', 'medium', 'u3', -16, 2, 20, 22),
-  mk('t5', 'OB-105', 'Hoàn thiện tài liệu kiến trúc microservices', 'done', 'high', 'u1', -52, -21, 45, 42, 'uc1'),
-  mk('t6', 'OB-106', 'Tác vụ chưa giao', 'todo', 'low', '', -1, 9, 10, 0)
+  mk('t1', 'OB-101', 'Tích hợp Module Xác thực sinh trắc học eKYC và CCCD gắn chip', 'in_progress', 'urgent', 'u1', -7, 1, 5, 3.5, 'uc1', { collaboratorIds: ['u2', 'u3', 'u4'], department: 'dev', progressPercent: 40, assessment: 'at_risk' }),
+  mk('t2', 'OB-102', 'Xây dựng dịch vụ Chuyển tiền nhanh NAPAS 24/7 qua mã QR VietQR', 'in_progress', 'high', 'u2', -6, 3, 4, 2.5, 'uc2', { collaboratorIds: ['u3'], progressPercent: 75 }),
+  mk('t3', 'OB-103', 'Thực hiện kiểm thử xâm nhập bảo mật chuẩn PCI-DSS', 'todo', 'urgent', 'u2', -3, -1, 4.5, 0, 'uc1', { department: 'tester' }),
+  mk('t4', 'OB-104', 'Thiết kế giao diện Dark Mode màn hình tổng quan', 'review', 'medium', 'u3', -16, 2, 2.5, 2.8, undefined, { department: 'ba', collaboratorIds: ['u1'], progressPercent: 90 }),
+  mk('t5', 'OB-105', 'Hoàn thiện tài liệu kiến trúc microservices', 'done', 'high', 'u1', -52, -21, 6, 5.5, 'uc1', { department: 'pm' }),
+  mk('t6', 'OB-106', 'Tác vụ chưa giao', 'todo', 'low', '', -1, 9, 1, 0, undefined, { department: undefined })
 ];
 const proj = (id: string, code: string, name: string, p: number, status = 'in_progress') => ({
   id, code, name,
@@ -29,19 +33,19 @@ const projects = [
   proj('p3', 'GPDN_DNMB_EVNNPC_QTVT_251004', 'Hệ Thống Y Tế & Khám Bệnh Trực Tuyến TeleHealth', 36, 'planning')
 ];
 const crit = (id: string, d: string, c: boolean) => ({ id, description: d, completed: c });
+const mkUc = (id: string, code: string, title: string, parentId: string | undefined, status: string, pct: number, crits: any[] = []) => ({
+  id, projectId: 'p1', parentId, code, title, actor: 'Khách hàng cá nhân',
+  description: 'Cho phép khách hàng thực hiện nghiệp vụ từ xa thông qua ứng dụng di động.', priority: 'high', status, progressPercent: pct,
+  mainFlow: ['1. Nhập số điện thoại và xác thực OTP', '2. Chụp ảnh 2 mặt CCCD gắn chip', '3. Quét khuôn mặt sinh trắc học'], alternateFlow: ['3a. Ảnh mờ: yêu cầu chụp lại'],
+  acceptanceCriteria: crits, assignedTo: 'u2', updatedAt: iso(-2)
+});
 const useCases = [
-  {
-    id: 'uc1', projectId: 'p1', code: 'UC-OB-01', title: 'Đăng ký tài khoản và Định danh điện tử (eKYC)', actor: 'Khách hàng cá nhân',
-    description: 'Cho phép khách hàng mở mới tài khoản thanh toán từ xa thông qua ứng dụng di động.', priority: 'urgent', status: 'developing', progressPercent: 75,
-    mainFlow: ['1. Nhập số điện thoại và xác thực OTP', '2. Chụp ảnh 2 mặt CCCD gắn chip', '3. Quét khuôn mặt sinh trắc học'], alternateFlow: ['3a. Ảnh mờ: yêu cầu chụp lại'],
-    acceptanceCriteria: [crit('a1', 'Độ chính xác OCR tiếng Việt đạt trên 98%', true), crit('a2', 'Chống giả mạo hình ảnh tĩnh thành công', true), crit('a3', 'Thời gian phản hồi không quá 5 giây', false)],
-    assignedTo: 'u2', updatedAt: iso(-2)
-  },
-  {
-    id: 'uc2', projectId: 'p1', code: 'UC-OB-02', title: 'Chuyển tiền nhanh liên ngân hàng Napas 24/7 & VietQR', actor: 'Khách hàng đã đăng nhập',
-    description: 'Thực hiện lệnh chuyển tiền ngay lập tức.', priority: 'high', status: 'approved', progressPercent: 40, mainFlow: ['1. Chọn tính năng chuyển tiền'], alternateFlow: [],
-    acceptanceCriteria: [crit('b1', 'Tự động tra cứu tên người nhận trong 1.5s', false)], assignedTo: 'u2', updatedAt: iso(-3)
-  }
+  mkUc('uc1', 'UC-OB-01', 'Đăng ký tài khoản và Định danh điện tử (eKYC)', undefined, 'developing', 68),
+  mkUc('uc11', 'UC-OB-01.1', 'Xác thực số điện thoại bằng OTP', 'uc1', 'completed', 100, [crit('a1', 'OTP gửi trong 5 giây', true), crit('a2', 'Khóa sau 3 lần nhập sai', true)]),
+  mkUc('uc12', 'UC-OB-01.2', 'Nhận diện giấy tờ và khuôn mặt', 'uc1', 'developing', 36),
+  mkUc('uc121', 'UC-OB-01.2.1', 'Quét OCR hai mặt CCCD gắn chip', 'uc12', 'developing', 50, [crit('b1', 'Độ chính xác OCR đạt trên 98%', true), crit('b2', 'Phản hồi không quá 5 giây', false)]),
+  mkUc('uc122', 'UC-OB-01.2.2', 'Chống giả mạo khuôn mặt (Liveness)', 'uc12', 'approved', 22, [crit('c1', 'Chống giả mạo ảnh tĩnh', false)]),
+  mkUc('uc2', 'UC-OB-02', 'Chuyển tiền nhanh liên ngân hàng Napas 24/7 & VietQR', undefined, 'approved', 40, [crit('d1', 'Tự động tra cứu tên người nhận trong 1.5s', false)])
 ];
 const items = (p: string, titles: string[]) =>
   titles.map((t, i) => ({
@@ -86,7 +90,7 @@ export const MockProvider = ({ children }: any) => {
       reportSchedules: [{ id: 's1', projectId: 'p1', frequency: 'weekly', enabled: true }],
       reportRuns: [{ id: 'r1', projectId: 'p1', frequency: 'weekly', periodStart: iso(-7), periodEnd: iso(-1), createdAt: new Date().toISOString(), summary }],
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
-      canManageTasks: mgr || role === 'developer', canApproveQuality: mgr || role === 'qa', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
+      canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
   }, [activeTab, activeProjectId, role]);
 

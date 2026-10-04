@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MemberRole, Role } from '../../types';
+import { MEMBER_ROLES, ROLE_BADGES, ROLE_DESCRIPTIONS, ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
 import { WorkloadBar } from './WorkloadPanel';
 import { computeWorkload } from '../../utils/workload';
 import {
@@ -27,7 +28,7 @@ export const TeamView: React.FC = () => {
   const workloadById = new Map(computeWorkload(users, projectTasks).map(w => [w.user.id, w]));
 
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<MemberRole>('developer');
+  const [inviteRole, setInviteRole] = useState<MemberRole>('dev');
   const [inviting, setInviting] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -46,68 +47,47 @@ export const TeamView: React.FC = () => {
   }[] = [
     {
       permission: 'Khởi tạo & Quản lý Dự Án',
-      description: 'Tạo dự án mới, chỉnh sửa thông tin ngân sách, lộ trình và phân công PM',
-      roles: { admin: true, pm: true, developer: false, qa: false, viewer: false }
+      description: 'Tạo dự án mới (chỉ Admin), chỉnh sửa thông tin, lộ trình, phân công PM và thành viên',
+      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
     },
     {
-      permission: 'Phân Công & Tạo Nhiệm Vụ',
-      description: 'Tạo task mới, gán người thực hiện, đặt hạn chót và điều chỉnh độ ưu tiên',
-      roles: { admin: true, pm: true, developer: true, qa: false, viewer: false }
+      permission: 'Tạo & Phân Công Nhiệm Vụ',
+      description: 'Tạo task, chọn người chủ trì/phối hợp, bộ phận, deadline, tiến độ và nỗ lực',
+      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: false }
     },
     {
       permission: 'Cập Nhật Tiến Độ Công Việc',
-      description: 'Kéo thả đổi trạng thái công việc trên bảng Kanban hoặc sửa giờ thực tế',
-      roles: { admin: true, pm: true, developer: true, qa: true, viewer: false }
+      description: 'Kéo thả đổi trạng thái trên Kanban, sửa tiến độ %, nỗ lực thực tế và đánh giá',
+      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: false }
     },
     {
-      permission: 'Phê Duyệt Use Case Nghiệp Vụ',
-      description: 'Chuyển trạng thái Use Case sang Approved hoặc Completed và duyệt tiêu chí',
-      roles: { admin: true, pm: true, developer: false, qa: false, viewer: false }
+      permission: 'Tạo & Sửa Use Case',
+      description: 'Tạo use case theo cây 3 cấp, sửa luồng nghiệp vụ và tiêu chí nghiệm thu',
+      roles: { admin: true, pm: true, dev: true, ba: true, tester: false, viewer: false }
+    },
+    {
+      permission: 'Xác Nhận Tiêu Chí Nghiệm Thu',
+      description: 'Tick hoàn thành tiêu chí nghiệm thu của use case (quyết định tiến độ use case)',
+      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
     },
     {
       permission: 'Thẩm Định Tiêu Chuẩn Quality Gates',
       description: 'Đánh giá Đạt/Chưa đạt các tiêu chuẩn kiểm soát chất lượng DoD từng giai đoạn',
-      roles: { admin: true, pm: true, developer: false, qa: true, viewer: false }
+      roles: { admin: true, pm: true, dev: false, ba: false, tester: true, viewer: false }
     },
     {
       permission: 'Xuất Báo Cáo Định Kỳ & Bàn Giao',
       description: 'Xuất tệp báo cáo PDF/Excel và sao lưu dữ liệu toàn diện của dự án',
-      roles: { admin: true, pm: true, developer: true, qa: true, viewer: true }
+      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: true }
     },
     {
-      permission: 'Kích Hoạt Nhắc Nhở Deadline Tự Động',
-      description: 'Gửi cảnh báo và thông báo tức thì tới thành viên khi công việc đến hạn',
-      roles: { admin: true, pm: true, developer: true, qa: true, viewer: false }
+      permission: 'Gửi Nhắc Nhở Deadline & Tạo Báo Cáo',
+      description: 'Gửi nhắc việc thủ công tới người chủ trì và tạo báo cáo định kỳ ngay',
+      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
     }
   ];
 
-  const roleNameMap: Record<Role, { name: string; badge: string; desc: string }> = {
-    admin: {
-      name: 'Quản Trị Viên (Admin)',
-      badge: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      desc: 'Toàn quyền cấu hình hệ thống, quản lý ngân sách và phê duyệt'
-    },
-    pm: {
-      name: 'Quản Lý Dự Án (PM)',
-      badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      desc: 'Phụ trách tiến độ, điều phối nhân sự và nghiệm thu giai đoạn'
-    },
-    developer: {
-      name: 'Lập Trình Viên (Tech/Dev)',
-      badge: 'bg-blue-100 text-blue-800 border-blue-200',
-      desc: 'Thực thi nhiệm vụ, cập nhật code và tiến độ use case'
-    },
-    qa: {
-      name: 'Kiểm Thử Viên (QA/QC)',
-      badge: 'bg-amber-100 text-amber-800 border-amber-200',
-      desc: 'Đảm bảo chất lượng, kiểm định Quality Gates và báo cáo bug'
-    },
-    viewer: {
-      name: 'Khách Hàng / Quan Sát (Viewer)',
-      badge: 'bg-slate-100 text-slate-700 border-slate-200',
-      desc: 'Chỉ xem bảng điều khiển, tiến độ và xuất báo cáo'
-    }
-  };
+  const matrixRoles: Role[] = ['admin', 'pm', 'dev', 'ba', 'tester', 'viewer'];
 
   return (
     <div className="space-y-6">
@@ -129,7 +109,7 @@ export const TeamView: React.FC = () => {
         </div>
         <p className="text-xs text-indigo-900">
           Bạn đăng nhập là <strong>{currentUser.name}</strong> ({currentUser.email}) với vai trò{' '}
-          <strong>{roleNameMap[currentUser.role].name}</strong>. {roleNameMap[currentUser.role].desc}.
+          <strong>{ROLE_NAMES[currentUser.role]}</strong>. {ROLE_DESCRIPTIONS[currentUser.role]}.
         </p>
 
         {canManageProject && (
@@ -147,10 +127,11 @@ export const TeamView: React.FC = () => {
               onChange={e => setInviteRole(e.target.value as MemberRole)}
               className="px-3 py-2 text-xs border border-indigo-200 rounded-lg bg-white"
             >
-              <option value="pm">PM</option>
-              <option value="developer">Developer</option>
-              <option value="qa">QA / QC</option>
-              <option value="viewer">Viewer</option>
+              {MEMBER_ROLES.map(r => (
+                <option key={r} value={r}>
+                  {ROLE_SHORT[r]}
+                </option>
+              ))}
             </select>
             <button
               type="submit"
@@ -180,11 +161,11 @@ export const TeamView: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-700 font-semibold text-[11px]">
                 <th className="py-3 px-4">Chức Năng & Quyền Hạn</th>
-                <th className="py-3 px-3 text-center w-24">Admin</th>
-                <th className="py-3 px-3 text-center w-24">PM</th>
-                <th className="py-3 px-3 text-center w-24">Developer</th>
-                <th className="py-3 px-3 text-center w-24">QA / QC</th>
-                <th className="py-3 px-3 text-center w-24">Viewer</th>
+                {matrixRoles.map(r => (
+                  <th key={r} className="py-3 px-3 text-center w-20">
+                    {r === 'admin' ? 'Admin' : r === 'viewer' ? 'Quan sát' : ROLE_SHORT[r]}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -194,7 +175,7 @@ export const TeamView: React.FC = () => {
                     <div className="font-semibold text-slate-900">{item.permission}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">{item.description}</div>
                   </td>
-                  {(['admin', 'pm', 'developer', 'qa', 'viewer'] as Role[]).map(role => {
+                  {matrixRoles.map(role => {
                     const hasPerm = item.roles[role];
                     return (
                       <td key={role} className="py-3 px-3 text-center">
@@ -234,7 +215,6 @@ export const TeamView: React.FC = () => {
           {users.map(user => {
             const userTasks = projectTasks.filter(t => t.assigneeId === user.id);
             const userDoneTasks = userTasks.filter(t => t.status === 'done').length;
-            const roleInfo = roleNameMap[user.role];
 
             return (
               <div
@@ -263,10 +243,11 @@ export const TeamView: React.FC = () => {
                           className="text-[10px] font-mono px-1 py-0.5 rounded border border-slate-300 bg-white"
                           aria-label={`Vai trò của ${user.name}`}
                         >
-                          <option value="pm">PM</option>
-                          <option value="developer">DEVELOPER</option>
-                          <option value="qa">QA</option>
-                          <option value="viewer">VIEWER</option>
+                          {MEMBER_ROLES.map(r => (
+                            <option key={r} value={r}>
+                              {ROLE_SHORT[r]}
+                            </option>
+                          ))}
                         </select>
                         <button
                           onClick={() => {
@@ -279,8 +260,8 @@ export const TeamView: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${roleInfo.badge}`}>
-                        {user.role.toUpperCase()}
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${ROLE_BADGES[user.role]}`}>
+                        {ROLE_SHORT[user.role]}
                       </span>
                     )}
                   </div>
@@ -303,9 +284,9 @@ export const TeamView: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Giờ công:</span>
+                    <span>Ngày công:</span>
                     <span className="font-mono tabular-nums text-slate-700">
-                      {workloadById.get(user.id)?.actualHours ?? 0}/{workloadById.get(user.id)?.estimatedHours ?? 0}h
+                      {workloadById.get(user.id)?.actualEffort ?? 0}/{workloadById.get(user.id)?.estimatedEffort ?? 0} ngày
                     </span>
                   </div>
                   {(workloadById.get(user.id)?.overdue ?? 0) > 0 && (

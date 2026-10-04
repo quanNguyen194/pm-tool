@@ -86,6 +86,8 @@ interface AppContextType {
   canManageProject: boolean;
   canManageProjectId: (projectId: string) => boolean;
   canManageTasks: boolean;
+  /** Tạo/sửa/xóa use case + tiêu chí (admin, PM, DEV, BA). */
+  canManageUseCases: boolean;
   canApproveQuality: boolean;
   canApproveUseCase: boolean;
   isViewer: boolean;
@@ -176,6 +178,7 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   projects: ['projects'],
   project_members: ['members', 'projects', 'profiles'],
   tasks: ['tasks'],
+  task_collaborators: ['tasks'],
   use_cases: ['usecases'],
   acceptance_criteria: ['usecases'],
   quality_items: ['quality'],
@@ -215,7 +218,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [projectRows, setProjectRows] = useState<Row[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskRows, setTaskRows] = useState<Row[]>([]);
+  const [collabRows, setCollabRows] = useState<Row[]>([]);
   const [ucRows, setUcRows] = useState<Row[]>([]);
   const [criteriaRows, setCriteriaRows] = useState<Row[]>([]);
   const [qualityDefs, setQualityDefs] = useState<Row[]>([]);
@@ -270,13 +274,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setProjectRows(data || []);
       },
       tasks: async () => {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .order('code');
-        if (error) throw error;
-        setTasks((data || []).map(mapTask));
+        const [tk, co] = await Promise.all([
+          supabase.from('tasks').select('*').order('created_at', { ascending: false }).order('code'),
+          supabase.from('task_collaborators').select('*')
+        ]);
+        if (tk.error) throw tk.error;
+        if (co.error) throw co.error;
+        setTaskRows(tk.data || []);
+        setCollabRows(co.data || []);
       },
       usecases: async () => {
         const [uc, cr] = await Promise.all([
@@ -399,6 +404,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (activeProjectId) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
   }, [activeProjectId]);
 
+  const tasks = useMemo(() => taskRows.map(r => mapTask(r, collabRows)), [taskRows, collabRows]);
   const useCases = useMemo(() => ucRows.map(r => mapUseCase(r, criteriaRows)), [ucRows, criteriaRows]);
   const qualityGates = useMemo(
     () => buildQualityGates(projects.map(p => p.id), qualityDefs, qualityRows),
@@ -468,8 +474,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return r === 'admin' || r === 'pm';
   };
   const canManageProject = role === 'admin' || role === 'pm';
-  const canManageTasks = role === 'admin' || role === 'pm' || role === 'developer';
-  const canApproveQuality = role === 'admin' || role === 'pm' || role === 'qa';
+  const canManageTasks = role === 'admin' || role === 'pm' || role === 'dev' || role === 'ba' || role === 'tester';
+  const canManageUseCases = role === 'admin' || role === 'pm' || role === 'dev' || role === 'ba';
+  const canApproveQuality = role === 'admin' || role === 'pm' || role === 'tester';
   const canApproveUseCase = role === 'admin' || role === 'pm';
   const isViewer = role === 'viewer';
 
@@ -614,20 +621,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     status: t.status,
     priority: t.priority,
     assignee_id: t.assigneeId || null,
+    department: t.department || null,
     phase: t.phase,
-    estimated_hours: t.estimatedHours,
-    actual_hours: t.actualHours,
+    estimated_effort: t.estimatedEffort,
+    actual_effort: t.actualEffort,
     start_date: t.startDate,
     due_date: t.dueDate,
+    progress_percent: t.progressPercent,
+    actual_end_date: t.status === 'done' ? t.actualEndDate || null : null,
+    assessment: t.assessment || null,
+    deliverable_description: t.deliverable,
+    notes: t.notes,
     tags: t.tags || [],
     use_case_id: t.useCaseId || null
   });
+
+  // Người phối hợp: không trùng người chủ trì.
+  const cleanCollaborators = (t: Pick<Task, 'assigneeId' | 'collaboratorIds'>) =>
+    [...new Set(t.collaboratorIds)].filter(id => id && id !== t.assigneeId);
 
   const createTask = (t: Omit<Task, 'id'>) => {
     announce('Đã tạo nhiệm vụ');
     void run(
       async () => {
-        check(await supabase.from('tasks').insert({ project_id: t.projectId, ...taskPayload(t) }));
+        const res = await supabase
+          .from('tasks')
+          .insert({ project_id: t.projectId, ...taskPayload(t) })
+          .select('id')
+          .single();
+        check(res);
+        const ids = cleanCollaborators(t);
+        if (ids.length > 0) {
+          check(await supabase.from('task_collaborators').insert(ids.map(user_id => ({ task_id: res.data!.id, user_id }))));
+        }
       },
       ['tasks', 'projects']
     );
@@ -638,6 +664,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     void run(
       async () => {
         check(await supabase.from('tasks').update(taskPayload(t)).eq('id', t.id));
+
+        // Đồng bộ người phối hợp (thêm mới / bỏ bớt).
+        const wanted = new Set(cleanCollaborators(t));
+        const current = new Set(collabRows.filter(c => c.task_id === t.id).map(c => c.user_id as string));
+        const remove = [...current].filter(id => !wanted.has(id));
+        const add = [...wanted].filter(id => !current.has(id));
+        if (remove.length > 0) {
+          check(await supabase.from('task_collaborators').delete().eq('task_id', t.id).in('user_id', remove));
+        }
+        if (add.length > 0) {
+          check(await supabase.from('task_collaborators').insert(add.map(user_id => ({ task_id: t.id, user_id }))));
+        }
       },
       ['tasks', 'projects']
     );
@@ -655,7 +693,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const moveTaskStatus = (taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status: newStatus } : t)));
+    const today = new Date().toISOString().slice(0, 10);
+    setTaskRows(prev =>
+      prev.map(t =>
+        t.id !== taskId
+          ? t
+          : {
+              ...t,
+              status: newStatus,
+              // Mô phỏng trigger trg_task_sync trong DB.
+              progress_percent: newStatus === 'done' ? 100 : t.status === 'done' && t.progress_percent === 100 ? 90 : t.progress_percent,
+              actual_end_date: newStatus === 'done' ? t.actual_end_date || today : null
+            }
+      )
+    );
     sound.playNotification();
     void run(
       async () => {
@@ -676,7 +727,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     status: u.status,
     main_flow: u.mainFlow,
     alternate_flow: u.alternateFlow || [],
-    assigned_to: u.assignedTo || null
+    assigned_to: u.assignedTo || null,
+    parent_id: u.parentId || null
   });
 
   const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt'>) => {
@@ -973,6 +1025,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         canManageProject,
         canManageProjectId,
         canManageTasks,
+        canManageUseCases,
         canApproveQuality,
         canApproveUseCase,
         isViewer,

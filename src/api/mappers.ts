@@ -79,7 +79,7 @@ export const mapProject = (r: Row, members: MemberRow[]): Project => ({
   memberIds: members.filter(m => m.projectId === r.id).map(m => m.userId)
 });
 
-export const mapTask = (r: Row): Task => ({
+export const mapTask = (r: Row, collaborators: Row[] = []): Task => ({
   id: r.id,
   projectId: r.project_id,
   code: r.code,
@@ -88,11 +88,18 @@ export const mapTask = (r: Row): Task => ({
   status: r.status,
   priority: r.priority,
   assigneeId: r.assignee_id ?? '',
+  collaboratorIds: collaborators.filter(c => c.task_id === r.id).map(c => c.user_id),
+  department: r.department ?? undefined,
   phase: r.phase ?? '',
-  estimatedHours: Number(r.estimated_hours ?? 0),
-  actualHours: Number(r.actual_hours ?? 0),
+  estimatedEffort: Number(r.estimated_effort ?? 0),
+  actualEffort: Number(r.actual_effort ?? 0),
   startDate: r.start_date,
   dueDate: r.due_date,
+  actualEndDate: r.actual_end_date ?? undefined,
+  progressPercent: r.progress_percent ?? 0,
+  assessment: r.assessment ?? undefined,
+  deliverable: r.deliverable_description ?? '',
+  notes: r.notes ?? '',
   tags: r.tags ?? [],
   useCaseId: r.use_case_id ?? undefined
 });
@@ -100,6 +107,7 @@ export const mapTask = (r: Row): Task => ({
 export const mapUseCase = (r: Row, criteria: Row[]): UseCase => ({
   id: r.id,
   projectId: r.project_id,
+  parentId: r.parent_id ?? undefined,
   code: r.code,
   title: r.title,
   actor: r.actor ?? '',
