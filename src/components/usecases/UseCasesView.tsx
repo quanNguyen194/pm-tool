@@ -182,7 +182,7 @@ export const UseCasesView: React.FC = () => {
     const ucp = roots.reduce((s, n) => s + n.ucp, 0);
     const totalWeight = roots.reduce((s, n) => s + n.weight, 0);
     const progress = totalWeight ? Math.round(roots.reduce((s, n) => s + n.avgProgress * n.weight, 0) / totalWeight) : 0;
-    return { leafCount, done, ucp, progress, modules: roots.length };
+    return { leafCount, done, ucp, progress, modules: roots.filter(n => !(n.childCount > 0 && n.leafCount === 0)).length };
   }, [nodes]);
 
   // Khi lọc/tìm kiếm: giữ use case khớp và các nhóm cha của nó (để thấy vị trí trong cây).
