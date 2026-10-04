@@ -114,6 +114,10 @@ function overflowAudit() {
       if (clickText('button', 'Thêm Nhiệm Vụ')) {
         await wait(400);
         res['tasks:form'] = snap();
+        if (clickText('button', 'Không liên kết')) {
+          await wait(300);
+          res['tasks:chọn-use-case'] = snap();
+        }
         clickText('button', 'Hủy bỏ');
         await wait(300);
       }
@@ -127,9 +131,21 @@ function overflowAudit() {
         await wait(400);
         res['usecases:mở-chi-tiết'] = snap();
       }
+      if (clickText('button', 'Mở hết')) {
+        await wait(500);
+        res['usecases:mở-hết'] = snap();
+        clickText('button', 'Thu gọn');
+        await wait(300);
+      }
       if (clickText('button', 'Thêm Use Case')) {
         await wait(400);
         res['usecases:form'] = snap();
+        clickText('button', 'Hủy bỏ');
+        await wait(300);
+      }
+      if (clickText('button', 'Thêm Module')) {
+        await wait(400);
+        res['usecases:form-module'] = snap();
         clickText('button', 'Hủy bỏ');
         await wait(300);
       }

@@ -562,40 +562,51 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {flattenUseCaseTree(projectUseCases).map(({ useCase: uc, depth }) => {
-                const totalCriteria = uc.acceptanceCriteria.length;
-                const completedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
+              {flattenUseCaseTree(projectUseCases)
+                .filter(n => n.depth === 1)
+                .map(({ useCase: uc, childCount, leafCount, ucp, doneCount, avgProgress }) => {
+                  const isParent = childCount > 0;
+                  const progress = isParent ? avgProgress : uc.progressPercent;
+                  const totalCriteria = uc.acceptanceCriteria.length;
+                  const completedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
 
-                return (
-                  <div
-                    key={uc.id}
-                    className="p-3 rounded-lg border border-slate-100 bg-slate-50/50"
-                    style={{ marginLeft: (depth - 1) * 14 }}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-indigo-600">[{uc.code}]</span>
-                        <span className="text-xs font-semibold text-slate-800">{uc.title}</span>
+                  return (
+                    <div key={uc.id} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-xs font-bold text-indigo-600 shrink-0">[{uc.code}]</span>
+                          <span className="text-xs font-semibold text-slate-800 truncate">{uc.title}</span>
+                        </div>
+                        <span className="font-mono text-xs font-bold text-slate-700 shrink-0">{progress}%</span>
                       </div>
-                      <span className="font-mono text-xs font-bold text-slate-700">{uc.progressPercent}%</span>
-                    </div>
 
-                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-2">
-                      <div
-                        className="bg-indigo-600 h-full rounded-full transition-all"
-                        style={{ width: `${uc.progressPercent}%` }}
-                      />
-                    </div>
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-2">
+                        <div className="bg-indigo-600 h-full rounded-full transition-all" style={{ width: `${progress}%` }} />
+                      </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Tác nhân: <strong className="text-slate-700">{uc.actor}</strong></span>
-                      <span>
-                        Tiêu chí nghiệm thu: <strong className="text-slate-700 font-mono">{completedCriteria}/{totalCriteria}</strong>
-                      </span>
+                      <div className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                        {isParent ? (
+                          <>
+                            <span>
+                              <strong className="text-slate-700 font-mono">{leafCount}</strong> use case ·{' '}
+                              <strong className="text-slate-700 font-mono">{ucp}</strong> UCP
+                            </span>
+                            <span>
+                              Hoàn thành: <strong className="text-slate-700 font-mono">{doneCount}/{leafCount}</strong>
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="truncate">Tác nhân: <strong className="text-slate-700">{uc.actor}</strong></span>
+                            <span className="shrink-0">
+                              Tiêu chí nghiệm thu: <strong className="text-slate-700 font-mono">{completedCriteria}/{totalCriteria}</strong>
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
 

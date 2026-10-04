@@ -74,12 +74,23 @@ export interface Task {
 }
 
 export type UseCaseStatus = 'draft' | 'in_review' | 'approved' | 'developing' | 'tested' | 'completed';
+/** group = module/nhóm chức năng (chỉ để gom), usecase = use case thật. */
+export type UseCaseKind = 'group' | 'usecase';
+export type UseCaseComplexity = 'simple' | 'medium' | 'complex';
 
 export interface UseCase {
   id: string;
   projectId: string;
   /** Use case cha (phân tối đa 3 cấp). */
   parentId?: string;
+  kind: UseCaseKind;
+  /** Nhãn phân loại (Web, Mobile, Tích hợp dữ liệu...). */
+  tags: string[];
+  complexity?: UseCaseComplexity;
+  /** Số transaction của use case. */
+  transactions?: number;
+  /** Mức độ cần thiết (B, M, T). */
+  necessity: string;
   code: string;
   title: string;
   actor: string;

@@ -26,7 +26,7 @@ import { GanttTimeline } from './GanttTimeline';
 import { AssessmentBadge, OwnerAvatars, TaskProgress } from './TaskParts';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS, ASSESSMENT_STYLES, effectiveAssessment, suggestAssessment } from '../../utils/taskAssessment';
 import { DEPARTMENT_LABELS, ROLE_SHORT } from '../../utils/roles';
-import { flattenUseCaseTree } from '../../utils/useCaseTree';
+import { UseCasePicker } from './UseCasePicker';
 
 type SortKey = 'code' | 'title' | 'status' | 'priority' | 'assignee' | 'progress' | 'effort' | 'due';
 const STATUS_ORDER: Record<TaskStatus, number> = { todo: 0, in_progress: 1, review: 2, done: 3 };
@@ -103,7 +103,6 @@ export const TasksView: React.FC = () => {
 
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   const useCaseCodeMap = useMemo(() => new Map(projectUseCases.map(u => [u.id, u.code])), [projectUseCases]);
-  const useCaseNodes = useMemo(() => flattenUseCaseTree(projectUseCases), [projectUseCases]);
   const detailTask = detailId ? projectTasks.find(t => t.id === detailId) || null : null;
 
   const roleDepartment = (): Department | '' =>
@@ -1268,19 +1267,11 @@ export const TasksView: React.FC = () => {
                 </div>
                 <div>
                   <label className={labelCls}>Liên Kết Use Case</label>
-                  <select
+                  <UseCasePicker
                     value={formData.useCaseId}
-                    onChange={e => setFormData({ ...formData, useCaseId: e.target.value })}
-                    className={`${inputCls} bg-white`}
-                  >
-                    <option value="">-- Không liên kết --</option>
-                    {useCaseNodes.map(n => (
-                      <option key={n.useCase.id} value={n.useCase.id}>
-                        {'  '.repeat(n.depth - 1)}
-                        {n.depth > 1 ? '└ ' : ''}[{n.useCase.code}] {n.useCase.title}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={id => setFormData({ ...formData, useCaseId: id })}
+                    useCases={projectUseCases}
+                  />
                 </div>
               </div>
 

@@ -1,19 +1,50 @@
-import type { UseCase } from '../types';
+import type { UseCase, UseCaseComplexity } from '../types';
 
 export const MAX_USE_CASE_DEPTH = 3;
+
+/** Trọng số điểm use case (UCP) theo độ phức tạp. */
+export const COMPLEXITY_WEIGHT: Record<UseCaseComplexity, number> = { simple: 5, medium: 10, complex: 15 };
+export const COMPLEXITY_LABEL: Record<UseCaseComplexity, string> = {
+  simple: 'Đơn giản',
+  medium: 'Trung bình',
+  complex: 'Phức tạp'
+};
+// Chữ đậm (700+) để đủ tương phản ở cả chế độ sáng và tối.
+export const COMPLEXITY_STYLE: Record<UseCaseComplexity, string> = {
+  simple: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  medium: 'bg-blue-50 text-blue-700 border-blue-200',
+  complex: 'bg-amber-50 text-amber-700 border-amber-200'
+};
 
 export interface UseCaseNode {
   useCase: UseCase;
   /** 1 = gốc, 2 = con, 3 = cháu. */
   depth: number;
   childCount: number;
-  /** Số use case lá nằm dưới nhánh này (nhánh lá = 1). */
+  /** Số use case thật (kind = usecase, không có con) nằm dưới nhánh này; use case lá thì tính chính nó. */
   leafCount: number;
+  /** Tổng điểm UCP của các use case lá bên dưới. */
+  ucp: number;
+  /** Số use case lá đã hoàn thành / kiểm thử. */
+  doneCount: number;
+  /** Tiến độ trung bình của các use case lá bên dưới (làm tròn). */
+  avgProgress: number;
 }
 
 const byCode = (a: UseCase, b: UseCase) => a.code.localeCompare(b.code, 'vi', { numeric: true });
+const isCounted = (u: UseCase) => u.kind !== 'group';
 
-/** Danh sách use case theo thứ tự cây (cha trước, con ngay sau, sắp theo mã tự nhiên). Use case mồ côi coi như gốc. */
+/** Số thứ tự trong mã dạng UC-123 (theo Excel); NaN nếu mã không theo dạng đó. */
+const ucNumber = (u: UseCase) => {
+  const m = /^UC-(\d+)$/.exec(u.code);
+  return m ? Number(m[1]) : NaN;
+};
+
+/**
+ * Danh sách use case theo thứ tự cây (cha trước, con ngay sau).
+ * Anh em được xếp theo số UC nhỏ nhất trong nhánh (giữ đúng thứ tự file Excel), còn lại theo mã tự nhiên.
+ * Use case mồ côi coi như gốc.
+ */
 export function flattenUseCaseTree(useCases: UseCase[]): UseCaseNode[] {
   const ids = new Set(useCases.map(u => u.id));
   const children = new Map<string, UseCase[]>();
@@ -28,17 +59,44 @@ export function flattenUseCaseTree(useCases: UseCase[]): UseCaseNode[] {
     }
   });
 
-  const leafCount = (u: UseCase, guard = 0): number => {
-    const kids = children.get(u.id);
-    if (!kids || kids.length === 0 || guard > MAX_USE_CASE_DEPTH) return 1;
-    return kids.reduce((s, k) => s + leafCount(k, guard + 1), 0);
+  interface Agg { leaves: UseCase[]; minNo: number }
+  const memo = new Map<string, Agg>();
+  const aggregate = (u: UseCase, guard = 0): Agg => {
+    const hit = memo.get(u.id);
+    if (hit) return hit;
+    const kids = children.get(u.id) || [];
+    let res: Agg;
+    if (kids.length === 0 || guard > MAX_USE_CASE_DEPTH) {
+      const n = ucNumber(u);
+      res = { leaves: isCounted(u) ? [u] : [], minNo: Number.isNaN(n) ? Infinity : n };
+    } else {
+      const parts = kids.map(k => aggregate(k, guard + 1));
+      res = { leaves: parts.flatMap(p => p.leaves), minNo: Math.min(...parts.map(p => p.minNo)) };
+    }
+    memo.set(u.id, res);
+    return res;
   };
+
+  const sortSiblings = (list: UseCase[]) =>
+    [...list].sort((a, b) => {
+      const d = aggregate(a).minNo - aggregate(b).minNo;
+      return Number.isNaN(d) || d === 0 ? byCode(a, b) : d;
+    });
 
   const out: UseCaseNode[] = [];
   const walk = (list: UseCase[], depth: number) => {
-    [...list].sort(byCode).forEach(u => {
+    sortSiblings(list).forEach(u => {
       const kids = children.get(u.id) || [];
-      out.push({ useCase: u, depth, childCount: kids.length, leafCount: leafCount(u) });
+      const { leaves } = aggregate(u);
+      out.push({
+        useCase: u,
+        depth,
+        childCount: kids.length,
+        leafCount: leaves.length,
+        ucp: leaves.reduce((s, l) => s + (l.complexity ? COMPLEXITY_WEIGHT[l.complexity] : 0), 0),
+        doneCount: leaves.filter(l => l.status === 'completed' || l.status === 'tested').length,
+        avgProgress: leaves.length ? Math.round(leaves.reduce((s, l) => s + l.progressPercent, 0) / leaves.length) : 0
+      });
       if (depth < MAX_USE_CASE_DEPTH) walk(kids, depth + 1);
     });
   };
@@ -46,10 +104,10 @@ export function flattenUseCaseTree(useCases: UseCase[]): UseCaseNode[] {
   return out;
 }
 
-/** Chỉ các use case lá: dùng để đếm/tính tiến độ (use case cha chỉ tổng hợp từ con). */
+/** Chỉ các use case thật ở lá: dùng để đếm/tính tiến độ (use case cha và nhóm chỉ tổng hợp từ con). */
 export function leafUseCases(useCases: UseCase[]): UseCase[] {
   const parents = new Set(useCases.map(u => u.parentId).filter(Boolean));
-  return useCases.filter(u => !parents.has(u.id));
+  return useCases.filter(u => !parents.has(u.id) && isCounted(u));
 }
 
 /** Độ sâu (1..3) của một use case; 0 nếu không tìm thấy. */
@@ -87,20 +145,39 @@ export function descendantIds(id: string, useCases: UseCase[]): Set<string> {
   return out;
 }
 
-/** Gợi ý mã cho use case mới: con của UC-01 -> UC-01.1, UC-01.2...; gốc -> UC-01, UC-02... */
-export function suggestUseCaseCode(parent: UseCase | undefined, useCases: UseCase[]): string {
+/** Chuỗi tên cha → con để làm ngữ cảnh (vd "Quản lý định danh › Cấu hình thông số"). */
+export function useCasePath(uc: UseCase, byId: Map<string, UseCase>): string {
+  const names: string[] = [];
+  let cur = uc.parentId ? byId.get(uc.parentId) : undefined;
+  while (cur && names.length < MAX_USE_CASE_DEPTH) {
+    names.unshift(cur.title);
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+  return names.join(' › ');
+}
+
+/**
+ * Gợi ý mã cho nút mới.
+ * - Dự án đã có mã dạng UC-001 (nhập từ Excel): use case mới nối tiếp số lớn nhất (UC-185...).
+ * - Module/nhóm: con của W-I -> W-I.1...; gốc -> MOD-1, MOD-2...
+ * - Còn lại: con của UC-01 -> UC-01.1; gốc -> UC-01, UC-02...
+ */
+export function suggestUseCaseCode(
+  parent: UseCase | undefined,
+  useCases: UseCase[],
+  kind: 'group' | 'usecase' = 'usecase'
+): string {
   const taken = new Set(useCases.map(u => u.code));
-  if (parent) {
-    const kids = useCases.filter(u => u.parentId === parent.id).length;
-    for (let n = kids + 1; n < kids + 1000; n++) {
-      const code = `${parent.code}.${n}`;
-      if (!taken.has(code)) return code;
-    }
+  const free = (make: (n: number) => string, from: number) => {
+    for (let n = from; n < from + 5000; n++) if (!taken.has(make(n))) return make(n);
+    return make(Date.now());
+  };
+  if (kind === 'group') {
+    if (parent) return free(n => `${parent.code}.${n}`, useCases.filter(u => u.parentId === parent.id).length + 1);
+    return free(n => `MOD-${n}`, useCases.filter(u => !u.parentId && u.kind === 'group').length + 1);
   }
-  const roots = useCases.filter(u => !u.parentId).length;
-  for (let n = roots + 1; n < roots + 1000; n++) {
-    const code = `UC-${String(n).padStart(2, '0')}`;
-    if (!taken.has(code)) return code;
-  }
-  return 'UC-' + Date.now();
+  const numbered = useCases.map(ucNumber).filter(n => !Number.isNaN(n));
+  if (numbered.length > 0) return free(n => `UC-${String(n).padStart(3, '0')}`, Math.max(...numbered) + 1);
+  if (parent) return free(n => `${parent.code}.${n}`, useCases.filter(u => u.parentId === parent.id).length + 1);
+  return free(n => `UC-${String(n).padStart(2, '0')}`, useCases.filter(u => !u.parentId).length + 1);
 }

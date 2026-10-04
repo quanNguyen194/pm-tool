@@ -728,7 +728,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     main_flow: u.mainFlow,
     alternate_flow: u.alternateFlow || [],
     assigned_to: u.assignedTo || null,
-    parent_id: u.parentId || null
+    parent_id: u.parentId || null,
+    kind: u.kind,
+    tags: u.tags,
+    complexity: u.complexity || null,
+    transactions: u.transactions ?? null,
+    necessity: u.necessity || 'B'
   });
 
   const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt'>) => {

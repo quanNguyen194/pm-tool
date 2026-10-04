@@ -111,6 +111,11 @@ export function exportTasksToCSV(project: Project, tasks: Task[], users: User[],
 export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
   const headers = [
     'Cấp',
+    'Loại',
+    'Nhãn',
+    'Độ Phức Tạp',
+    'Số Transaction',
+    'Mức Cần Thiết',
     'Mã Use Case',
     'Mã Use Case Cha',
     'Tên Chức Năng',
@@ -137,8 +142,14 @@ export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
     const totalCriteria = uc.acceptanceCriteria.length;
     const passedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
 
+    const complexityMap: Record<string, string> = { simple: 'Đơn giản', medium: 'Trung bình', complex: 'Phức tạp' };
     return [
       depth,
+      uc.kind === 'group' ? 'Module/Nhóm' : 'Use case',
+      uc.tags.join('; '),
+      (uc.complexity && complexityMap[uc.complexity]) || '',
+      uc.transactions ?? '',
+      uc.necessity,
       uc.code,
       (uc.parentId && codeById.get(uc.parentId)) || '',
       uc.title,

@@ -34,7 +34,7 @@ const projects = [
 ];
 const crit = (id: string, d: string, c: boolean) => ({ id, description: d, completed: c });
 const mkUc = (id: string, code: string, title: string, parentId: string | undefined, status: string, pct: number, crits: any[] = []) => ({
-  id, projectId: 'p1', parentId, code, title, actor: 'Khách hàng cá nhân',
+  id, projectId: 'p1', parentId, kind: 'usecase', tags: ['Web'], complexity: 'medium', transactions: 4, necessity: 'B', code, title, actor: 'Khách hàng cá nhân',
   description: 'Cho phép khách hàng thực hiện nghiệp vụ từ xa thông qua ứng dụng di động.', priority: 'high', status, progressPercent: pct,
   mainFlow: ['1. Nhập số điện thoại và xác thực OTP', '2. Chụp ảnh 2 mặt CCCD gắn chip', '3. Quét khuôn mặt sinh trắc học'], alternateFlow: ['3a. Ảnh mờ: yêu cầu chụp lại'],
   acceptanceCriteria: crits, assignedTo: 'u2', updatedAt: iso(-2)
@@ -47,6 +47,24 @@ const useCases = [
   mkUc('uc122', 'UC-OB-01.2.2', 'Chống giả mạo khuôn mặt (Liveness)', 'uc12', 'approved', 22, [crit('c1', 'Chống giả mạo ảnh tĩnh', false)]),
   mkUc('uc2', 'UC-OB-02', 'Chuyển tiền nhanh liên ngân hàng Napas 24/7 & VietQR', undefined, 'approved', 40, [crit('d1', 'Tự động tra cứu tên người nhận trong 1.5s', false)])
 ];
+const mkGroup = (id: string, code: string, title: string, parentId: string | undefined, tag: string) => ({
+  ...mkUc(id, code, title, parentId, 'draft', 0), kind: 'group', tags: [tag], actor: '', description: '', mainFlow: [], alternateFlow: [], complexity: undefined, transactions: undefined
+});
+const bulk: any[] = [
+  mkGroup('m1', 'W-I', 'Quản lý định danh vật tư, thiết bị', undefined, 'Web'),
+  mkGroup('m11', 'W-I.1', 'Cấu hình thông số định danh vật tư, thiết bị với tên dài để thử cắt chữ trên màn hình nhỏ', 'm1', 'Web'),
+  mkGroup('m2', 'TH', 'Tích hợp dữ liệu', undefined, 'Tích hợp dữ liệu'),
+  mkGroup('m21', 'TH-I', 'Lấy dữ liệu từ Kho', 'm2', 'Tích hợp dữ liệu')
+];
+for (let i = 1; i <= 60; i++) {
+  const num = String(100 + i).padStart(3, '0');
+  const inWeb = i <= 20;
+  bulk.push({
+    ...mkUc('b' + i, 'UC-' + num, (inWeb ? 'Quản lý cấu hình danh mục số ' : 'Lấy dữ liệu thiết bị - Thông số vận hành số ') + i, inWeb ? 'm11' : 'm21', i % 7 === 0 ? 'completed' : 'draft', i % 7 === 0 ? 100 : 0),
+    tags: [inWeb ? 'Web' : 'Tích hợp dữ liệu'], complexity: ['simple', 'medium', 'complex'][i % 3 === 0 ? 2 : i % 2], transactions: (i % 5) + 1
+  });
+}
+useCases.push(...bulk);
 const items = (p: string, titles: string[]) =>
   titles.map((t, i) => ({
     id: p + i, title: t, description: 'Mô tả tiêu chuẩn ' + (i + 1) + ' của giai đoạn.', isMandatory: i % 3 !== 2, isPassed: p === "phase_1" ? true : i % 2 === 0,
