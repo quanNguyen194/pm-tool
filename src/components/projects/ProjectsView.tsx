@@ -157,7 +157,7 @@ export const ProjectsView: React.FC = () => {
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
             >
               <FolderPlus className="w-4 h-4" />
-              <span>+ Tạo Dự Án Mới</span>
+              <span>Tạo Dự Án Mới</span>
             </button>
           ) : (
             <div className="text-xs text-slate-500 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">

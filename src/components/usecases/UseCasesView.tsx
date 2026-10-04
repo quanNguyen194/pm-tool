@@ -186,7 +186,7 @@ export const UseCasesView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Thêm Use Case</span>
+              <span>Thêm Use Case</span>
             </button>
           )}
         </div>
