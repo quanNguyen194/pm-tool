@@ -114,6 +114,9 @@ export const mapUseCase = (r: Row, criteria: Row[], stages: Row[] = []): UseCase
   complexity: r.complexity ?? undefined,
   transactions: r.transactions ?? undefined,
   necessity: r.necessity ?? 'B',
+  origin: r.origin === 'added' || r.origin === 'adjusted' ? r.origin : 'contract',
+  changeNote: r.change_note ?? '',
+  agreedWhen: r.agreed_when ?? '',
   stagesDone: stages
     .filter(s => s.use_case_id === r.id)
     .map(s => ({ stage: s.stage, doneBy: s.done_by ?? undefined, doneAt: s.done_at })),

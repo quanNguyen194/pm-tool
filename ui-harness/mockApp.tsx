@@ -34,7 +34,7 @@ const projects = [
 ];
 const crit = (id: string, d: string, c: boolean) => ({ id, description: d, completed: c });
 const mkUc = (id: string, code: string, title: string, parentId: string | undefined, status: string, pct: number, crits: any[] = []) => ({
-  id, projectId: 'p1', parentId, kind: 'usecase', tags: ['Web'], complexity: 'medium', transactions: 4, necessity: 'B', stagesDone: [] as any[], code, title, actor: 'Khách hàng cá nhân',
+  id, projectId: 'p1', parentId, kind: 'usecase', tags: ['Web'], complexity: 'medium', transactions: 4, necessity: 'B', stagesDone: [] as any[], origin: 'contract', changeNote: '', agreedWhen: '', code, title, actor: 'Khách hàng cá nhân',
   description: 'Cho phép khách hàng thực hiện nghiệp vụ từ xa thông qua ứng dụng di động.', priority: 'high', status, progressPercent: pct,
   mainFlow: ['1. Nhập số điện thoại và xác thực OTP', '2. Chụp ảnh 2 mặt CCCD gắn chip', '3. Quét khuôn mặt sinh trắc học'], alternateFlow: ['3a. Ảnh mờ: yêu cầu chụp lại'],
   acceptanceCriteria: crits, assignedTo: 'u2', updatedAt: iso(-2)
@@ -68,6 +68,16 @@ const stageOf = (stages: string[]) => stages.map(stage => ({ stage, doneBy: 'u2'
 bulk.forEach((u, i) => {
   if (u.kind === 'usecase') u.stagesDone = stageOf(['analysis', 'design', 'coding', 'testing', 'acceptance'].slice(0, i % 6));
 });
+bulk.forEach((u, i) => {
+  if (u.kind !== 'usecase') return;
+  if (i % 9 === 0) Object.assign(u, { origin: 'added', changeNote: 'Bổ sung theo yêu cầu của Ban 10 sau khi khảo sát nghiệp vụ', agreedWhen: 'Sau khi khảo sát nghiệp vụ vào tháng 01/2026' });
+  if (i % 17 === 0) Object.assign(u, { origin: 'adjusted', changeNote: 'Theo hợp đồng: 5 transaction (Trung bình) → sau điều chỉnh: 9 transaction (Phức tạp). Tăng 4 transaction.' });
+});
+bulk.push(
+  { ...mkUc('x1', 'KTH-001', 'Quản lý cấu hình dữ liệu ghi vào thẻ RFID', 'm11', 'cancelled', 0), tags: ['Web'], changeNote: 'Khách hàng không có nhu cầu thực hiện phương thức định danh bằng RFID', agreedWhen: 'Sau khi khảo sát nghiệp vụ vào tháng 01/2026' },
+  mkGroup('mx', 'KTH-W', 'Không thực hiện (Web)', undefined, 'Web'),
+  { ...mkUc('x2', 'KTH-002', 'Quản lý thanh lý', 'mx', 'cancelled', 0), tags: ['Web'], changeNote: 'Khách hàng không có nhu cầu quản lý thanh lý VTTB trên hệ thống' }
+);
 useCases.push(...bulk);
 const items = (p: string, titles: string[]) =>
   titles.map((t, i) => ({

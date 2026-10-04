@@ -245,7 +245,7 @@ export const ReportsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {flattenUseCaseTree(projectUseCases).map(({ useCase: uc, depth }) => (
+                {flattenUseCaseTree(projectUseCases.filter(u => u.status !== 'cancelled')).map(({ useCase: uc, depth }) => (
                   <tr key={uc.id}>
                     <td className="py-2 px-3 font-mono font-bold text-indigo-600">{uc.code}</td>
                     <td className="py-2 px-3 font-medium text-slate-900" style={{ paddingLeft: 12 + (depth - 1) * 16 }}>{uc.title}</td>

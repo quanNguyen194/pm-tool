@@ -563,7 +563,8 @@ export const DashboardView: React.FC = () => {
 
             <div className="space-y-3">
               {flattenUseCaseTree(projectUseCases)
-                .filter(n => n.depth === 1)
+                // Chỉ module gốc còn use case hiệu lực (bỏ module chỉ chứa use case "Không thực hiện")
+                .filter(n => n.depth === 1 && !(n.childCount > 0 && n.leafCount === 0))
                 .map(({ useCase: uc, childCount, leafCount, ucp, doneCount, avgProgress }) => {
                   const isParent = childCount > 0;
                   const progress = isParent ? avgProgress : uc.progressPercent;

@@ -750,7 +750,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     tags: u.tags,
     complexity: u.complexity || null,
     transactions: u.transactions ?? null,
-    necessity: u.necessity || 'B'
+    necessity: u.necessity || 'B',
+    origin: u.origin,
+    change_note: u.changeNote,
+    agreed_when: u.agreedWhen
   });
 
   const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt' | 'stagesDone'>) => {

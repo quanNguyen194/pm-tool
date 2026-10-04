@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { UseCase, UseCaseComplexity, UseCaseKind, UseCaseStatus, Priority } from '../../types';
+import { UseCase, UseCaseComplexity, UseCaseKind, UseCaseOrigin, UseCaseStatus, Priority } from '../../types';
 import {
   Boxes,
   Plus,
@@ -38,7 +38,20 @@ const statusMap: Record<UseCaseStatus, { label: string; color: string }> = {
   approved: { label: 'Đã Phê Duyệt', color: 'bg-blue-100 text-blue-800' },
   developing: { label: 'Đang Phát Triển', color: 'bg-indigo-100 text-indigo-800' },
   tested: { label: 'Đã Kiểm Thử QA', color: 'bg-purple-100 text-purple-800' },
-  completed: { label: 'Đã Nghiệm Thu', color: 'bg-emerald-100 text-emerald-800' }
+  completed: { label: 'Đã Nghiệm Thu', color: 'bg-emerald-100 text-emerald-800' },
+  cancelled: { label: 'Không Thực Hiện', color: 'bg-slate-200 text-slate-700' }
+};
+
+const ORIGIN_LABEL: Record<UseCaseOrigin, string> = {
+  contract: 'Theo hợp đồng',
+  added: 'Bổ sung',
+  adjusted: 'Điều chỉnh'
+};
+// Chỉ hiện huy hiệu cho bổ sung / điều chỉnh (use case theo hợp đồng là mặc định nên không cần).
+const ORIGIN_STYLE: Record<UseCaseOrigin, string> = {
+  contract: '',
+  added: 'bg-blue-50 text-blue-700 border-blue-200',
+  adjusted: 'bg-amber-50 text-amber-700 border-amber-200'
 };
 
 // Thụt lề theo cấp (hẹp hơn trên điện thoại).
@@ -69,6 +82,9 @@ interface FormState {
   complexity: UseCaseComplexity | '';
   transactions: string;
   necessity: string;
+  origin: UseCaseOrigin;
+  changeNote: string;
+  agreedWhen: string;
 }
 
 export const UseCasesView: React.FC = () => {
@@ -91,6 +107,8 @@ export const UseCasesView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTag, setFilterTag] = useState<string>('all');
   const [filterComplexity, setFilterComplexity] = useState<string>('all');
+  const [filterOrigin, setFilterOrigin] = useState<string>('all');
+  const [showCancelled, setShowCancelled] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Các nút đang mở (hiện con). null = mặc định theo kích thước cây.
   const [openNodes, setOpenNodes] = useState<Set<string> | null>(null);
@@ -117,7 +135,10 @@ export const UseCasesView: React.FC = () => {
     tags: '',
     complexity: '',
     transactions: '',
-    necessity: 'B'
+    necessity: 'B',
+    origin: 'contract',
+    changeNote: '',
+    agreedWhen: ''
   });
 
   const nodes = useMemo(() => flattenUseCaseTree(projectUseCases), [projectUseCases]);
@@ -126,8 +147,18 @@ export const UseCasesView: React.FC = () => {
     () => [...new Set(projectUseCases.flatMap(u => u.tags))].sort((a, b) => a.localeCompare(b, 'vi')),
     [projectUseCases]
   );
+  const cancelledCount = useMemo(
+    () => projectUseCases.filter(u => u.status === 'cancelled').length,
+    [projectUseCases]
+  );
+  // Đang lọc đúng trạng thái "Không thực hiện" thì phải hiện chúng.
+  const cancelledVisible = showCancelled || filterStatus === 'cancelled';
   const isFiltering =
-    searchQuery.trim() !== '' || filterStatus !== 'all' || filterTag !== 'all' || filterComplexity !== 'all';
+    searchQuery.trim() !== '' ||
+    filterStatus !== 'all' ||
+    filterTag !== 'all' ||
+    filterComplexity !== 'all' ||
+    filterOrigin !== 'all';
 
   const stagesModel = activeProject.progressModel === 'stages';
   const tickableStages = STAGES.filter(st => canTickStage(st.key));
@@ -177,7 +208,9 @@ export const UseCasesView: React.FC = () => {
           textMatch(uc) &&
           (filterStatus === 'all' || uc.status === filterStatus) &&
           (filterTag === 'all' || uc.tags.includes(filterTag)) &&
-          (filterComplexity === 'all' || uc.complexity === filterComplexity);
+          (filterComplexity === 'all' || uc.complexity === filterComplexity) &&
+          (filterOrigin === 'all' || uc.origin === filterOrigin) &&
+          (cancelledVisible || uc.status !== 'cancelled');
         if (!ok) return;
         let cur: UseCase | undefined = uc;
         while (cur && !keep.has(cur.id)) {
@@ -189,6 +222,11 @@ export const UseCasesView: React.FC = () => {
     }
 
     return nodes.filter(n => {
+      // Use case "Không thực hiện" và nhóm chỉ chứa chúng được ẩn mặc định.
+      if (!cancelledVisible) {
+        if (n.useCase.status === 'cancelled' && n.useCase.kind !== 'group') return false;
+        if (n.useCase.kind === 'group' && n.childCount > 0 && n.leafCount === 0) return false;
+      }
       let cur = n.useCase.parentId ? byId.get(n.useCase.parentId) : undefined;
       while (cur) {
         if (!effectiveOpen.has(cur.id)) return false;
@@ -196,7 +234,19 @@ export const UseCasesView: React.FC = () => {
       }
       return true;
     });
-  }, [nodes, byId, projectUseCases, searchQuery, filterStatus, filterTag, filterComplexity, isFiltering, effectiveOpen]);
+  }, [
+    nodes,
+    byId,
+    projectUseCases,
+    searchQuery,
+    filterStatus,
+    filterTag,
+    filterComplexity,
+    filterOrigin,
+    cancelledVisible,
+    isFiltering,
+    effectiveOpen
+  ]);
 
   const toggleOpen = (id: string) =>
     setOpenNodes(() => {
@@ -212,6 +262,7 @@ export const UseCasesView: React.FC = () => {
     setFilterStatus('all');
     setFilterTag('all');
     setFilterComplexity('all');
+    setFilterOrigin('all');
   };
 
   // Use case lá có thể chọn: đang lọc thì chỉ lấy các use case khớp, không thì lấy tất cả.
@@ -256,7 +307,10 @@ export const UseCasesView: React.FC = () => {
       tags: parent?.tags.join(', ') || '',
       complexity: kind === 'usecase' ? 'medium' : '',
       transactions: '',
-      necessity: 'B'
+      necessity: 'B',
+      origin: 'contract',
+      changeNote: '',
+      agreedWhen: ''
     });
     setIsModalOpen(true);
   };
@@ -280,7 +334,10 @@ export const UseCasesView: React.FC = () => {
       tags: uc.tags.join(', '),
       complexity: uc.complexity || '',
       transactions: uc.transactions !== undefined ? String(uc.transactions) : '',
-      necessity: uc.necessity
+      necessity: uc.necessity,
+      origin: uc.origin,
+      changeNote: uc.changeNote,
+      agreedWhen: uc.agreedWhen
     });
     setIsModalOpen(true);
   };
@@ -336,6 +393,9 @@ export const UseCasesView: React.FC = () => {
       complexity: isGroup ? undefined : formData.complexity || undefined,
       transactions: isGroup ? undefined : Number.isFinite(tx) ? tx : undefined,
       necessity: formData.necessity || 'B',
+      origin: formData.origin,
+      changeNote: formData.changeNote.trim(),
+      agreedWhen: formData.agreedWhen.trim(),
       mainFlow: isGroup ? [] : lines(formData.mainFlow),
       alternateFlow: isGroup ? [] : lines(formData.alternateFlow),
       acceptanceCriteria: criteriaArray
@@ -469,6 +529,19 @@ export const UseCasesView: React.FC = () => {
             </select>
           </label>
           <label className="flex items-center gap-1.5">
+            <span>Nguồn gốc:</span>
+            <select
+              value={filterOrigin}
+              onChange={e => setFilterOrigin(e.target.value)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+            >
+              <option value="all">Tất cả</option>
+              <option value="contract">Theo hợp đồng</option>
+              <option value="added">Bổ sung</option>
+              <option value="adjusted">Điều chỉnh</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5">
             <span>Trạng thái:</span>
             <select
               value={filterStatus}
@@ -482,8 +555,21 @@ export const UseCasesView: React.FC = () => {
               <option value="developing">Đang phát triển</option>
               <option value="tested">Đã kiểm thử QA</option>
               <option value="completed">Đã nghiệm thu</option>
+              <option value="cancelled">Không thực hiện</option>
             </select>
           </label>
+          {cancelledCount > 0 && (
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cancelledVisible}
+                disabled={filterStatus === 'cancelled'}
+                onChange={e => setShowCancelled(e.target.checked)}
+                className="rounded border-slate-300 text-indigo-600"
+              />
+              <span>Hiện không thực hiện ({cancelledCount})</span>
+            </label>
+          )}
           <div className="flex items-center gap-1">
             <button
               onClick={openAll}
@@ -550,6 +636,8 @@ export const UseCasesView: React.FC = () => {
                 aria-level={depth}
                 aria-expanded={isParent ? isOpen : undefined}
                 className={`bg-white border rounded-2xl overflow-hidden shadow-xs ${INDENT[Math.min(depth, 3) - 1]} ${
+                  uc.status === 'cancelled' ? 'opacity-70' : ''
+                } ${
                   isGroup
                     ? depth === 1
                       ? 'border-slate-300 bg-slate-50/60'
@@ -571,7 +659,7 @@ export const UseCasesView: React.FC = () => {
                     <span className="w-9 shrink-0" aria-hidden="true" />
                   )}
 
-                  {canTickAny && (isGroup ? leafIds.length > 0 : !isParent) && (
+                  {canTickAny && (isGroup ? leafIds.length > 0 : !isParent && uc.status !== 'cancelled') && (
                     <input
                       type="checkbox"
                       aria-label={`Chọn ${uc.code}`}
@@ -598,12 +686,24 @@ export const UseCasesView: React.FC = () => {
                       </span>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <h3 className={`text-sm text-slate-900 break-words sm:truncate ${isGroup ? 'font-bold' : 'font-semibold'}`}>
+                          <h3
+                            className={`text-sm text-slate-900 break-words sm:truncate ${isGroup ? 'font-bold' : 'font-semibold'} ${
+                              uc.status === 'cancelled' ? 'line-through' : ''
+                            }`}
+                          >
                             {uc.title}
                           </h3>
                           {!isGroup && (
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${statusInfo.color}`}>
                               {statusInfo.label}
+                            </span>
+                          )}
+                          {!isGroup && uc.origin !== 'contract' && (
+                            <span
+                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${ORIGIN_STYLE[uc.origin]}`}
+                              title={uc.changeNote || undefined}
+                            >
+                              {ORIGIN_LABEL[uc.origin]}
                             </span>
                           )}
                           {!isGroup && uc.complexity && (
@@ -696,7 +796,27 @@ export const UseCasesView: React.FC = () => {
                           <span>Độ phức tạp: <strong className="text-slate-800">{uc.complexity ? COMPLEXITY_LABEL[uc.complexity] : '—'}</strong></span>
                           <span>Số transaction: <strong className="font-mono text-slate-800">{uc.transactions ?? '—'}</strong></span>
                           <span>Mức cần thiết: <strong className="font-mono text-slate-800">{uc.necessity}</strong></span>
+                          <span>Nguồn gốc: <strong className="text-slate-800">{ORIGIN_LABEL[uc.origin]}</strong></span>
                         </div>
+
+                        {(uc.changeNote || uc.agreedWhen) && (
+                          <div className="text-xs bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                            {uc.changeNote && (
+                              <div>
+                                <span className="font-semibold text-slate-700">
+                                  {uc.status === 'cancelled' ? 'Lý do không thực hiện: ' : uc.origin === 'adjusted' ? 'Giải trình điều chỉnh: ' : 'Lý do bổ sung: '}
+                                </span>
+                                <span className="text-slate-700">{uc.changeNote}</span>
+                              </div>
+                            )}
+                            {uc.agreedWhen && (
+                              <div>
+                                <span className="font-semibold text-slate-700">Thời điểm thống nhất: </span>
+                                <span className="text-slate-700">{uc.agreedWhen}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div>
                           <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 font-mono">
@@ -738,7 +858,7 @@ export const UseCasesView: React.FC = () => {
 
                     {!isGroup && (
                       <>
-                        {stagesModel && !isParent && (
+                        {stagesModel && !isParent && uc.status !== 'cancelled' && (
                           <div className="bg-white p-4 rounded-2xl border border-slate-200">
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                               <h4 className="text-xs font-bold text-slate-900">Các Bước Thực Hiện (tiến độ {uc.progressPercent}%)</h4>
@@ -893,6 +1013,7 @@ export const UseCasesView: React.FC = () => {
                             <option value="developing">Đang Phát Triển (Developing)</option>
                             <option value="tested">Đã Kiểm Thử (Tested)</option>
                             <option value="completed">Đã Nghiệm Thu (Completed)</option>
+                            <option value="cancelled">Không Thực Hiện (Cancelled)</option>
                           </select>
                         </div>
                       ) : (
@@ -1168,6 +1289,41 @@ export const UseCasesView: React.FC = () => {
                         <option value="T">T</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className={labelCls}>Nguồn gốc</label>
+                      <select
+                        value={formData.origin}
+                        onChange={e => setFormData({ ...formData, origin: e.target.value as UseCaseOrigin })}
+                        className={`${inputCls} bg-white`}
+                      >
+                        <option value="contract">Theo hợp đồng</option>
+                        <option value="added">Bổ sung</option>
+                        <option value="adjusted">Điều chỉnh</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelCls}>Thời điểm thống nhất</label>
+                      <input
+                        type="text"
+                        value={formData.agreedWhen}
+                        onChange={e => setFormData({ ...formData, agreedWhen: e.target.value })}
+                        placeholder="VD: Sau khi khảo sát nghiệp vụ vào tháng 01/2026"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Lý do bổ sung / điều chỉnh / không thực hiện</label>
+                    <textarea
+                      rows={2}
+                      value={formData.changeNote}
+                      onChange={e => setFormData({ ...formData, changeNote: e.target.value })}
+                      className={inputCls}
+                    />
                   </div>
 
                   <div>

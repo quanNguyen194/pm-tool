@@ -39,7 +39,8 @@ export interface UseCaseNode {
 }
 
 const byCode = (a: UseCase, b: UseCase) => a.code.localeCompare(b.code, 'vi', { numeric: true });
-const isCounted = (u: UseCase) => u.kind !== 'group';
+/** Use case thật còn hiệu lực (không phải module/nhóm, không phải "Không thực hiện"). */
+const isCounted = (u: UseCase) => u.kind !== 'group' && u.status !== 'cancelled';
 
 /** Số thứ tự trong mã dạng UC-123 (theo Excel); NaN nếu mã không theo dạng đó. */
 const ucNumber = (u: UseCase) => {

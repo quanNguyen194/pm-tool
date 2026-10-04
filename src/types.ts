@@ -77,7 +77,9 @@ export interface Task {
   useCaseId?: string;
 }
 
-export type UseCaseStatus = 'draft' | 'in_review' | 'approved' | 'developing' | 'tested' | 'completed';
+export type UseCaseStatus = 'draft' | 'in_review' | 'approved' | 'developing' | 'tested' | 'completed' | 'cancelled';
+/** Nguồn gốc: theo hợp đồng / bổ sung sau hợp đồng / điều chỉnh so với hợp đồng. */
+export type UseCaseOrigin = 'contract' | 'added' | 'adjusted';
 /** group = module/nhóm chức năng (chỉ để gom), usecase = use case thật. */
 export type UseCaseKind = 'group' | 'usecase';
 export type UseCaseComplexity = 'simple' | 'medium' | 'complex';
@@ -95,6 +97,11 @@ export interface UseCase {
   transactions?: number;
   /** Mức độ cần thiết (B, M, T). */
   necessity: string;
+  origin: UseCaseOrigin;
+  /** Lý do bổ sung / không thực hiện / giải trình điều chỉnh. */
+  changeNote: string;
+  /** Thời điểm thống nhất với khách hàng (văn bản tự do). */
+  agreedWhen: string;
   /** Các bước chuẩn đã hoàn thành (chỉ dùng khi dự án có progressModel = stages). */
   stagesDone: { stage: 'analysis' | 'design' | 'coding' | 'testing' | 'acceptance'; doneBy?: string; doneAt: string }[];
   code: string;

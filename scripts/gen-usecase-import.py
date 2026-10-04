@@ -67,7 +67,14 @@ def parse_flow(text):
     return [f'{i}. {s}' for i, s in enumerate(steps, 1)]
 
 
-def parse(path, sheet):
+DEFAULT_COLS = {'title': 1, 'actor': 2, 'necessity': 5, 'flow': 4, 'tx': 6, 'cx': 7}
+
+
+def parse(path, sheet, cols=None, seq_prefix=None):
+    """Đọc một sheet danh sách UC. cols: chỉ số cột (mặc định theo sheet final).
+    seq_prefix: đặt mã tuần tự (PREFIX-001...) thay vì lấy theo STT (các sheet phụ có STT trùng/lặp).
+    Cột bổ sung (nếu có trong cols): reason, when, c_tx, c_cx (số liệu theo hợp đồng)."""
+    c = {**DEFAULT_COLS, **(cols or {})}
     ws = openpyxl.load_workbook(path, data_only=True)[sheet]
     nodes = []          # theo thứ tự duyệt: cha luôn đứng trước con
     section = None      # (tiền tố, nhãn)
@@ -80,7 +87,7 @@ def parse(path, sheet):
         node['sort'] = len(nodes) + 1
         nodes.append(node)
 
-    for row_no, r in enumerate(ws.iter_rows(min_row=1, max_col=8, values_only=True), 1):
+    for row_no, r in enumerate(ws.iter_rows(min_row=1, max_col=max(c.values()) + 1, values_only=True), 1):
         stt = clean(r[0])
         title = clean(r[1])
         if stt == 'STT':
@@ -94,17 +101,26 @@ def parse(path, sheet):
             if not parent or not section:
                 skipped.append((row_no, stt, title, 'Use case nằm ngoài module'))
                 continue
-            tx = clean(r[6])
-            cx = COMPLEXITY.get(clean(r[7]).lower())
+            tx = clean(r[c['tx']])
+            cx = COMPLEXITY.get(clean(r[c['cx']]).lower())
             if not title:
                 skipped.append((row_no, stt, title, 'Thiếu tên use case'))
                 continue
-            add({
-                'code': f'UC-{int(stt):03d}', 'parent': parent, 'kind': 'usecase', 'title': title,
-                'actor': clean_actor(r[2]), 'flow': parse_flow(r[4]), 'tags': [section[1]],
+            n_uc = sum(1 for x in nodes if x['kind'] == 'usecase') + 1
+            node = {
+                'code': f'{seq_prefix}-{n_uc:03d}' if seq_prefix else f'UC-{int(stt):03d}', 'parent': parent, 'kind': 'usecase', 'title': title,
+                'actor': clean_actor(r[c['actor']]), 'flow': parse_flow(r[c['flow']]), 'tags': [section[1]],
                 'complexity': cx, 'transactions': int(float(tx)) if tx else None,
-                'necessity': clean(r[5]) or 'B', 'src_row': row_no,
-            })
+                'necessity': clean(r[c['necessity']]) or 'B', 'src_row': row_no,
+            }
+            for key in ('reason', 'when'):
+                if key in c:
+                    node[key] = clean(r[c[key]])
+            if 'c_tx' in c:
+                ctx = clean(r[c['c_tx']])
+                node['c_tx'] = int(float(ctx)) if ctx else None
+                node['c_cx'] = COMPLEXITY.get(clean(r[c['c_cx']]).lower())
+            add(node)
             continue
 
         # ----- các dòng tiêu đề -----

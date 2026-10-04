@@ -141,6 +141,12 @@ function overflowAudit() {
         clickText('button', 'Thu gọn');
         await wait(300);
       }
+      if (clickText('label', 'Hiện không thực hiện')) {
+        await wait(400);
+        res['usecases:hiện-không-thực-hiện'] = snap();
+        clickText('label', 'Hiện không thực hiện');
+        await wait(300);
+      }
       if (clickText('button', 'Chọn tất cả')) {
         await wait(400);
         res['usecases:chọn-hàng-loạt'] = snap();

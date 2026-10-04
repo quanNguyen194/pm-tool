@@ -125,7 +125,10 @@ export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
     'Tiến Độ (%)',
     'Số Tiêu Chí Nghiệm Thu',
     'Tiêu Chí Đã Hoàn Thành',
-    'Ngày Cập Nhật'
+    'Ngày Cập Nhật',
+    'Nguồn Gốc',
+    'Lý Do / Giải Trình',
+    'Thời Điểm Thống Nhất'
   ];
 
   const statusMap: Record<string, string> = {
@@ -134,7 +137,8 @@ export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
     approved: 'Đã phê duyệt',
     developing: 'Đang phát triển',
     tested: 'Đã kiểm thử QA',
-    completed: 'Hoàn thành'
+    completed: 'Hoàn thành',
+    cancelled: 'Không thực hiện'
   };
 
   const codeById = new Map(useCases.map(u => [u.id, u.code]));
@@ -159,7 +163,10 @@ export function exportUseCasesToCSV(project: Project, useCases: UseCase[]) {
       `${uc.progressPercent}%`,
       totalCriteria,
       passedCriteria,
-      uc.updatedAt
+      uc.updatedAt,
+      { contract: 'Theo hợp đồng', added: 'Bổ sung', adjusted: 'Điều chỉnh' }[uc.origin],
+      uc.changeNote,
+      uc.agreedWhen
     ];
   });
 
@@ -340,7 +347,7 @@ export function printPeriodicReport(
       </tr>
     </thead>
     <tbody>
-      ${flattenUseCaseTree(useCases).map(({ useCase: uc, depth }) => `
+      ${flattenUseCaseTree(useCases.filter(u => u.status !== 'cancelled')).map(({ useCase: uc, depth }) => `
         <tr>
           <td><strong>${esc(uc.code)}</strong></td>
           <td style="padding-left: ${10 + (depth - 1) * 16}px;">${esc(uc.title)}</td>

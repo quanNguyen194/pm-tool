@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const MIG = new URL('../migrations/', import.meta.url);
 const IMP = new URL('../imports/', import.meta.url);
 const PROJECT = 'GPDN_DNMB_EVNNPC_QTVT_251004';
-const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql'];
+const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql'];
 
 const db = new PGlite();
 await db.exec(`
