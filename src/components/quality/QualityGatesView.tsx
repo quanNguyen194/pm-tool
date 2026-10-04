@@ -15,6 +15,7 @@ import {
   X,
   MessageSquare
 } from 'lucide-react';
+import { ActorSelect, useActor } from '../common/ActorSelect';
 
 export const QualityGatesView: React.FC = () => {
   const {
@@ -28,6 +29,9 @@ export const QualityGatesView: React.FC = () => {
   } = useApp();
 
   const phases = projectQualityGates?.phases || [];
+  // Admin: ghi nhận người khác là người duyệt (rỗng = chính mình)
+  const [actorChoice, setActorChoice] = useState('');
+  const actorId = useActor(actorChoice);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>(activeProject.currentPhase || 'phase_1');
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -99,7 +103,8 @@ export const QualityGatesView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {canApproveQuality && <ActorSelect value={actorChoice} onChange={setActorChoice} />}
           {canApproveQuality && (
             <button
               onClick={() => setIsAddItemModalOpen(true)}
@@ -216,7 +221,7 @@ export const QualityGatesView: React.FC = () => {
                       {/* Checkbox trigger */}
                       <button
                         disabled={!canApproveQuality}
-                        onClick={() => toggleQualityItemPassed(selectedPhase.id, item.id)}
+                        onClick={() => toggleQualityItemPassed(selectedPhase.id, item.id, undefined, actorId)}
                         className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center transition-colors shrink-0 ${
                           item.isPassed
                             ? 'bg-emerald-600 text-white hover:bg-emerald-700'

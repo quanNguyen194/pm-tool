@@ -2,10 +2,11 @@ import React, { createContext, useContext, useMemo, useState } from 'react';
 
 const iso = (n: number) => new Date(Date.now() + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10);
 const users = [
-  { id: 'u1', name: 'quan.ntm194', email: 'quan@example.com', avatarColor: 'bg-blue-600', role: 'admin', isAdmin: true, department: 'PMO' },
-  { id: 'u2', name: 'Lê Hoàng Long Rất Dài Để Thử Cắt Chữ', email: 'long.le.hoang.dai@example.com', avatarColor: 'bg-emerald-700', role: 'dev', isAdmin: false, department: 'Khối Kỹ Thuật & Phát Triển Phần Mềm' },
-  { id: 'u3', name: 'Đỗ Bích Ngọc', email: 'ngoc@example.com', avatarColor: 'bg-amber-700', role: 'tester', isAdmin: false, department: 'QA' },
-  { id: 'u4', name: 'Phạm Minh Anh', email: 'anh@example.com', avatarColor: 'bg-blue-600', role: 'ba', isAdmin: false, department: 'BA' }
+  { id: 'u1', name: 'quan.ntm194', email: 'quan@example.com', avatarColor: 'bg-blue-600', role: 'admin', isAdmin: true, isPlaceholder: false, department: 'PMO' },
+  { id: 'u2', name: 'Lê Hoàng Long Rất Dài Để Thử Cắt Chữ', email: 'long.le.hoang.dai@example.com', avatarColor: 'bg-emerald-700', role: 'dev', isAdmin: false, isPlaceholder: false, department: 'Khối Kỹ Thuật & Phát Triển Phần Mềm' },
+  { id: 'u3', name: 'Đỗ Bích Ngọc', email: 'ngoc@example.com', avatarColor: 'bg-amber-700', role: 'tester', isAdmin: false, isPlaceholder: false, department: 'QA' },
+  { id: 'u4', name: 'Phạm Minh Anh', email: 'anh@example.com', avatarColor: 'bg-blue-600', role: 'ba', isAdmin: false, isPlaceholder: false, department: 'BA' },
+  { id: 'u5', name: 'Nguyễn Văn Chưa Đăng Ký', email: '', avatarColor: 'bg-zinc-700', role: 'dev', isAdmin: false, isPlaceholder: true, department: '' }
 ];
 const mk = (id: string, code: string, title: string, status: string, priority: string, a: string, s: number, d: number, est: number, act: number, uc?: string, extra: any = {}) => ({
   id, projectId: 'p1', code, title, description: 'Mô tả chi tiết của nhiệm vụ ' + code + ' để kiểm tra việc cắt dòng trên màn hình nhỏ.', status, priority, assigneeId: a,
@@ -121,6 +122,12 @@ export const MockProvider = ({ children }: any) => {
       projectQualityGates: { projectId: 'p1', phases }, notifications, unreadNotificationCount: 1, projectSnapshots: snaps,
       reportSchedules: [{ id: 's1', projectId: 'p1', frequency: 'weekly', enabled: true }],
       reportRuns: [{ id: 'r1', projectId: 'p1', frequency: 'weekly', periodStart: iso(-7), periodEnd: iso(-1), createdAt: new Date().toISOString(), summary }],
+      mergeRequests: [{ id: 'm1', placeholderId: 'u5', userId: 'u3', status: 'pending', createdAt: new Date().toISOString() }],
+      suggestAccounts: async (q: string) =>
+        [
+          { id: 's1', name: 'Hoàng Văn Gợi Ý', email: 'goiy@example.com', avatarColor: 'bg-blue-600', isPlaceholder: false },
+          { id: 's2', name: 'Trần Thị Mới Thêm Trước', email: '', avatarColor: 'bg-zinc-700', isPlaceholder: true }
+        ].filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.email.includes(q.toLowerCase())),
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };

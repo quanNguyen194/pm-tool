@@ -24,7 +24,9 @@ import {
   ReportFrequency,
   ReportRun,
   ReportSchedule,
-  Toast
+  Toast,
+  AccountSuggestion,
+  MergeRequest
 } from '../types';
 import { supabase, describeError } from '../lib/supabase';
 import {
@@ -35,6 +37,7 @@ import {
   mapProject,
   mapTask,
   mapUseCase,
+  mapMergeRequest,
   mapNotification,
   mapSnapshot,
   mapReportSchedule,
@@ -101,6 +104,15 @@ interface AppContextType {
   deleteProject: (id: string) => void;
   // Thành viên
   addMember: (email: string, role: MemberRole) => Promise<boolean>;
+  /** Gợi ý tài khoản (chưa thuộc dự án) theo tên/email khi gõ trong ô thêm thành viên. */
+  suggestAccounts: (query: string) => Promise<AccountSuggestion[]>;
+  addMemberById: (userId: string, role: MemberRole) => Promise<boolean>;
+  /** Admin: thêm người chưa đăng ký (tạo tài khoản ảo hoặc dùng lại tài khoản ảo cùng tên). */
+  createPlaceholderMember: (name: string, role: MemberRole) => Promise<boolean>;
+  deletePlaceholder: (userId: string) => void;
+  /** Yêu cầu hợp nhất tài khoản ảo đang chờ admin duyệt (chỉ admin có dữ liệu). */
+  mergeRequests: MergeRequest[];
+  resolveMerge: (requestId: string, approve: boolean) => void;
   setMemberRole: (userId: string, role: MemberRole) => void;
   removeMember: (userId: string) => void;
   // Nhiệm vụ
@@ -114,9 +126,10 @@ interface AppContextType {
   deleteUseCase: (id: string) => void;
   toggleAcceptanceCriteria: (useCaseId: string, criteriaId: string) => void;
   /** Đánh dấu/bỏ đánh dấu một bước chuẩn cho một hoặc nhiều use case lá. */
-  setUseCaseStages: (useCaseIds: string[], stage: StageKey, done: boolean) => Promise<boolean>;
+  setUseCaseStages: (useCaseIds: string[], stage: StageKey, done: boolean, actorId?: string) => Promise<boolean>;
   // Quality gates
-  toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string) => void;
+  /** actorId: chỉ admin được chọn người thực hiện khác (ghi nhận người duyệt). */
+  toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string, actorId?: string) => void;
   updateQualityNotes: (itemId: string, notes: string) => void;
   addQualityItem: (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => void;
   // Thông báo
@@ -165,7 +178,8 @@ type Slice =
   | 'quality'
   | 'notifications'
   | 'snapshots'
-  | 'reports';
+  | 'reports'
+  | 'merges';
 const ALL_SLICES: Slice[] = [
   'profiles',
   'members',
@@ -175,7 +189,8 @@ const ALL_SLICES: Slice[] = [
   'quality',
   'notifications',
   'snapshots',
-  'reports'
+  'reports',
+  'merges'
 ];
 
 // Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
@@ -192,10 +207,16 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   notifications: ['notifications'],
   progress_snapshots: ['snapshots'],
   report_schedules: ['reports'],
-  report_runs: ['reports']
+  report_runs: ['reports'],
+  account_merge_requests: ['merges', 'profiles']
 };
 
 type Row = Record<string, any>;
+
+const LEGACY_AVATAR_FALLBACK = (c: string | null | undefined) =>
+  ({ 'bg-emerald-600': 'bg-emerald-700', 'bg-amber-600': 'bg-amber-700', 'bg-slate-600': 'bg-zinc-700' } as Record<string, string>)[c || ''] ||
+  c ||
+  'bg-indigo-600';
 
 const toUser = (p: Profile, role: Role): User => ({
   id: p.id,
@@ -204,7 +225,8 @@ const toUser = (p: Profile, role: Role): User => ({
   avatarColor: p.avatarColor,
   role,
   isAdmin: p.isAdmin,
-  department: p.department
+  department: p.department,
+  isPlaceholder: p.isPlaceholder
 });
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -237,6 +259,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [snapshotRows, setSnapshotRows] = useState<(ProgressSnapshot & { projectId: string })[]>([]);
   const [scheduleRows, setScheduleRows] = useState<ReportSchedule[]>([]);
   const [runRows, setRunRows] = useState<ReportRun[]>([]);
+  const [mergeRows, setMergeRows] = useState<MergeRequest[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -342,6 +365,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
         setSnapshotRows((data || []).map(mapSnapshot));
+      },
+      merges: async () => {
+        // Chỉ admin đọc được; người khác nhận danh sách rỗng. Lỗi (vd chưa chạy migration 0013) không chặn app.
+        const { data, error } = await supabase
+          .from('account_merge_requests')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        if (error) {
+          console.warn('Không tải được yêu cầu hợp nhất:', error.message);
+          setMergeRows([]);
+          return;
+        }
+        setMergeRows((data || []).map(mapMergeRequest));
       },
       reports: async () => {
         // Phần phụ như biểu đồ: lỗi (vd chưa chạy migration 0007) không được chặn cả app.
@@ -605,6 +642,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         );
       },
       ['members', 'profiles']
+    );
+  };
+
+  const suggestAccounts = async (query: string): Promise<AccountSuggestion[]> => {
+    if (!activeProjectId) return [];
+    const { data, error } = await supabase.rpc('suggest_accounts', { p_project: activeProjectId, p_query: query });
+    if (error) {
+      console.warn('Không lấy được gợi ý tài khoản:', error.message);
+      return [];
+    }
+    return ((data || []) as Row[]).map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email ?? '',
+      avatarColor: LEGACY_AVATAR_FALLBACK(r.avatar_color),
+      isPlaceholder: !!r.is_placeholder
+    }));
+  };
+
+  const addMemberById = async (userId: string, memberRole: MemberRole) => {
+    if (!activeProjectId) return false;
+    announce('Đã thêm thành viên vào dự án');
+    return run(
+      async () => {
+        check(await supabase.rpc('add_project_member_by_id', { p_project: activeProjectId, p_user: userId, p_role: memberRole }));
+      },
+      ['members', 'profiles']
+    );
+  };
+
+  const createPlaceholderMember = async (name: string, memberRole: MemberRole) => {
+    if (!activeProjectId) return false;
+    announce(`Đã thêm "${name.trim()}" vào dự án (chưa đăng ký)`);
+    return run(
+      async () => {
+        check(await supabase.rpc('create_placeholder_member', { p_project: activeProjectId, p_name: name, p_role: memberRole }));
+      },
+      ['members', 'profiles', 'projects']
+    );
+  };
+
+  const deletePlaceholder = (userId: string) => {
+    announce('Đã xóa tài khoản chưa đăng ký');
+    void run(
+      async () => {
+        check(await supabase.rpc('delete_placeholder', { p_user: userId }));
+      },
+      ['members', 'profiles', 'projects', 'tasks', 'usecases', 'merges']
+    );
+  };
+
+  const resolveMerge = (requestId: string, approve: boolean) => {
+    announce(approve ? 'Đã hợp nhất tài khoản' : 'Đã từ chối hợp nhất');
+    void run(
+      async () => {
+        check(await supabase.rpc(approve ? 'approve_account_merge' : 'reject_account_merge', { p_request: requestId }));
+      },
+      ALL_SLICES
     );
   };
 
@@ -895,12 +990,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
-  const setUseCaseStages = (useCaseIds: string[], stage: StageKey, done: boolean) => {
+  const setUseCaseStages = (useCaseIds: string[], stage: StageKey, done: boolean, actorId?: string) => {
     const ids = [...new Set(useCaseIds)];
     if (ids.length === 0) return Promise.resolve(false);
     return run(
       async () => {
-        const res = await supabase.rpc('set_use_case_stages', { p_use_cases: ids, p_stage: stage, p_done: done });
+        const res = await supabase.rpc('set_use_case_stages', {
+          p_use_cases: ids,
+          p_stage: stage,
+          p_done: done,
+          p_actor: actorId && actorId !== profile.id ? actorId : null
+        });
         check(res);
         const n = Number(res.data ?? 0);
         pushToast(
@@ -916,11 +1016,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Quality gates
-  const toggleQualityItemPassed = (_phaseId: string, itemId: string, notes?: string) => {
+  const toggleQualityItemPassed = (_phaseId: string, itemId: string, notes?: string, actorId?: string) => {
     const item = qualityRows.find(i => i.id === itemId);
     if (!item) return;
     const next = !item.is_passed;
-    const label = `${currentUser.name} (${currentUser.role.toUpperCase()})`;
+    const actor = actorId && actorId !== profile.id ? allUsers.find(u => u.id === actorId) : undefined;
+    const label = actor
+      ? `${actor.name} (${(actor.isAdmin ? 'admin' : members.find(m => m.projectId === activeProjectId && m.userId === actor.id)?.role || 'member').toUpperCase()})`
+      : `${currentUser.name} (${currentUser.role.toUpperCase()})`;
     setQualityRows(prev =>
       prev.map(i =>
         i.id !== itemId
@@ -936,6 +1039,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     void run(
       async () => {
+        if (actor) {
+          // Admin ghi nhận người khác là người duyệt: qua hàm có kiểm tra quyền ở DB.
+          check(
+            await supabase.rpc('set_quality_item', {
+              p_item: itemId,
+              p_passed: next,
+              p_notes: notes ?? null,
+              p_actor: actor.id
+            })
+          );
+          return;
+        }
         const patch: Record<string, unknown> = { is_passed: next };
         if (notes !== undefined) patch.notes = notes;
         check(await supabase.from('quality_items').update(patch).eq('id', itemId));
@@ -1111,6 +1226,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateProject,
         deleteProject,
         addMember,
+        suggestAccounts,
+        addMemberById,
+        createPlaceholderMember,
+        deletePlaceholder,
+        mergeRequests: mergeRows,
+        resolveMerge,
         setMemberRole,
         removeMember,
         createTask,

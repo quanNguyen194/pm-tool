@@ -15,6 +15,26 @@ export interface User {
   role: Role;
   isAdmin: boolean;
   department: string;
+  /** Tài khoản ảo: người do admin thêm vào dự án nhưng chưa đăng ký. */
+  isPlaceholder: boolean;
+}
+
+/** Gợi ý tài khoản khi thêm thành viên vào dự án. */
+export interface AccountSuggestion {
+  id: string;
+  name: string;
+  email: string;
+  avatarColor: string;
+  isPlaceholder: boolean;
+}
+
+/** Yêu cầu hợp nhất tài khoản ảo vào tài khoản thật vừa đăng ký trùng tên (chỉ admin thấy). */
+export interface MergeRequest {
+  id: string;
+  placeholderId: string;
+  userId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';

@@ -85,6 +85,12 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - `0012` chỉ thêm bảng `task_use_cases`; cột `tasks.use_case_id` vẫn được giữ (luôn là use case đầu tiên) nên bản giao diện cũ vẫn chạy và thấy một use case cho mỗi nhiệm vụ. Rollback Cloudflare/git là đủ để khôi phục dịch vụ.
 - Gỡ hẳn trong DB: `supabase/rollback/0012_rollback.sql` (mất các liên kết use case thứ hai trở đi). Giao diện bản mới đọc/ghi bảng này: chạy `0012` trước khi deploy; nếu chưa chạy, giao diện vẫn mở và xem được (dùng cột cũ) nhưng sẽ báo lỗi khi lưu nhiều liên kết.
 
+## 4f. Hoàn tác migration `0013` (tài khoản ảo, gợi ý, hợp nhất, người thực hiện)
+
+- `0013` cho phép bản ghi profile không có tài khoản đăng nhập (tài khoản ảo). Bản giao diện cũ vẫn chạy nhưng sẽ hiện tài khoản ảo như một thành viên thường (không có email). Rollback Cloudflare/git là đủ để khôi phục dịch vụ.
+- Gỡ hẳn trong DB: `supabase/rollback/0013_rollback.sql`. **MẤT DỮ LIỆU:** mọi tài khoản ảo bị xóa (họ rời dự án, nhiệm vụ họ phụ trách thành chưa giao) vì phải gắn lại ràng buộc profiles → auth.users. Phải chạy TRƯỚC khi hoàn tác `0012` trở về trước.
+- Giao diện bản mới gọi các hàm `suggest_accounts`, `add_project_member_by_id`, `set_use_case_stages(..., p_actor)`: luôn chạy `0013` trước khi deploy.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

@@ -139,6 +139,21 @@ function overflowAudit() {
         res['tasks:bảng'] = snap();
       }
     }
+    if (tab === 'team') {
+      const input = document.querySelector<HTMLInputElement>('input[aria-label="Tên hoặc email thành viên"]');
+      if (input) {
+        input.focus();
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+        set.call(input, 'Hoàng');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await wait(700);
+        res['team:gợi-ý-thành-viên'] = snap();
+        set.call(input, 'Một Người Mới Hoàn Toàn');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await wait(700);
+        res['team:thêm-người-chưa-đăng-ký'] = snap();
+      }
+    }
     if (tab === 'usecases') {
       if (clickText('[role="treeitem"] h3', 'Đăng ký tài khoản')) {
         await wait(400);

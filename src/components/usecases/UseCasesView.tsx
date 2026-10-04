@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { exportUseCasesToCSV } from '../../utils/exportUtils';
 import { STAGES, StageKey } from '../../utils/stages';
+import { ActorSelect, useActor } from '../common/ActorSelect';
 import {
   COMPLEXITY_LABEL,
   COMPLEXITY_STYLE,
@@ -118,6 +119,9 @@ export const UseCasesView: React.FC = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<StageKey>('analysis');
   const [bulkBusy, setBulkBusy] = useState(false);
+  // Admin: ghi nhận người khác là người thực hiện (rỗng = chính mình)
+  const [actorChoice, setActorChoice] = useState('');
+  const actorId = useActor(actorChoice);
   const [formData, setFormData] = useState<FormState>({
     kind: 'usecase',
     code: '',
@@ -280,7 +284,7 @@ export const UseCasesView: React.FC = () => {
 
   const applyBulk = async (done: boolean) => {
     setBulkBusy(true);
-    const ok = await setUseCaseStages([...selected], effectiveBulkStage, done);
+    const ok = await setUseCaseStages([...selected], effectiveBulkStage, done, actorId);
     setBulkBusy(false);
     if (ok) setSelected(new Set());
   };
@@ -865,6 +869,7 @@ export const UseCasesView: React.FC = () => {
                               <span className="text-[11px] text-slate-500">
                                 Mỗi vai trò tick bước của mình; PM/Admin tick được mọi bước
                               </span>
+                              <ActorSelect value={actorChoice} onChange={setActorChoice} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                               {STAGES.map(st => {
@@ -882,7 +887,7 @@ export const UseCasesView: React.FC = () => {
                                       type="checkbox"
                                       checked={!!rec}
                                       disabled={!allowed}
-                                      onChange={() => void setUseCaseStages([uc.id], st.key, !rec)}
+                                      onChange={() => void setUseCaseStages([uc.id], st.key, !rec, actorId)}
                                       className="mt-0.5 rounded border-slate-300 text-emerald-700"
                                     />
                                     <span className="min-w-0">
@@ -1096,6 +1101,7 @@ export const UseCasesView: React.FC = () => {
               ))}
             </select>
           </label>
+          <ActorSelect value={actorChoice} onChange={setActorChoice} />
           <div className="flex items-center gap-2 ml-auto">
             <button
               disabled={bulkBusy || !canTickStage(effectiveBulkStage)}

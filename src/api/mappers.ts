@@ -1,5 +1,6 @@
 import {
   MemberRole,
+  MergeRequest,
   NotificationItem,
   Project,
   ProgressSnapshot,
@@ -40,6 +41,7 @@ export interface Profile {
   department: string;
   avatarColor: string;
   isAdmin: boolean;
+  isPlaceholder: boolean;
 }
 
 export interface MemberRow {
@@ -54,7 +56,16 @@ export const mapProfile = (r: Row): Profile => ({
   email: r.email ?? '',
   department: r.department ?? '',
   avatarColor: LEGACY_AVATAR[r.avatar_color] || r.avatar_color || AVATAR_COLORS[0],
-  isAdmin: !!r.is_admin
+  isAdmin: !!r.is_admin,
+  isPlaceholder: !!r.is_placeholder
+});
+
+export const mapMergeRequest = (r: Row): MergeRequest => ({
+  id: r.id,
+  placeholderId: r.placeholder_id,
+  userId: r.user_id,
+  status: r.status,
+  createdAt: r.created_at
 });
 
 export const mapMember = (r: Row): MemberRow => ({
