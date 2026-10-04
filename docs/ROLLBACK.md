@@ -53,7 +53,10 @@ git push origin stable-YYYY-MM-DD
 ```
 
 Mốc hiện tại: **`stable-2026-10-02`** (commit `a440d69`, đủ giai đoạn 0-5).
-Mốc mới nhất: **`stable-2026-10-02-ui`** (commit `cdd2306`, sau nâng cấp giao diện 5 bước: dark mode, thanh bên/ngăn kéo, Gantt, kéo thả Kanban, dashboard hiệu suất). Mốc `stable-2026-10-02` vẫn dùng được để quay về giao diện trước khi nâng cấp.
+Mốc giao diện: **`stable-2026-10-02-ui`** (commit `cdd2306`, sau nâng cấp giao diện 5 bước: dark mode, thanh bên/ngăn kéo, Gantt, kéo thả Kanban, dashboard hiệu suất).
+Mốc mới nhất: **`stable-2026-10-04`** (commit `e4b2c73`, cần DB đã chạy migration đến `0011`): vai trò PM/DEV/BA/Tester, nhiệm vụ mở rộng, cây use case 3 cấp, 184 use case thật, tiến độ theo 5 bước chuẩn + cập nhật hàng loạt, nguồn gốc/không thực hiện.
+
+**Lưu ý khi quay về mốc cũ:** các mốc trước `stable-2026-10-04` không hiểu vai trò `dev`/`tester`/`ba` nên cần chạy thêm script rollback DB tương ứng (xem các mục 4b-4d). Quay về `stable-2026-10-04` thì DB giữ nguyên.
 
 ## 4b. Hoàn tác migration `0008` (vai trò mới, use case phân cấp, trường nhiệm vụ)
 
