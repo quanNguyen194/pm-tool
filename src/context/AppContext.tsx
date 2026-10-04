@@ -43,6 +43,7 @@ import {
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
 import { sound } from '../utils/soundAlert';
+import { StageKey, STAGE_LABEL, canTickStage as roleCanTickStage } from '../utils/stages';
 
 interface AppContextType {
   activeTab: NavigationTab;
@@ -90,6 +91,8 @@ interface AppContextType {
   canManageUseCases: boolean;
   canApproveQuality: boolean;
   canApproveUseCase: boolean;
+  /** Vai trò hiện tại có được tick bước chuẩn này của use case không. */
+  canTickStage: (stage: StageKey) => boolean;
   isViewer: boolean;
 
   // Dự án
@@ -106,10 +109,12 @@ interface AppContextType {
   deleteTask: (id: string) => void;
   moveTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
   // Use case
-  createUseCase: (useCase: Omit<UseCase, 'id' | 'updatedAt'>) => void;
+  createUseCase: (useCase: Omit<UseCase, 'id' | 'updatedAt' | 'stagesDone'>) => void;
   updateUseCase: (useCase: UseCase) => void;
   deleteUseCase: (id: string) => void;
   toggleAcceptanceCriteria: (useCaseId: string, criteriaId: string) => void;
+  /** Đánh dấu/bỏ đánh dấu một bước chuẩn cho một hoặc nhiều use case lá. */
+  setUseCaseStages: (useCaseIds: string[], stage: StageKey, done: boolean) => Promise<boolean>;
   // Quality gates
   toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string) => void;
   updateQualityNotes: (itemId: string, notes: string) => void;
@@ -181,6 +186,7 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   task_collaborators: ['tasks'],
   use_cases: ['usecases'],
   acceptance_criteria: ['usecases'],
+  use_case_stages: ['usecases'],
   quality_items: ['quality'],
   notifications: ['notifications'],
   progress_snapshots: ['snapshots'],
@@ -222,6 +228,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [collabRows, setCollabRows] = useState<Row[]>([]);
   const [ucRows, setUcRows] = useState<Row[]>([]);
   const [criteriaRows, setCriteriaRows] = useState<Row[]>([]);
+  const [stageRows, setStageRows] = useState<Row[]>([]);
   const [qualityDefs, setQualityDefs] = useState<Row[]>([]);
   const [qualityRows, setQualityRows] = useState<Row[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -284,14 +291,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCollabRows(co.data || []);
       },
       usecases: async () => {
-        const [uc, cr] = await Promise.all([
+        const [uc, cr, st] = await Promise.all([
           supabase.from('use_cases').select('*').order('created_at', { ascending: false }).order('code'),
-          supabase.from('acceptance_criteria').select('*')
+          supabase.from('acceptance_criteria').select('*'),
+          supabase.from('use_case_stages').select('*')
         ]);
         if (uc.error) throw uc.error;
         if (cr.error) throw cr.error;
+        // Bảng bước chuẩn là phần phụ: lỗi (vd chưa chạy migration 0010) chỉ làm trống phần này.
+        if (st.error) console.warn('Không tải được các bước use case:', st.error.message);
         setUcRows(uc.data || []);
         setCriteriaRows(cr.data || []);
+        setStageRows(st.error ? [] : st.data || []);
       },
       quality: async () => {
         const [defs, items] = await Promise.all([
@@ -405,7 +416,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [activeProjectId]);
 
   const tasks = useMemo(() => taskRows.map(r => mapTask(r, collabRows)), [taskRows, collabRows]);
-  const useCases = useMemo(() => ucRows.map(r => mapUseCase(r, criteriaRows)), [ucRows, criteriaRows]);
+  const useCases = useMemo(
+    () => ucRows.map(r => mapUseCase(r, criteriaRows, stageRows)),
+    [ucRows, criteriaRows, stageRows]
+  );
   const qualityGates = useMemo(
     () => buildQualityGates(projects.map(p => p.id), qualityDefs, qualityRows),
     [projects, qualityDefs, qualityRows]
@@ -479,6 +493,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const canApproveQuality = role === 'admin' || role === 'pm' || role === 'tester';
   const canApproveUseCase = role === 'admin' || role === 'pm';
   const isViewer = role === 'viewer';
+  const canTickStage = (stage: StageKey) => roleCanTickStage(role, stage);
 
   // --- Ghi dữ liệu ---
   const run = async (fn: () => Promise<void>, slices: Slice[], playSound = true): Promise<boolean> => {
@@ -520,7 +535,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             start_date: p.startDate,
             target_end_date: p.targetEndDate,
             budget: p.budget,
-            current_phase: p.currentPhase
+            current_phase: p.currentPhase,
+            progress_model: p.progressModel
           })
           .select('id')
           .single();
@@ -548,7 +564,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               start_date: p.startDate,
               target_end_date: p.targetEndDate,
               budget: p.budget,
-              current_phase: p.currentPhase
+              current_phase: p.currentPhase,
+              progress_model: p.progressModel
             })
             .eq('id', p.id)
         );
@@ -718,7 +735,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Use case
-  const ucPayload = (u: Omit<UseCase, 'id' | 'updatedAt'>) => ({
+  const ucPayload = (u: Omit<UseCase, 'id' | 'updatedAt' | 'stagesDone'>) => ({
     code: u.code,
     title: u.title,
     actor: u.actor,
@@ -736,7 +753,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     necessity: u.necessity || 'B'
   });
 
-  const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt'>) => {
+  const createUseCase = (u: Omit<UseCase, 'id' | 'updatedAt' | 'stagesDone'>) => {
     announce('Đã tạo use case');
     void run(
       async () => {
@@ -837,6 +854,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     void run(
       async () => {
         check(await supabase.from('acceptance_criteria').update({ completed: next }).eq('id', criteriaId));
+      },
+      ['usecases', 'projects'],
+      false
+    );
+  };
+
+  const setUseCaseStages = (useCaseIds: string[], stage: StageKey, done: boolean) => {
+    const ids = [...new Set(useCaseIds)];
+    if (ids.length === 0) return Promise.resolve(false);
+    return run(
+      async () => {
+        const res = await supabase.rpc('set_use_case_stages', { p_use_cases: ids, p_stage: stage, p_done: done });
+        check(res);
+        const n = Number(res.data ?? 0);
+        pushToast(
+          n > 0 ? 'success' : 'info',
+          n > 0
+            ? `${done ? 'Đã đánh dấu' : 'Đã bỏ đánh dấu'} bước "${STAGE_LABEL[stage]}" cho ${n} use case.`
+            : `Không có use case nào thay đổi (bước "${STAGE_LABEL[stage]}" đã ở trạng thái này, hoặc dự án chưa dùng mô hình 5 bước).`
+        );
       },
       ['usecases', 'projects'],
       false
@@ -1033,6 +1070,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         canManageUseCases,
         canApproveQuality,
         canApproveUseCase,
+        canTickStage,
         isViewer,
         createProject,
         updateProject,
@@ -1048,6 +1086,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateUseCase,
         deleteUseCase,
         toggleAcceptanceCriteria,
+        setUseCaseStages,
         toggleQualityItemPassed,
         updateQualityNotes,
         addQualityItem,

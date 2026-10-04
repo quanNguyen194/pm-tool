@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Project, ProjectStatus, Priority } from '../../types';
+import { Project, ProjectStatus, Priority, ProgressModel } from '../../types';
 import {
   FolderPlus,
   Calendar,
@@ -44,6 +44,7 @@ export const ProjectsView: React.FC = () => {
     targetEndDate: string;
     budget: number;
     currentPhase: Project['currentPhase'];
+    progressModel: ProgressModel;
     memberIds: string[];
   }>({
     code: '',
@@ -56,6 +57,7 @@ export const ProjectsView: React.FC = () => {
     targetEndDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
     budget: 500000000,
     currentPhase: 'phase_1',
+    progressModel: 'criteria',
     memberIds: []
   });
 
@@ -74,6 +76,7 @@ export const ProjectsView: React.FC = () => {
       targetEndDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
       budget: 650000000,
       currentPhase: 'phase_1',
+      progressModel: 'criteria',
       memberIds: []
     });
     setIsModalOpen(true);
@@ -92,6 +95,7 @@ export const ProjectsView: React.FC = () => {
       targetEndDate: p.targetEndDate,
       budget: p.budget,
       currentPhase: p.currentPhase,
+      progressModel: p.progressModel,
       memberIds: p.memberIds
     });
     setIsModalOpen(true);
@@ -426,6 +430,21 @@ export const ProjectsView: React.FC = () => {
                     <option value="phase_5">Giai đoạn 5: UAT & Release</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Cách Tính Tiến Độ Use Case</label>
+                <select
+                  value={formData.progressModel}
+                  onChange={e => setFormData({ ...formData, progressModel: e.target.value as ProgressModel })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-indigo-500"
+                >
+                  <option value="criteria">Theo tiêu chí nghiệm thu (PM/Admin tick từng tiêu chí)</option>
+                  <option value="stages">Theo 5 bước chuẩn: Phân tích, Thiết kế, Lập trình, Kiểm thử, Nghiệm thu</option>
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Đổi cách tính sẽ tính lại tiến độ mọi use case của dự án. Mô hình 5 bước phù hợp khi có hàng trăm use case.
+                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

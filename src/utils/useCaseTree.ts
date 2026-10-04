@@ -4,6 +4,9 @@ export const MAX_USE_CASE_DEPTH = 3;
 
 /** Trọng số điểm use case (UCP) theo độ phức tạp. */
 export const COMPLEXITY_WEIGHT: Record<UseCaseComplexity, number> = { simple: 5, medium: 10, complex: 15 };
+/** Trọng số dùng để tổng hợp tiến độ: chưa đánh giá độ phức tạp thì coi như trung bình (khớp DB). */
+export const progressWeight = (c?: UseCaseComplexity) => (c ? COMPLEXITY_WEIGHT[c] : 10);
+
 export const COMPLEXITY_LABEL: Record<UseCaseComplexity, string> = {
   simple: 'Đơn giản',
   medium: 'Trung bình',
@@ -27,8 +30,12 @@ export interface UseCaseNode {
   ucp: number;
   /** Số use case lá đã hoàn thành / kiểm thử. */
   doneCount: number;
-  /** Tiến độ trung bình của các use case lá bên dưới (làm tròn). */
+  /** Tiến độ trung bình CÓ TRỌNG SỐ độ phức tạp của các use case lá bên dưới (làm tròn). */
   avgProgress: number;
+  /** Tổng trọng số của các use case lá bên dưới (dùng để gộp tiến độ nhiều nhánh). */
+  weight: number;
+  /** Id các use case lá bên dưới (dùng để chọn hàng loạt). */
+  leafIds: string[];
 }
 
 const byCode = (a: UseCase, b: UseCase) => a.code.localeCompare(b.code, 'vi', { numeric: true });
@@ -95,7 +102,14 @@ export function flattenUseCaseTree(useCases: UseCase[]): UseCaseNode[] {
         leafCount: leaves.length,
         ucp: leaves.reduce((s, l) => s + (l.complexity ? COMPLEXITY_WEIGHT[l.complexity] : 0), 0),
         doneCount: leaves.filter(l => l.status === 'completed' || l.status === 'tested').length,
-        avgProgress: leaves.length ? Math.round(leaves.reduce((s, l) => s + l.progressPercent, 0) / leaves.length) : 0
+        avgProgress: leaves.length
+          ? Math.round(
+              leaves.reduce((s, l) => s + l.progressPercent * progressWeight(l.complexity), 0) /
+                leaves.reduce((s, l) => s + progressWeight(l.complexity), 0)
+            )
+          : 0,
+        weight: leaves.reduce((s, l) => s + progressWeight(l.complexity), 0),
+        leafIds: leaves.map(l => l.id)
       });
       if (depth < MAX_USE_CASE_DEPTH) walk(kids, depth + 1);
     });

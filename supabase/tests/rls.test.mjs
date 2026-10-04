@@ -18,7 +18,7 @@ await db.exec(`
   alter default privileges in schema public grant all on functions to anon, authenticated, public;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
-for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql']) {
+for (const f of ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql']) {
   await db.exec(fs.readFileSync(new URL(f, MIG), 'utf8'));
   console.log('applied', f);
 }

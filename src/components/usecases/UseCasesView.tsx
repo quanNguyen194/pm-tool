@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { exportUseCasesToCSV } from '../../utils/exportUtils';
+import { STAGES, StageKey } from '../../utils/stages';
 import {
   COMPLEXITY_LABEL,
   COMPLEXITY_STYLE,
@@ -80,6 +81,9 @@ export const UseCasesView: React.FC = () => {
     toggleAcceptanceCriteria,
     canApproveUseCase,
     canManageUseCases,
+    canTickStage,
+    setUseCaseStages,
+    allUsers,
     currentUser
   } = useApp();
 
@@ -92,6 +96,10 @@ export const UseCasesView: React.FC = () => {
   const [openNodes, setOpenNodes] = useState<Set<string> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUc, setEditingUc] = useState<UseCase | null>(null);
+  // Chọn hàng loạt (chỉ khi dự án dùng mô hình 5 bước)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStage, setBulkStage] = useState<StageKey>('analysis');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [formData, setFormData] = useState<FormState>({
     kind: 'usecase',
     code: '',
@@ -121,6 +129,13 @@ export const UseCasesView: React.FC = () => {
   const isFiltering =
     searchQuery.trim() !== '' || filterStatus !== 'all' || filterTag !== 'all' || filterComplexity !== 'all';
 
+  const stagesModel = activeProject.progressModel === 'stages';
+  const tickableStages = STAGES.filter(st => canTickStage(st.key));
+  const canTickAny = stagesModel && tickableStages.length > 0;
+  // Bước đang chọn trong thanh hàng loạt; nếu vai trò không được tick bước đó thì dùng bước đầu tiên được phép.
+  const effectiveBulkStage: StageKey = tickableStages.some(st => st.key === bulkStage) ? bulkStage : tickableStages[0]?.key ?? bulkStage;
+  const userNames = useMemo(() => new Map(allUsers.map(u => [u.id, u.name])), [allUsers]);
+
   const effectiveOpen = useMemo(() => {
     if (openNodes) return openNodes;
     return nodes.length > AUTO_COLLAPSE_ABOVE
@@ -134,9 +149,8 @@ export const UseCasesView: React.FC = () => {
     const leafCount = roots.reduce((s, n) => s + n.leafCount, 0);
     const done = roots.reduce((s, n) => s + n.doneCount, 0);
     const ucp = roots.reduce((s, n) => s + n.ucp, 0);
-    const progress = leafCount
-      ? Math.round(roots.reduce((s, n) => s + n.avgProgress * n.leafCount, 0) / leafCount)
-      : 0;
+    const totalWeight = roots.reduce((s, n) => s + n.weight, 0);
+    const progress = totalWeight ? Math.round(roots.reduce((s, n) => s + n.avgProgress * n.weight, 0) / totalWeight) : 0;
     return { leafCount, done, ucp, progress, modules: roots.length };
   }, [nodes]);
 
@@ -198,6 +212,26 @@ export const UseCasesView: React.FC = () => {
     setFilterStatus('all');
     setFilterTag('all');
     setFilterComplexity('all');
+  };
+
+  // Use case lá có thể chọn: đang lọc thì chỉ lấy các use case khớp, không thì lấy tất cả.
+  const selectableLeafIds = useMemo(() => {
+    const pool = isFiltering ? visibleNodes : nodes;
+    return pool.filter(n => n.useCase.kind !== 'group' && n.childCount === 0).map(n => n.useCase.id);
+  }, [isFiltering, visibleNodes, nodes]);
+
+  const toggleSelected = (ids: string[], on: boolean) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+
+  const applyBulk = async (done: boolean) => {
+    setBulkBusy(true);
+    const ok = await setUseCaseStages([...selected], effectiveBulkStage, done);
+    setBulkBusy(false);
+    if (ok) setSelected(new Set());
   };
 
   const openCreateModal = (parent?: UseCase, kind: UseCaseKind = 'usecase') => {
@@ -467,6 +501,16 @@ export const UseCasesView: React.FC = () => {
               <ChevronsDownUp className="w-3.5 h-3.5" />
               <span>Thu gọn</span>
             </button>
+            {canTickAny && (
+              <button
+                onClick={() => setSelected(new Set(selectableLeafIds))}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
+                title="Chọn các use case đang hiển thị để cập nhật hàng loạt"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Chọn tất cả ({selectableLeafIds.length})</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -487,7 +531,7 @@ export const UseCasesView: React.FC = () => {
             {projectUseCases.length === 0 ? 'Dự án chưa có Use Case nào' : 'Không tìm thấy Use Case nào phù hợp'}
           </div>
         ) : (
-          visibleNodes.map(({ useCase: uc, depth, childCount, leafCount, ucp, doneCount, avgProgress }) => {
+          visibleNodes.map(({ useCase: uc, depth, childCount, leafCount, ucp, doneCount, avgProgress, leafIds }) => {
             const isGroup = uc.kind === 'group';
             const isExpanded = expandedId === uc.id;
             const isParent = childCount > 0;
@@ -527,6 +571,22 @@ export const UseCasesView: React.FC = () => {
                     <span className="w-9 shrink-0" aria-hidden="true" />
                   )}
 
+                  {canTickAny && (isGroup ? leafIds.length > 0 : !isParent) && (
+                    <input
+                      type="checkbox"
+                      aria-label={`Chọn ${uc.code}`}
+                      checked={(isGroup ? leafIds : [uc.id]).every(id => selected.has(id))}
+                      ref={el => {
+                        if (el) {
+                          const ids = isGroup ? leafIds : [uc.id];
+                          const some = ids.some(id => selected.has(id));
+                          el.indeterminate = some && !ids.every(id => selected.has(id));
+                        }
+                      }}
+                      onChange={e => toggleSelected(isGroup ? leafIds : [uc.id], e.target.checked)}
+                      className="mr-2 rounded border-slate-300 text-indigo-600 shrink-0"
+                    />
+                  )}
                   <div
                     onClick={() => setExpandedId(isExpanded ? null : uc.id)}
                     className="flex-1 min-w-0 py-3 pr-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 cursor-pointer"
@@ -585,6 +645,20 @@ export const UseCasesView: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 ml-auto">
+                      {stagesModel && !isGroup && !isParent && (
+                        <div className="flex items-center gap-0.5" role="img" aria-label={`Các bước đã xong: ${uc.stagesDone.length}/5`}>
+                          {STAGES.map(st => {
+                            const done = uc.stagesDone.some(d => d.stage === st.key);
+                            return (
+                              <span
+                                key={st.key}
+                                title={`${st.label}: ${done ? 'đã xong' : 'chưa xong'}`}
+                                className={`w-2.5 h-2.5 rounded-sm border ${done ? 'bg-emerald-600 border-emerald-700' : 'bg-slate-100 border-slate-300'}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
                       <div className="text-right">
                         <div className="text-xs font-bold text-slate-900 font-mono tabular-nums">{progress}%</div>
                         {!isParent && !isGroup && (
@@ -664,6 +738,50 @@ export const UseCasesView: React.FC = () => {
 
                     {!isGroup && (
                       <>
+                        {stagesModel && !isParent && (
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                              <h4 className="text-xs font-bold text-slate-900">Các Bước Thực Hiện (tiến độ {uc.progressPercent}%)</h4>
+                              <span className="text-[11px] text-slate-500">
+                                Mỗi vai trò tick bước của mình; PM/Admin tick được mọi bước
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                              {STAGES.map(st => {
+                                const rec = uc.stagesDone.find(d => d.stage === st.key);
+                                const allowed = canTickStage(st.key);
+                                return (
+                                  <label
+                                    key={st.key}
+                                    className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
+                                      allowed ? 'cursor-pointer' : 'cursor-not-allowed'
+                                    } ${rec ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/60'}`}
+                                    title={allowed ? undefined : `Bước này do ${st.who} (hoặc PM/Admin) cập nhật`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={!!rec}
+                                      disabled={!allowed}
+                                      onChange={() => void setUseCaseStages([uc.id], st.key, !rec)}
+                                      className="mt-0.5 rounded border-slate-300 text-emerald-700"
+                                    />
+                                    <span className="min-w-0">
+                                      <span className="block font-semibold text-slate-800">
+                                        {st.label} <span className="font-mono font-normal text-slate-500">{st.weight}%</span>
+                                      </span>
+                                      <span className="block text-[11px] text-slate-500 truncate">
+                                        {rec
+                                          ? `${rec.doneBy ? userNames.get(rec.doneBy) || '—' : '—'} · ${new Date(rec.doneAt).toLocaleDateString('vi-VN')}`
+                                          : st.who}
+                                      </span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Flows Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="bg-white p-4 rounded-2xl border border-slate-200">
@@ -832,6 +950,54 @@ export const UseCasesView: React.FC = () => {
         <p className="text-[11px] text-slate-500">
           {nodes.length} nút · {totals.modules} module · {totals.leafCount} use case · đang hiển thị {visibleNodes.length}
         </p>
+      )}
+
+      {canTickAny && selected.size > 0 && (
+        <div
+          className="sticky bottom-3 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 bg-white border border-indigo-300 rounded-2xl shadow-lg"
+          role="region"
+          aria-label="Cập nhật hàng loạt"
+        >
+          <span className="text-xs font-semibold text-slate-900">
+            Đã chọn <span className="font-mono">{selected.size}</span> use case
+          </span>
+          <label className="flex items-center gap-1.5 text-xs text-slate-700">
+            <span>Bước:</span>
+            <select
+              value={effectiveBulkStage}
+              onChange={e => setBulkStage(e.target.value as StageKey)}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+            >
+              {STAGES.map(st => (
+                <option key={st.key} value={st.key} disabled={!canTickStage(st.key)}>
+                  {st.label} ({st.weight}%)
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              disabled={bulkBusy || !canTickStage(effectiveBulkStage)}
+              onClick={() => void applyBulk(true)}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg"
+            >
+              Đánh dấu xong
+            </button>
+            <button
+              disabled={bulkBusy || !canTickStage(effectiveBulkStage)}
+              onClick={() => void applyBulk(false)}
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 rounded-lg"
+            >
+              Bỏ đánh dấu
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-lg"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Create / Edit Modal */}

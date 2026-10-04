@@ -20,6 +20,9 @@ export interface User {
 export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
+/** criteria = tiến độ use case theo tiêu chí nghiệm thu; stages = theo 5 bước chuẩn (Phân tích → Nghiệm thu). */
+export type ProgressModel = 'criteria' | 'stages';
+
 export interface Project {
   id: string;
   code: string;
@@ -33,6 +36,7 @@ export interface Project {
   budget: number; // VND
   progressPercent: number;
   currentPhase: 'phase_1' | 'phase_2' | 'phase_3' | 'phase_4' | 'phase_5';
+  progressModel: ProgressModel;
   memberIds: string[];
 }
 
@@ -91,6 +95,8 @@ export interface UseCase {
   transactions?: number;
   /** Mức độ cần thiết (B, M, T). */
   necessity: string;
+  /** Các bước chuẩn đã hoàn thành (chỉ dùng khi dự án có progressModel = stages). */
+  stagesDone: { stage: 'analysis' | 'design' | 'coding' | 'testing' | 'acceptance'; doneBy?: string; doneAt: string }[];
   code: string;
   title: string;
   actor: string;

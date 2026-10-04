@@ -76,6 +76,7 @@ export const mapProject = (r: Row, members: MemberRow[]): Project => ({
   budget: Number(r.budget ?? 0),
   progressPercent: r.progress_percent ?? 0,
   currentPhase: r.current_phase,
+  progressModel: r.progress_model === 'stages' ? 'stages' : 'criteria',
   memberIds: members.filter(m => m.projectId === r.id).map(m => m.userId)
 });
 
@@ -104,7 +105,7 @@ export const mapTask = (r: Row, collaborators: Row[] = []): Task => ({
   useCaseId: r.use_case_id ?? undefined
 });
 
-export const mapUseCase = (r: Row, criteria: Row[]): UseCase => ({
+export const mapUseCase = (r: Row, criteria: Row[], stages: Row[] = []): UseCase => ({
   id: r.id,
   projectId: r.project_id,
   parentId: r.parent_id ?? undefined,
@@ -113,6 +114,9 @@ export const mapUseCase = (r: Row, criteria: Row[]): UseCase => ({
   complexity: r.complexity ?? undefined,
   transactions: r.transactions ?? undefined,
   necessity: r.necessity ?? 'B',
+  stagesDone: stages
+    .filter(s => s.use_case_id === r.id)
+    .map(s => ({ stage: s.stage, doneBy: s.done_by ?? undefined, doneAt: s.done_at })),
   code: r.code,
   title: r.title,
   actor: r.actor ?? '',

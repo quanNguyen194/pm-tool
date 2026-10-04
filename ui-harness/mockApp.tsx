@@ -25,7 +25,7 @@ const tasks = [
 const proj = (id: string, code: string, name: string, p: number, status = 'in_progress') => ({
   id, code, name,
   description: 'Nền tảng Internet Banking & Mobile Banking thế hệ mới hỗ trợ thanh toán tức thì, định danh điện tử eKYC và bảo mật đa lớp sinh trắc học.',
-  status, priority: 'urgent', managerId: 'u1', startDate: iso(-60), targetEndDate: iso(45), budget: 1850000000, progressPercent: p, currentPhase: 'phase_3', memberIds: ['u1', 'u2', 'u3']
+  status, priority: 'urgent', managerId: 'u1', startDate: iso(-60), targetEndDate: iso(45), budget: 1850000000, progressPercent: p, currentPhase: 'phase_3', progressModel: 'stages', memberIds: ['u1', 'u2', 'u3']
 });
 const projects = [
   proj('p1', 'OMNI-BANK', 'Hệ Thống Ngân Hàng Số Omni-Channel', 53),
@@ -34,7 +34,7 @@ const projects = [
 ];
 const crit = (id: string, d: string, c: boolean) => ({ id, description: d, completed: c });
 const mkUc = (id: string, code: string, title: string, parentId: string | undefined, status: string, pct: number, crits: any[] = []) => ({
-  id, projectId: 'p1', parentId, kind: 'usecase', tags: ['Web'], complexity: 'medium', transactions: 4, necessity: 'B', code, title, actor: 'Khách hàng cá nhân',
+  id, projectId: 'p1', parentId, kind: 'usecase', tags: ['Web'], complexity: 'medium', transactions: 4, necessity: 'B', stagesDone: [] as any[], code, title, actor: 'Khách hàng cá nhân',
   description: 'Cho phép khách hàng thực hiện nghiệp vụ từ xa thông qua ứng dụng di động.', priority: 'high', status, progressPercent: pct,
   mainFlow: ['1. Nhập số điện thoại và xác thực OTP', '2. Chụp ảnh 2 mặt CCCD gắn chip', '3. Quét khuôn mặt sinh trắc học'], alternateFlow: ['3a. Ảnh mờ: yêu cầu chụp lại'],
   acceptanceCriteria: crits, assignedTo: 'u2', updatedAt: iso(-2)
@@ -64,6 +64,10 @@ for (let i = 1; i <= 60; i++) {
     tags: [inWeb ? 'Web' : 'Tích hợp dữ liệu'], complexity: ['simple', 'medium', 'complex'][i % 3 === 0 ? 2 : i % 2], transactions: (i % 5) + 1
   });
 }
+const stageOf = (stages: string[]) => stages.map(stage => ({ stage, doneBy: 'u2', doneAt: new Date().toISOString() }));
+bulk.forEach((u, i) => {
+  if (u.kind === 'usecase') u.stagesDone = stageOf(['analysis', 'design', 'coding', 'testing', 'acceptance'].slice(0, i % 6));
+});
 useCases.push(...bulk);
 const items = (p: string, titles: string[]) =>
   titles.map((t, i) => ({
@@ -108,7 +112,7 @@ export const MockProvider = ({ children }: any) => {
       reportSchedules: [{ id: 's1', projectId: 'p1', frequency: 'weekly', enabled: true }],
       reportRuns: [{ id: 'r1', projectId: 'p1', frequency: 'weekly', periodStart: iso(-7), periodEnd: iso(-1), createdAt: new Date().toISOString(), summary }],
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
-      canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
+      canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
   }, [activeTab, activeProjectId, role]);
 

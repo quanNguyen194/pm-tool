@@ -65,6 +65,12 @@ Thứ tự đúng khi cần quay về trước `0008`:
 
 Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là đủ: Admin và PM dùng bình thường (hai vai trò này không đổi tên); chỉ thành viên DEV/BA/Tester tạm chưa thao tác được trên giao diện cũ cho đến khi làm bước 2.
 
+## 4c. Hoàn tác migration `0009` và `0010`
+
+- `0009` (thuộc tính use case) và `0010` (tiến độ theo 5 bước) chỉ **thêm** cột/bảng, nên bản giao diện cũ vẫn chạy khi hai migration này đã có trong DB. Rollback Cloudflare/git (phương án A/B/C) là đủ để khôi phục dịch vụ.
+- Muốn gỡ hẳn trong DB: chạy `supabase/rollback/0010_rollback.sql` trước, rồi `supabase/imports/qtvt_usecases_rollback.sql` (nếu đã nhập use case từ Excel), rồi `supabase/rollback/0009_rollback.sql`. Mất dữ liệu các bước đã tick, nhãn và độ phức tạp.
+- Lưu ý: giao diện bản mới ghi cột `progress_model` (dự án) và đọc bảng `use_case_stages`; nếu đưa giao diện mới lên khi DB chưa có `0010` thì sửa/tạo dự án sẽ báo lỗi. Luôn chạy migration trước.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

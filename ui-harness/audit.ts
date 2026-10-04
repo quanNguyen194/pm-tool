@@ -134,7 +134,17 @@ function overflowAudit() {
       if (clickText('button', 'Mở hết')) {
         await wait(500);
         res['usecases:mở-hết'] = snap();
+        if (clickText('[role="treeitem"] h3', 'Quản lý cấu hình danh mục số 2')) {
+          await wait(400);
+          res['usecases:chi-tiết-bước'] = snap();
+        }
         clickText('button', 'Thu gọn');
+        await wait(300);
+      }
+      if (clickText('button', 'Chọn tất cả')) {
+        await wait(400);
+        res['usecases:chọn-hàng-loạt'] = snap();
+        clickText('button', 'Bỏ chọn');
         await wait(300);
       }
       if (clickText('button', 'Thêm Use Case')) {

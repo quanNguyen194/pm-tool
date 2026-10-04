@@ -25,6 +25,7 @@ export const NoProjectsView: React.FC = () => {
       targetEndDate: end,
       budget: 0,
       currentPhase: 'phase_1',
+      progressModel: 'criteria',
       memberIds: []
     });
   };
