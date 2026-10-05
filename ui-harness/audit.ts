@@ -111,6 +111,15 @@ function overflowAudit() {
         clickText('button', 'Đóng');
         await wait(300);
       }
+      if (clickText('[aria-label="Lọc theo khung thời gian"] button', 'Tuần')) {
+        await wait(300);
+        res['tasks:lọc-tuần'] = snap();
+        clickText('[aria-label="Lọc theo khung thời gian"] button', 'Tháng');
+        await wait(300);
+        res['tasks:lọc-tháng'] = snap();
+        clickText('[aria-label="Lọc theo khung thời gian"] button', 'Toàn bộ');
+        await wait(300);
+      }
       if (clickText('button', 'Thêm Nhiệm Vụ')) {
         await wait(400);
         res['tasks:form'] = snap();

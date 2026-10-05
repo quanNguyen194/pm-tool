@@ -27,6 +27,7 @@ import { AssessmentBadge, OwnerAvatars, TaskProgress } from './TaskParts';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS, ASSESSMENT_STYLES, effectiveAssessment, suggestAssessment } from '../../utils/taskAssessment';
 import { DEPARTMENT_LABELS, ROLE_SHORT } from '../../utils/roles';
 import { UseCaseLinks } from './UseCaseLinks';
+import { PeriodMode, periodLabel, periodRange, shiftAnchor, taskInPeriod } from '../../utils/period';
 
 type SortKey = 'code' | 'title' | 'status' | 'priority' | 'assignee' | 'progress' | 'effort' | 'due';
 const STATUS_ORDER: Record<TaskStatus, number> = { todo: 0, in_progress: 1, review: 2, done: 3 };
@@ -93,6 +94,10 @@ export const TasksView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterAssessment, setFilterAssessment] = useState<TaskAssessment | 'all'>('all');
+  // Khung thời gian: toàn bộ / theo tuần / theo tháng (neo vào một ngày bất kỳ trong kỳ)
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('all');
+  const [periodAnchor, setPeriodAnchor] = useState(() => new Date());
+  const [includeOverdue, setIncludeOverdue] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'due', dir: 'asc' });
   // Kéo thả Kanban
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -248,6 +253,7 @@ export const TasksView: React.FC = () => {
 
   // Filtering
   const q = searchQuery.toLowerCase();
+  const range = periodRange(periodMode, periodAnchor);
   const filteredTasks = projectTasks.filter(task => {
     const matchesSearch =
       task.title.toLowerCase().includes(q) ||
@@ -262,7 +268,9 @@ export const TasksView: React.FC = () => {
     // Kanban đã chia cột theo trạng thái nên bộ lọc trạng thái chỉ áp dụng cho Gantt và Bảng.
     const matchesStatus = viewMode === 'kanban' || filterStatus === 'all' || task.status === filterStatus;
 
-    return matchesSearch && matchesPriority && matchesAssignee && matchesDepartment && matchesAssessment && matchesStatus;
+    const matchesPeriod = !range || taskInPeriod(task, range, includeOverdue);
+
+    return matchesSearch && matchesPriority && matchesAssignee && matchesDepartment && matchesAssessment && matchesStatus && matchesPeriod;
   });
 
   // Đếm theo đánh giá (trên toàn bộ việc của dự án) cho thanh tóm tắt.
@@ -443,6 +451,69 @@ export const TasksView: React.FC = () => {
         )}
       </div>
 
+      {/* Khung thời gian */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2" role="group" aria-label="Lọc theo khung thời gian">
+        <span className="text-xs text-slate-500">Thời gian:</span>
+        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          {([['all', 'Toàn bộ'], ['week', 'Tuần'], ['month', 'Tháng']] as const).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => {
+                setPeriodMode(m);
+                setPeriodAnchor(new Date());
+              }}
+              aria-pressed={periodMode === m}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                periodMode === m ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {range && (
+          <>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPeriodAnchor(a => shiftAnchor(periodMode, a, -1))}
+                className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                aria-label={periodMode === 'week' ? 'Tuần trước' : 'Tháng trước'}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="min-w-[130px] text-center text-xs font-semibold text-slate-800 tabular-nums" aria-live="polite">
+                {periodLabel(periodMode, range)}
+              </span>
+              <button
+                onClick={() => setPeriodAnchor(a => shiftAnchor(periodMode, a, 1))}
+                className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                aria-label={periodMode === 'week' ? 'Tuần sau' : 'Tháng sau'}
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setPeriodAnchor(new Date())}
+                className="ml-1 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 rounded-lg border border-slate-200"
+              >
+                {periodMode === 'week' ? 'Tuần này' : 'Tháng này'}
+              </button>
+            </div>
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeOverdue}
+                onChange={e => setIncludeOverdue(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              Kèm việc quá hạn chưa xong
+            </label>
+            <span className="text-xs text-slate-500">
+              {filteredTasks.length}/{projectTasks.length} nhiệm vụ
+            </span>
+          </>
+        )}
+      </div>
+
       {/* Filters Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-2xl">
         <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
@@ -572,7 +643,7 @@ export const TasksView: React.FC = () => {
                 {/* Task Cards Column */}
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {tasksInCol.length === 0 ? (
-                    <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg text-[11px] text-slate-500">
+                    <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg text-[11px] text-slate-600">
                       Chưa có nhiệm vụ
                     </div>
                   ) : (
