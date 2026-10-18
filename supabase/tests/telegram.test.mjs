@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 
 const MIG = new URL('../migrations/', import.meta.url);
-const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql', '0015_telegram_timeout.sql', '0016_reminder_feedback.sql'];
+const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql', '0015_telegram_timeout.sql', '0016_reminder_feedback.sql', '0017_daily_digest.sql'];
 
 const db = new PGlite();
 await db.exec(`
@@ -67,8 +67,8 @@ await root();
 await q(`update profiles set is_admin = true where id = $1`, [ids.admin]);
 const P = (await q(`insert into projects (code,name,start_date,target_end_date,manager_id) values ('TG','Dự án TG',current_date-10,current_date+30,$1) returning id`, [ids.pm]))[0].id;
 await q(`insert into project_members (project_id,user_id,role) values ($1,$2,'dev')`, [P, ids.dev]);
-const T1 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-1','Việc quá hạn',current_date-9,current_date-3,$2) returning id`, [P, ids.dev]))[0].id;
-const T2 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-2','Việc sắp đến hạn',current_date-2,current_date+1,$2) returning id`, [P, ids.dev]))[0].id;
+const T1 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-1','Việc quá hạn',current_date-9,(now() at time zone 'Asia/Ho_Chi_Minh')::date-3,$2) returning id`, [P, ids.dev]))[0].id;
+const T2 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-2','Việc sắp đến hạn',current_date-2,(now() at time zone 'Asia/Ho_Chi_Minh')::date+1,$2) returning id`, [P, ids.dev]))[0].id;
 
 // ---------- Chưa cấu hình bot ----------
 await as('pm');
@@ -215,6 +215,49 @@ await root();
 await q(`insert into notifications (user_id,type,title,message) values ($1,'system','sau quét','ok')`, [ids.dev]);
 ok('sau khi quét, thông báo thường lại gửi từng tin (cờ gom tin đã tắt)', (await calls()).length === 1);
 
+// ---------- Nhắc lặp lại hằng ngày (0017) ----------
+await clearCalls();
+await root();
+await db.exec(`update telegram_digest_log set day = day - 1`); // giả lập sang ngày hôm sau
+await as('admin');
+let again = (await q(`select scan_deadlines() n`))[0].n;
+c = await calls();
+ok('hôm sau: không có thông báo web mới nhưng vẫn nhắc lại qua Telegram', again === 0 && c.length === 2, `n=${again} calls=${c.length}`);
+const m1 = c.find(x => x.body.chat_id === '123456789').body.text;
+ok('tin nhắc lại liệt kê cả việc quá hạn lẫn sắp đến hạn, kèm số ngày', m1.includes('Nhắc deadline hôm nay') && m1.includes('TG-1') && m1.includes('trễ 3 ngày') && m1.includes('TG-2') && m1.includes('còn 1 ngày'), m1);
+await clearCalls();
+await as('admin');
+await q(`select scan_deadlines()`);
+ok('cùng ngày bấm quét lại không gửi trùng', (await calls()).length === 0);
+// việc đã xong thì không còn được nhắc
+await root();
+await q(`update tasks set status = 'done' where id = $1`, [T1]);
+await db.exec(`update telegram_digest_log set day = day - 1`);
+await clearCalls();
+await as('admin');
+await q(`select scan_deadlines()`);
+c = await calls();
+const m2 = c.find(x => x.body.chat_id === '123456789')?.body.text ?? '';
+ok('việc đã hoàn thành không còn trong tin nhắc', m2.includes('0 quá hạn, 1 sắp đến hạn') && !m2.includes('TG-1') && m2.includes('TG-2'), m2);
+// việc mới lọt vào diện cần lưu ý sau bản tóm tắt buổi sáng -> tin cập nhật trong ngày
+await root();
+await q(`update tasks set status = 'todo' where id = $1`, [T1]);
+await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-5','Việc mới hết hạn hôm nay',current_date,(now() at time zone 'Asia/Ho_Chi_Minh')::date,$2)`, [P, ids.dev]);
+await clearCalls();
+await as('admin');
+await q(`select scan_deadlines()`);
+c = await calls();
+const m3 = c.find(x => x.body.chat_id === '123456789')?.body.text ?? '';
+ok('có việc mới sau bản sáng -> tin "Cập nhật" đầy đủ, ghi rõ hết hạn hôm nay', m3.includes('Cập nhật nhắc deadline') && m3.includes('TG-5') && m3.includes('hết hạn hôm nay') && m3.includes('TG-1'), m3);
+// dọn nhật ký cũ
+await root();
+await q(`insert into telegram_digest_log (user_id, day) values ($1, current_date - 40)`, [ids.other]);
+await as('admin');
+await q(`select scan_deadlines()`);
+await root();
+ok('nhật ký tóm tắt quá 30 ngày bị dọn', (await q(`select count(*)::int c from telegram_digest_log where day < current_date - 30`))[0].c === 0);
+await q(`delete from tasks where code = 'TG-5'`);
+
 // ---------- Gửi thử + kết quả ----------
 await clearCalls();
 await as('dev');
@@ -249,6 +292,8 @@ await throws('người dùng không đọc được token', () => q(`select tele
 
 // ---------- Hoàn tác 0014 ----------
 await root();
+await db.exec(fs.readFileSync(new URL('../rollback/0017_rollback.sql', import.meta.url), 'utf8'));
+ok('rollback 0017: bỏ bảng nhật ký tóm tắt', (await q(`select to_regclass('public.telegram_digest_log') t`))[0].t === null);
 await db.exec(fs.readFileSync(new URL('../rollback/0016_rollback.sql', import.meta.url), 'utf8'));
 ok('rollback 0016: send_task_reminder trả void như cũ', (await q(`select prorettype::regtype::text t from pg_proc where proname = 'send_task_reminder'`))[0].t === 'void');
 await db.exec(fs.readFileSync(new URL('../rollback/0014_rollback.sql', import.meta.url), 'utf8'));

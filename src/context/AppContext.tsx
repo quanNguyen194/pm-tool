@@ -1206,7 +1206,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         check(res);
         const n = Number(res.data ?? 0);
         if (n > 0) pushToast('success', `Đã tạo ${n} thông báo deadline mới.`);
-        else pushToast('info', 'Không có thông báo deadline mới (mọi cảnh báo đã được gửi trước đó).');
+        else pushToast('info', 'Không có thông báo deadline mới trong web. Tin Telegram nhắc lại chỉ gửi một lần mỗi ngày cho mỗi người.');
       },
       ['notifications'],
       false
