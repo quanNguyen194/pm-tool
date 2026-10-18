@@ -26,7 +26,8 @@ import {
   ReportSchedule,
   Toast,
   AccountSuggestion,
-  MergeRequest
+  MergeRequest,
+  TelegramInfo
 } from '../types';
 import { supabase, describeError } from '../lib/supabase';
 import {
@@ -139,6 +140,12 @@ interface AppContextType {
   addQualityItem: (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => void;
   // Thông báo
   sendDeadlineReminder: (taskId: string) => void;
+  // Nhắc nhở qua Telegram (liên kết của chính người đăng nhập)
+  getTelegram: () => Promise<TelegramInfo>;
+  /** Lưu Chat ID (rỗng = gỡ liên kết). Trả về thông báo lỗi hoặc null nếu thành công. */
+  saveTelegram: (chatId: string, enabled: boolean) => Promise<string | null>;
+  /** Gửi tin thử tới Telegram của mình và chờ kết quả. */
+  testTelegram: () => Promise<{ ok: boolean; message: string }>;
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
   // Quản trị
@@ -1108,6 +1115,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const getTelegram = async (): Promise<TelegramInfo> => {
+    const res = await supabase.rpc('get_my_telegram');
+    check(res);
+    return res.data as TelegramInfo;
+  };
+
+  const saveTelegram = async (chatId: string, enabled: boolean): Promise<string | null> => {
+    try {
+      check(await supabase.rpc('set_my_telegram', { p_chat_id: chatId, p_enabled: enabled }));
+      return null;
+    } catch (e) {
+      return describeError(e);
+    }
+  };
+
+  const testTelegram = async (): Promise<{ ok: boolean; message: string }> => {
+    try {
+      check(await supabase.rpc('send_telegram_test'));
+      // pg_net gửi bất đồng bộ: hỏi kết quả tối đa ~10 giây
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const res = await supabase.rpc('telegram_test_result');
+        check(res);
+        const d = res.data as { status: string; ok?: boolean; description?: string | null };
+        if (d.status === 'done') {
+          return d.ok
+            ? { ok: true, message: 'Đã gửi tin thử. Hãy kiểm tra Telegram của bạn.' }
+            : { ok: false, message: d.description || 'Telegram từ chối tin nhắn.' };
+        }
+      }
+      return { ok: false, message: 'Chưa nhận được phản hồi từ Telegram. Thử lại sau ít giây.' };
+    } catch (e) {
+      return { ok: false, message: describeError(e) };
+    }
+  };
+
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: true } : n)));
     void run(
@@ -1264,6 +1307,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateQualityNotes,
         addQualityItem,
         sendDeadlineReminder,
+        getTelegram,
+        saveTelegram,
+        testTelegram,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         seedDemoData,

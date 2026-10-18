@@ -41,6 +41,7 @@ Vai trò cũ `developer` được đổi tên thành `dev`, `qa` thành `tester`
 - Tiến độ dự án = 60% trung bình tiến độ % của nhiệm vụ + 40% trung bình **có trọng số** (độ phức tạp 5/10/15) của use case lá; module/nhóm không tính.
 - **Thêm thành viên:** gõ tên/email trong Đội ngũ để thấy gợi ý tài khoản trên hệ thống. Chỉ **admin** thêm được người chưa đăng ký (đặt tên, không trùng tên tài khoản đã đăng ký). Khi có tài khoản thật đăng ký (hoặc đổi tên) trùng tên đó, admin nhận thông báo và một yêu cầu hợp nhất ở màn Đội ngũ; duyệt thì mọi dữ liệu chuyển sang tài khoản thật, từ chối thì giữ hai tài khoản riêng.
 - **Người thực hiện:** admin chọn thành viên khác làm người thực hiện khi tick bước use case hoặc duyệt tiêu chuẩn chất lượng (ô "Thực hiện bởi"); các vai trò khác luôn là chính họ.
+- **Nhắc nhở qua Telegram:** menu tài khoản → "Nhắc nhở qua Telegram" để dán Chat ID và gửi thử. Từ đó nút "Gửi nhắc nhở" và thông báo quá hạn/sắp đến hạn tự động mỗi sáng cũng gửi về Telegram của người nhận. Cách tạo bot và lưu token: `docs/TELEGRAM.md`.
 - **Liên kết nhiệm vụ ↔ use case:** một nhiệm vụ gắn được nhiều use case. Trong form nhiệm vụ: "Tìm nhanh để thêm" (gõ mã/tên/module/nhãn, Enter thêm kết quả đầu) hoặc "Chọn từ danh sách…" (cửa sổ phụ dạng cây, tick module/nhóm/use case cha để chọn cả cụm).
 - **Cách tính tiến độ use case** chọn theo từng dự án (Dự án → Sửa → "Cách tính tiến độ use case"):
   - *Theo tiêu chí nghiệm thu* (mặc định): % tiêu chí đã tick, chỉ PM/Admin tick.
@@ -80,6 +81,7 @@ Chỉ dùng **anon / publishable key** ở frontend. Tuyệt đối không đưa
 | `0006_schedule_cron.sql` | Lịch `pg_cron`: 8:00 quét deadline, 23:55 chốt tiến độ |
 | `0007_report_schedules.sql` | Báo cáo định kỳ tự động, `ping()`; cron 8:10 tạo báo cáo |
 | `0013_placeholder_accounts.sql` | Gợi ý tài khoản khi thêm thành viên; quản trị viên thêm người chưa đăng ký (tài khoản ảo) và hợp nhất khi họ đăng ký trùng tên (sau khi admin duyệt); admin chọn người thực hiện khi tick bước / duyệt chất lượng. **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0013_rollback.sql` (xóa các tài khoản ảo) |
+| `0014_telegram_notify.sql` | Nhắc nhở qua bot Telegram: mỗi người tự lưu Chat ID; mọi thông báo mới (nhắc việc, quét deadline 8:00) đẩy sang Telegram qua pg_net; token bot nằm trong Supabase Vault. Cần thiết lập bot một lần: xem `docs/TELEGRAM.md`. Hoàn tác: `supabase/rollback/0014_rollback.sql` |
 | `0012_task_use_cases.sql` | Một nhiệm vụ liên kết được nhiều use case (bảng `task_use_cases`, cột cũ `tasks.use_case_id` giữ lại và đồng bộ). **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0012_rollback.sql` |
 | `0011_usecase_origin.sql` | Nguồn gốc use case (theo hợp đồng/bổ sung/điều chỉnh), lý do, thời điểm thống nhất, trạng thái "Không thực hiện" (không tính vào số lượng/UCP/tiến độ). **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0011_rollback.sql` |
 | `0010_usecase_stages.sql` | Tiến độ use case theo 5 bước chuẩn, cập nhật hàng loạt, tổng hợp có trọng số. **Chạy trước khi deploy giao diện mới.** Hoàn tác: `supabase/rollback/0010_rollback.sql` |

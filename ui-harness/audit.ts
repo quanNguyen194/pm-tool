@@ -104,6 +104,26 @@ function overflowAudit() {
     await wait(1300);
     res[tab] = snap();
     // Các lớp phủ / vùng ẩn của từng màn hình
+    if (tab === 'dashboard') {
+      if (clickText('header button', 'quan.ntm194') || clickText('header button', 'PMO')) {
+        await wait(300);
+        if (clickText('header button', 'Nhắc nhở qua Telegram')) {
+          await wait(500);
+          res['dashboard:telegram'] = snap();
+          const tg = document.querySelector<HTMLInputElement>('#tg-chat-id');
+          if (tg) {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(tg, '123456789');
+            tg.dispatchEvent(new Event('input', { bubbles: true }));
+            await wait(200);
+          }
+          clickText('[role="dialog"] button', 'Lưu & gửi thử');
+          await wait(1800);
+          res['dashboard:telegram-kết-quả'] = snap();
+          document.querySelector<HTMLElement>('[role="dialog"][aria-label="Nhắc nhở qua Telegram"] button[aria-label="Đóng"]')?.click();
+          await wait(300);
+        }
+      }
+    }
     if (tab === 'tasks') {
       if (clickText('main button, [role="tree"] button, button', 'Tích hợp Module')) {
         await wait(400);

@@ -91,6 +91,12 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Gỡ hẳn trong DB: `supabase/rollback/0013_rollback.sql`. **MẤT DỮ LIỆU:** mọi tài khoản ảo bị xóa (họ rời dự án, nhiệm vụ họ phụ trách thành chưa giao) vì phải gắn lại ràng buộc profiles → auth.users. Phải chạy TRƯỚC khi hoàn tác `0012` trở về trước.
 - Giao diện bản mới gọi các hàm `suggest_accounts`, `add_project_member_by_id`, `set_use_case_stages(..., p_actor)`: luôn chạy `0013` trước khi deploy.
 
+## 4g. Hoàn tác migration `0014` (nhắc nhở qua Telegram)
+
+- `0014` chỉ thêm bảng `telegram_links`, trigger gửi tin và vài hàm RPC; không đổi dữ liệu cũ. Bản giao diện cũ vẫn chạy bình thường khi `0014` còn trong DB. Rollback Cloudflare/git là đủ để khôi phục dịch vụ; nếu chỉ muốn tạm ngừng gửi tin thì xóa token: `delete from vault.secrets where name = 'telegram_bot_token';`.
+- Gỡ hẳn trong DB: `supabase/rollback/0014_rollback.sql` (xóa các Chat ID đã lưu, khôi phục `scan_deadlines` bản 0005, giữ nguyên extension và secret trong Vault). Phải chạy TRƯỚC khi hoàn tác `0013` trở về trước.
+- Giao diện bản mới gọi `get_my_telegram`, `set_my_telegram`, `send_telegram_test`, `telegram_test_result`: luôn chạy `0014` trước khi deploy.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

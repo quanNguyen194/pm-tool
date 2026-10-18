@@ -13,12 +13,14 @@ import {
   Shield,
   LogOut,
   RotateCcw,
-  Send
+  Send,
+  MessageCircle
 } from 'lucide-react';
 import { printPeriodicReport, exportTasksToCSV } from '../../utils/exportUtils';
 import { ThemeToggle } from './ThemeToggle';
 import { projectColor, projectInitials } from '../../utils/projectColor';
 import { ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
+import { TelegramDialog } from './TelegramDialog';
 
 export const Header: React.FC = () => {
   const {
@@ -49,6 +51,7 @@ export const Header: React.FC = () => {
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
@@ -336,6 +339,19 @@ export const Header: React.FC = () => {
                   </div>
                 </div>
               </div>
+              <div className="border-t border-slate-100 mt-1 pt-1">
+                <button
+                  onClick={() => {
+                    setIsUserDropdownOpen(false);
+                    setIsTelegramOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  title="Nhận nhắc nhở deadline qua bot Telegram"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Nhắc nhở qua Telegram</span>
+                </button>
+              </div>
               {isAdmin && (
                 <div className="border-t border-slate-100 mt-1 pt-1">
                   <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Quản trị</div>
@@ -378,6 +394,7 @@ export const Header: React.FC = () => {
           )}
         </div>
       </div>
+      {isTelegramOpen && <TelegramDialog onClose={() => setIsTelegramOpen(false)} />}
     </header>
   );
 };

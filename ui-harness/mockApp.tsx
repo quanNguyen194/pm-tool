@@ -131,6 +131,9 @@ export const MockProvider = ({ children }: any) => {
           { id: 's1', name: 'Hoàng Văn Gợi Ý', email: 'goiy@example.com', avatarColor: 'bg-blue-600', isPlaceholder: false },
           { id: 's2', name: 'Trần Thị Mới Thêm Trước', email: '', avatarColor: 'bg-zinc-700', isPlaceholder: true }
         ].filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.email.includes(q.toLowerCase())),
+      getTelegram: async () => ({ chatId: '', enabled: true, configured: false, botUsername: 'omni_pm_bot' }),
+      saveTelegram: async () => null,
+      testTelegram: async () => ({ ok: false, message: 'Bad Request: chat not found' }),
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };

@@ -244,3 +244,12 @@ export type NavigationTab =
   | 'quality' 
   | 'reports' 
   | 'team';
+
+/** Liên kết Telegram của người dùng hiện tại (RPC get_my_telegram). */
+export interface TelegramInfo {
+  chatId: string;
+  enabled: boolean;
+  /** Quản trị viên đã lưu token bot vào Vault chưa. */
+  configured: boolean;
+  botUsername: string | null;
+}
