@@ -6,7 +6,9 @@ import type { TelegramInfo } from '../../types';
 
 /** Telegram trả "chat not found" khi người dùng chưa bấm Start với bot (hoặc sai Chat ID). */
 const explain = (msg: string) =>
-  /chat not found/i.test(msg)
+  /timeout/i.test(msg)
+    ? `${msg}. Telegram phản hồi chậm; tin có thể vẫn đã tới, hãy kiểm tra Telegram rồi thử lại nếu chưa thấy.`
+    : /chat not found/i.test(msg)
     ? `${msg}. Hãy mở bot và bấm Start trước, rồi kiểm tra lại Chat ID.`
     : /blocked/i.test(msg)
       ? `${msg}. Bạn đã chặn bot; hãy bỏ chặn rồi thử lại.`

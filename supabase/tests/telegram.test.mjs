@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 
 const MIG = new URL('../migrations/', import.meta.url);
-const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql'];
+const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql', '0015_telegram_timeout.sql'];
 
 const db = new PGlite();
 await db.exec(`
@@ -20,7 +20,7 @@ await db.exec(`
 
   -- Giả lập pg_net: ghi lại lời gọi thay vì gửi HTTP
   create schema net;
-  create table net.calls (id bigserial primary key, url text, body jsonb);
+  create table net.calls (id bigserial primary key, url text, body jsonb, timeout_ms int);
   create table net._http_response (id bigint primary key, status_code int, content text, timed_out boolean, error_msg text);
   create table net.settings (fail boolean not null default false);
   insert into net.settings values (false);
@@ -29,7 +29,7 @@ await db.exec(`
   declare rid bigint;
   begin
     if (select fail from net.settings) then raise exception 'pg_net hỏng giả lập'; end if;
-    insert into net.calls (url, body) values (url, body) returning id into rid;
+    insert into net.calls (url, body, timeout_ms) values (url, body, timeout_milliseconds) returning id into rid;
     return rid;
   end $$;
   -- Giả lập vault
@@ -60,7 +60,7 @@ const as = async who => {
   await db.exec(`set role ${who ? 'authenticated' : 'anon'};`);
 };
 const root = async () => { await db.exec(`reset role; select set_config('request.jwt.claim.sub','',false);`); };
-const calls = async () => { await db.exec(`reset role`); return (await q(`select id, url, body from net.calls order by id`)); };
+const calls = async () => { await db.exec(`reset role`); return (await q(`select id, url, body, timeout_ms from net.calls order by id`)); };
 const clearCalls = async () => { await root(); await db.exec(`delete from net.calls`); };
 
 await root();
@@ -107,6 +107,7 @@ await as('pm');
 await q(`select send_task_reminder($1)`, [T1]);
 let c = await calls();
 ok('nhắc nhở thủ công -> 1 tin Telegram đúng người, đúng bot', c.length === 1 && c[0].url === 'https://api.telegram.org/botTOKEN123/sendMessage' && c[0].body.chat_id === '123456789', JSON.stringify(c));
+ok('chờ Telegram tới 20 giây (không dùng mặc định 5 giây của pg_net)', c[0].timeout_ms === 20000, String(c[0].timeout_ms));
 ok('nội dung có tiêu đề nhiệm vụ và mã dự án', c[0].body.text.includes('Việc quá hạn') && c[0].body.text.includes('Dự án: TG'), c[0]?.body?.text);
 await root();
 await clearCalls();

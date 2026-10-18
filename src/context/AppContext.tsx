@@ -1133,8 +1133,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const testTelegram = async (): Promise<{ ok: boolean; message: string }> => {
     try {
       check(await supabase.rpc('send_telegram_test'));
-      // pg_net gửi bất đồng bộ: hỏi kết quả tối đa ~10 giây
-      for (let i = 0; i < 10; i++) {
+      // pg_net gửi bất đồng bộ (chờ Telegram tối đa 20 giây): hỏi kết quả tối đa ~25 giây
+      for (let i = 0; i < 25; i++) {
         await new Promise(r => setTimeout(r, 1000));
         const res = await supabase.rpc('telegram_test_result');
         check(res);
