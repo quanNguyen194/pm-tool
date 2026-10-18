@@ -289,7 +289,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     (type: Toast['type'], message: string) => {
       const id = `toast-${++toastSeq.current}`;
       setToasts(prev => [...prev.slice(-3), { id, type, message }]);
-      setTimeout(() => dismissToast(id), type === 'error' ? 8000 : 4500);
+      setTimeout(() => dismissToast(id), type === 'success' ? 4500 : 8000);
     },
     [dismissToast]
   );
@@ -1104,11 +1104,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Thông báo
   const sendDeadlineReminder = (taskId: string) => {
-    announce('Đã gửi nhắc nhở deadline');
     void run(
       async () => {
-        check(await supabase.rpc('send_task_reminder', { p_task: taskId }));
+        const res = await supabase.rpc('send_task_reminder', { p_task: taskId });
+        check(res);
         sound.playWarning();
+        // Từ migration 0016 hàm trả về kết quả giao tin Telegram; bản DB cũ trả null.
+        const d = res.data as { recipientName: string; telegram: string; copy: boolean } | null;
+        if (!d) {
+          pushToast('success', 'Đã gửi nhắc nhở deadline');
+          return;
+        }
+        const who = d.recipientName;
+        const copyNote = d.copy ? ' Bạn nhận bản sao qua Telegram.' : '';
+        const why: Record<string, string> = {
+          not_linked: `${who} chưa liên kết Telegram nên chưa nhận được tin Telegram.`,
+          disabled: `${who} đã tắt nhận Telegram.`,
+          placeholder: `${who} là tài khoản chưa đăng ký nên không có Telegram.`,
+          no_bot: 'Bot Telegram chưa được cấu hình trên hệ thống.'
+        };
+        if (d.telegram === 'sent') pushToast('success', `Đã nhắc ${who}: thông báo trong web và tin Telegram.${copyNote}`);
+        else pushToast('info', `Đã nhắc ${who} trong web. ${why[d.telegram] ?? ''}${copyNote}`);
       },
       ['notifications'],
       false

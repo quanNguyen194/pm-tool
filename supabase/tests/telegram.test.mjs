@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 
 const MIG = new URL('../migrations/', import.meta.url);
-const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql', '0015_telegram_timeout.sql'];
+const FILES = ['0001_schema.sql', '0002_quality_template.sql', '0003_rpc_and_seed.sql', '0004_criteria_insert_guard.sql', '0005_deadlines_and_snapshots.sql', '0007_report_schedules.sql', '0008_roles_usecase_tree_task_fields.sql', '0009_usecase_attributes.sql', '0010_usecase_stages.sql', '0011_usecase_origin.sql', '0012_task_use_cases.sql', '0013_placeholder_accounts.sql', '0014_telegram_notify.sql', '0015_telegram_timeout.sql', '0016_reminder_feedback.sql'];
 
 const db = new PGlite();
 await db.exec(`
@@ -132,6 +132,66 @@ ok('pg_net lỗi vẫn ghi được thông báo', (await q(`select count(*)::int
 await q(`update net.settings set fail = false`);
 await clearCalls();
 
+// ---------- Nút "Gửi nhắc nhở": kết quả giao tin + bản sao cho người bấm ----------
+await root();
+await q(`insert into project_members (project_id,user_id,role) values ($1,$2,'dev')`, [P, ids.other]);
+const PH = (await q(`insert into profiles (id,name,is_placeholder) values (gen_random_uuid(),'Người Chưa Đăng Ký',true) returning id`))[0].id;
+await q(`insert into project_members (project_id,user_id,role) values ($1,$2,'dev')`, [P, PH]);
+const T3 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-3','Việc của người chưa liên kết',current_date,current_date+20,$2) returning id`, [P, ids.other]))[0].id;
+const T4 = (await q(`insert into tasks (project_id,code,title,start_date,due_date,assignee_id) values ($1,'TG-4','Việc của tài khoản ảo',current_date,current_date+20,$2) returning id`, [P, PH]))[0].id;
+await as('admin');
+await q(`select set_my_telegram('777000111')`);
+await clearCalls();
+await as('admin');
+let rem = (await q(`select send_task_reminder($1) r`, [T3]))[0].r;
+c = await calls();
+ok('người nhận chưa liên kết: trạng thái not_linked, người bấm nhận bản sao', rem.telegram === 'not_linked' && rem.copy === true && rem.recipientName === 'Other User', JSON.stringify(rem));
+ok('bản sao gửi đúng cho người bấm và nói rõ người nhận chưa liên kết', c.length === 1 && c[0].body.chat_id === '777000111' && c[0].body.text.includes('Other User') && c[0].body.text.includes('chưa liên kết'), JSON.stringify(c));
+await clearCalls();
+await as('admin');
+rem = (await q(`select send_task_reminder($1) r`, [T1]))[0].r;
+c = await calls();
+ok('người nhận đã liên kết: sent, nhận 1 tin + người bấm nhận bản sao', rem.telegram === 'sent' && rem.copy === true && c.length === 2 && c.some(x => x.body.chat_id === '123456789') && c.some(x => x.body.chat_id === '777000111'), JSON.stringify(rem) + JSON.stringify(c.map(x => x.body.chat_id)));
+await clearCalls();
+await as('admin');
+rem = (await q(`select send_task_reminder($1) r`, [T4]))[0].r;
+ok('người nhận là tài khoản ảo: placeholder', rem.telegram === 'placeholder' && rem.copy === true, JSON.stringify(rem));
+await clearCalls();
+await as('dev');
+await q(`select set_my_telegram('123456789', false)`);
+await as('admin');
+rem = (await q(`select send_task_reminder($1) r`, [T1]))[0].r;
+ok('người nhận tắt nhận: disabled', rem.telegram === 'disabled', JSON.stringify(rem));
+await as('dev');
+await q(`select set_my_telegram('123456789', true)`);
+await clearCalls();
+await as('pm');
+await q(`select set_my_telegram('555000111')`);
+await clearCalls();
+await as('pm');
+const tPm = (await q(`select send_task_reminder($1) r`, [T3]))[0].r;
+ok('PM bấm cũng nhận bản sao', tPm.copy === true, JSON.stringify(tPm));
+await root();
+await q(`update tasks set assignee_id = $1 where id = $2`, [ids.pm, T3]);
+await clearCalls();
+await as('pm');
+rem = (await q(`select send_task_reminder($1) r`, [T3]))[0].r;
+c = await calls();
+ok('tự nhắc chính mình: 1 tin duy nhất, không bản sao', rem.telegram === 'sent' && rem.copy === false && c.length === 1, JSON.stringify(rem) + c.length);
+await as('dev');
+await throws('thành viên thường không gửi được nhắc nhở', () => q(`select send_task_reminder($1)`, [T1]), '42501');
+await root();
+await q(`delete from telegram_links where user_id = $1`, [ids.pm]);
+await q(`update tasks set assignee_id = $1 where id = $2`, [ids.other, T3]);
+await q(`delete from vault.decrypted_secrets`);
+await clearCalls();
+await as('admin');
+rem = (await q(`select send_task_reminder($1) r`, [T3]))[0].r;
+ok('chưa cấu hình bot: no_bot, không gọi Telegram, không lỗi', rem.telegram === 'no_bot' && (await calls()).length === 0, JSON.stringify(rem));
+await root();
+await q(`insert into vault.decrypted_secrets values ('telegram_bot_token','TOKEN123'), ('telegram_bot_username','omni_pm_bot')`);
+await clearCalls();
+
 // ---------- Quét deadline: một tin tóm tắt mỗi người ----------
 await as('pm');
 await throws('PM không chạy quét thủ công (chỉ admin)', () => q(`select scan_deadlines()`), '42501');
@@ -189,6 +249,8 @@ await throws('người dùng không đọc được token', () => q(`select tele
 
 // ---------- Hoàn tác 0014 ----------
 await root();
+await db.exec(fs.readFileSync(new URL('../rollback/0016_rollback.sql', import.meta.url), 'utf8'));
+ok('rollback 0016: send_task_reminder trả void như cũ', (await q(`select prorettype::regtype::text t from pg_proc where proname = 'send_task_reminder'`))[0].t === 'void');
 await db.exec(fs.readFileSync(new URL('../rollback/0014_rollback.sql', import.meta.url), 'utf8'));
 await clearCalls();
 ok('rollback: không còn bảng/trigger Telegram', (await q(`select count(*)::int c from pg_trigger where tgname = 'notification_telegram'`))[0].c === 0

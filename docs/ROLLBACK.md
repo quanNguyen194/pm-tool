@@ -97,6 +97,10 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Gỡ hẳn trong DB: `supabase/rollback/0014_rollback.sql` (xóa các Chat ID đã lưu, khôi phục `scan_deadlines` bản 0005, giữ nguyên extension và secret trong Vault). Phải chạy TRƯỚC khi hoàn tác `0013` trở về trước.
 - Giao diện bản mới gọi `get_my_telegram`, `set_my_telegram`, `send_telegram_test`, `telegram_test_result`: luôn chạy `0014` trước khi deploy.
 
+## 4h. Hoàn tác migration `0015` và `0016` (Telegram: thời gian chờ, kết quả nút nhắc nhở)
+
+- `0015` chỉ đổi thời gian chờ gọi Telegram (`supabase/rollback/0015_rollback.sql`). `0016` đổi `send_task_reminder` để trả kết quả giao tin và gửi bản sao cho người bấm (`supabase/rollback/0016_rollback.sql` trả về bản gốc, không mất dữ liệu). Giao diện bản mới chạy được với cả bản DB cũ (chỉ hiện thông báo chung). Thứ tự hoàn tác: `0016` -> `0015` -> `0014`.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

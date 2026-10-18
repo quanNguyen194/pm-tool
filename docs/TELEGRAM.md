@@ -5,7 +5,7 @@ Hệ thống gửi nhắc nhở về Telegram của từng người qua **một 
 
 ## Khi nào có tin Telegram
 
-- Bấm **Gửi nhắc nhở** ở một nhiệm vụ → gửi tới người phụ trách (PM nếu chưa giao).
+- Bấm **Gửi nhắc nhở** ở một nhiệm vụ → gửi tới người phụ trách (PM nếu chưa giao). Người bấm nhận thêm một **bản sao** qua Telegram của mình (nếu đã liên kết) kèm trạng thái giao tin, và thông báo trên màn hình nói rõ người nhận có nhận được Telegram không (họ phải tự liên kết Telegram thì mới nhận; tài khoản chưa đăng ký không có Telegram).
 - Quét deadline tự động 8:00 sáng giờ Việt Nam (và nút **Quét deadline ngay** của admin) → mỗi người nhận **một tin tóm
   tắt** liệt kê việc quá hạn / sắp đến hạn của mình (mỗi việc chỉ báo một lần mỗi loại, giống chuông trong web).
 - Các thông báo khác của hệ thống (ví dụ yêu cầu hợp nhất tài khoản gửi admin) cũng được chuyển sang Telegram.

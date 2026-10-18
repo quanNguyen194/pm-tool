@@ -1,6 +1,6 @@
--- Omni Project Manager - 0015: tăng thời gian chờ khi gọi Telegram.
+-- Omni Project Manager - 0015: tăng thời gian chờ Telegram (5s -> 20s).
 -- pg_net mặc định chờ 5 giây; từ máy chủ Supabase, Telegram đôi khi phản hồi chậm hơn nên bị báo
--- "Timeout of 5000 ms reached" dù tin có thể vẫn đã tới. Nâng lên 20 giây.
+-- "Timeout of 5000 ms reached" dù tin có thể vẫn đã tới.
 -- Hoàn tác: supabase/rollback/0015_rollback.sql
 
 create or replace function public.telegram_send(p_chat text, p_text text) returns bigint
