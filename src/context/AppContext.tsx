@@ -51,6 +51,11 @@ import { StageKey, STAGE_LABEL, canTickStage as roleCanTickStage } from '../util
 interface AppContextType {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
+  /** Nhiệm vụ cần mở chi tiết khi vào màn Nhiệm vụ (từ cảnh báo / thông báo). */
+  focusTask: { taskId: string; projectId: string } | null;
+  /** Chuyển sang màn Nhiệm vụ và mở chi tiết nhiệm vụ (đổi dự án nếu cần). */
+  openTask: (taskId: string, projectId?: string) => void;
+  clearFocusTask: () => void;
 
   /** Thành viên của dự án đang chọn (kèm vai trò hiệu lực trong dự án đó). */
   users: User[];
@@ -234,6 +239,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   if (!profile) throw new Error('AppProvider requires a signed-in profile');
 
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
+  const [focusTask, setFocusTask] = useState<{ taskId: string; projectId: string } | null>(null);
   const [soundMuted, setSoundMuted] = useState<boolean>(() => safeGet(STORAGE_KEYS.SOUND_MUTED) === 'true');
 
   const toggleSound = () => {
@@ -1183,11 +1189,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const openTask = (taskId: string, projectId?: string) => {
+    const pid = projectId || activeProjectId;
+    if (pid !== activeProjectId) setActiveProjectIdState(pid);
+    setFocusTask({ taskId, projectId: pid });
+    setActiveTab('tasks');
+  };
+  const clearFocusTask = () => setFocusTask(null);
+
   return (
     <AppContext.Provider
       value={{
         activeTab,
         setActiveTab,
+        focusTask,
+        openTask,
+        clearFocusTask,
         users,
         allUsers,
         currentUser,

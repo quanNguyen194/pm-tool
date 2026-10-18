@@ -28,6 +28,7 @@ export const DashboardView: React.FC = () => {
     users,
     projectSnapshots,
     setActiveTab,
+    openTask,
     sendDeadlineReminder
   } = useApp();
 
@@ -192,15 +193,20 @@ export const DashboardView: React.FC = () => {
                     const assignee = userMap.get(t.assigneeId);
                     return (
                       <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 dark:bg-[#0f172a]/70 p-2 rounded border border-rose-200">
-                        <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openTask(t.id)}
+                          title="Mở nhiệm vụ để cập nhật tiến độ"
+                          aria-label={`Mở nhiệm vụ ${t.code} để cập nhật tiến độ`}
+                          className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-1 text-left rounded hover:bg-rose-50/70 -m-1 p-1 focus-visible:outline-2 focus-visible:outline-indigo-500"
+                        >
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-800">
                             QUÁ HẠN {t.dueDate}
                           </span>
                           <span className="font-semibold text-slate-800">[{t.code}]</span>
-                          <span className="text-slate-700">{t.title}</span>
+                          <span className="text-slate-700 underline decoration-dotted underline-offset-2">{t.title}</span>
                           <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
-                        </div>
+                        </button>
                         <button
                           onClick={() => sendDeadlineReminder(t.id)}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors shrink-0"
@@ -215,15 +221,20 @@ export const DashboardView: React.FC = () => {
                     const assignee = userMap.get(t.assigneeId);
                     return (
                       <div key={t.id} className="flex items-center justify-between gap-3 text-xs bg-white/80 dark:bg-[#0f172a]/70 p-2 rounded border border-amber-200">
-                        <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openTask(t.id)}
+                          title="Mở nhiệm vụ để cập nhật tiến độ"
+                          aria-label={`Mở nhiệm vụ ${t.code} để cập nhật tiến độ`}
+                          className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-1 text-left rounded hover:bg-amber-50/70 -m-1 p-1 focus-visible:outline-2 focus-visible:outline-indigo-500"
+                        >
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-100 text-amber-800">
                             HẠN CHÓT {t.dueDate}
                           </span>
                           <span className="font-semibold text-slate-800">[{t.code}]</span>
-                          <span className="text-slate-700">{t.title}</span>
+                          <span className="text-slate-700 underline decoration-dotted underline-offset-2">{t.title}</span>
                           <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
-                        </div>
+                        </button>
                         <button
                           onClick={() => sendDeadlineReminder(t.id)}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors shrink-0"

@@ -38,6 +38,7 @@ export const Header: React.FC = () => {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     sendDeadlineReminder,
+    openTask,
     soundMuted,
     toggleSound,
     projectTasks,
@@ -246,7 +247,13 @@ export const Header: React.FC = () => {
                   notifications.map(n => (
                     <div
                       key={n.id}
-                      onClick={() => markNotificationAsRead(n.id)}
+                      onClick={() => {
+                        markNotificationAsRead(n.id);
+                        if (n.taskId) {
+                          openTask(n.taskId, n.projectId);
+                          setIsNotifOpen(false);
+                        }
+                      }}
                       className={`p-3 text-xs transition-colors hover:bg-slate-50 cursor-pointer ${
                         !n.isRead ? 'bg-indigo-50/40' : ''
                       }`}

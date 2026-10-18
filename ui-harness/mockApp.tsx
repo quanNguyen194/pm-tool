@@ -110,6 +110,7 @@ export const MockProvider = ({ children }: any) => {
   const role = params.get('role') || 'admin';
   const [activeTab, setActiveTab] = useState(params.get('page') || 'dashboard');
   const [activeProjectId, setActiveProjectId] = useState('p1');
+  const [focusTask, setFocusTask] = useState<{ taskId: string; projectId: string } | null>(null);
   (window as any).__setTab = setActiveTab;
 
   const base = useMemo(() => {
@@ -117,7 +118,9 @@ export const MockProvider = ({ children }: any) => {
     const mgr = role === 'admin' || role === 'pm';
     const activeProject = projects.find(p => p.id === activeProjectId)!;
     return {
-      activeTab, setActiveTab, activeProjectId, setActiveProjectId, activeProject, projects, tasks, projectTasks: tasks, users, allUsers: users,
+      activeTab, setActiveTab, focusTask, clearFocusTask: () => setFocusTask(null),
+      openTask: (taskId: string, projectId?: string) => { setFocusTask({ taskId, projectId: projectId || activeProjectId }); setActiveTab('tasks'); },
+      activeProjectId, setActiveProjectId, activeProject, projects, tasks, projectTasks: tasks, users, allUsers: users,
       currentUser: { ...users[0], role }, useCases, projectUseCases: useCases, qualityGates: [{ projectId: 'p1', phases }],
       projectQualityGates: { projectId: 'p1', phases }, notifications, unreadNotificationCount: 1, projectSnapshots: snaps,
       reportSchedules: [{ id: 's1', projectId: 'p1', frequency: 'weekly', enabled: true }],
@@ -131,7 +134,7 @@ export const MockProvider = ({ children }: any) => {
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
-  }, [activeTab, activeProjectId, role]);
+  }, [activeTab, activeProjectId, role, focusTask]);
 
   // Mọi thuộc tính không khai báo (hàm thao tác) trả về hàm rỗng.
   const value = useMemo(() => new Proxy(base as any, { get: (t, k) => (k in t ? t[k] : () => {}) }), [base]);

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { DEPARTMENTS, Department, Task, TaskAssessment, TaskStatus, Priority } from '../../types';
 import {
@@ -84,7 +84,9 @@ export const TasksView: React.FC = () => {
     canManageTasks,
     canManageProject,
     currentUser,
-    projectUseCases
+    projectUseCases,
+    focusTask,
+    clearFocusTask
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'gantt' | 'table'>('kanban');
@@ -108,6 +110,13 @@ export const TasksView: React.FC = () => {
 
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   const useCaseCodeMap = useMemo(() => new Map(projectUseCases.map(u => [u.id, u.code])), [projectUseCases]);
+  // Đến từ cảnh báo/thông báo: mở thẳng chi tiết nhiệm vụ (chờ đúng dự án được nạp xong)
+  useEffect(() => {
+    if (!focusTask || focusTask.projectId !== activeProject?.id) return;
+    const t = projectTasks.find(x => x.id === focusTask.taskId);
+    if (t) setDetailId(t.id);
+    clearFocusTask();
+  }, [focusTask, activeProject?.id, projectTasks]);
   const detailTask = detailId ? projectTasks.find(t => t.id === detailId) || null : null;
 
   const roleDepartment = (): Department | '' =>

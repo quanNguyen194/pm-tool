@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UseCase, UseCaseComplexity, UseCaseKind, UseCaseOrigin, UseCaseStatus, Priority } from '../../types';
 import {
@@ -113,6 +113,8 @@ export const UseCasesView: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Các nút đang mở (hiện con). null = mặc định theo kích thước cây.
   const [openNodes, setOpenNodes] = useState<Set<string> | null>(null);
+  // Như trên nhưng riêng cho chế độ đang lọc: mặc định mở hết nhánh có kết quả; người dùng vẫn thu gọn/mở lại được.
+  const [filterOpen, setFilterOpen] = useState<Set<string> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUc, setEditingUc] = useState<UseCase | null>(null);
   // Chọn hàng loạt (chỉ khi dự án dùng mô hình 5 bước)
@@ -178,6 +180,16 @@ export const UseCasesView: React.FC = () => {
       : new Set(nodes.filter(n => n.childCount > 0).map(n => n.useCase.id));
   }, [openNodes, nodes]);
 
+  // Đổi bộ lọc thì quay về mặc định (mở hết các nhánh có kết quả).
+  useEffect(() => {
+    setFilterOpen(null);
+  }, [searchQuery, filterStatus, filterTag, filterComplexity, filterOrigin, showCancelled]);
+
+  const activeOpen = useMemo(() => {
+    if (!isFiltering) return effectiveOpen;
+    return filterOpen ?? new Set(nodes.filter(n => n.childCount > 0).map(n => n.useCase.id));
+  }, [isFiltering, effectiveOpen, filterOpen, nodes]);
+
   // Tổng quan cả dự án (chỉ use case thật ở lá).
   const totals = useMemo(() => {
     const roots = nodes.filter(n => n.depth === 1);
@@ -190,39 +202,52 @@ export const UseCasesView: React.FC = () => {
   }, [nodes]);
 
   // Khi lọc/tìm kiếm: giữ use case khớp và các nhóm cha của nó (để thấy vị trí trong cây).
+  const matchedIds = useMemo(() => {
+    if (!isFiltering) return null;
+    const q = searchQuery.trim().toLowerCase();
+    const textHit = (u: UseCase) =>
+      u.title.toLowerCase().includes(q) || u.code.toLowerCase().includes(q) || u.actor.toLowerCase().includes(q);
+    // Tên nhóm khớp thì lấy cả nhánh bên dưới.
+    const textMatch = (u: UseCase) => {
+      if (q === '') return true;
+      let cur: UseCase | undefined = u;
+      while (cur) {
+        if (textHit(cur)) return true;
+        cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+      }
+      return false;
+    };
+    const keep = new Set<string>();
+    projectUseCases.forEach(uc => {
+      if (uc.kind === 'group') return;
+      const ok =
+        textMatch(uc) &&
+        (filterStatus === 'all' || uc.status === filterStatus) &&
+        (filterTag === 'all' || uc.tags.includes(filterTag)) &&
+        (filterComplexity === 'all' || uc.complexity === filterComplexity) &&
+        (filterOrigin === 'all' || uc.origin === filterOrigin) &&
+        (cancelledVisible || uc.status !== 'cancelled');
+      if (!ok) return;
+      let cur: UseCase | undefined = uc;
+      while (cur && !keep.has(cur.id)) {
+        keep.add(cur.id);
+        cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+      }
+    });
+    return keep;
+  }, [isFiltering, searchQuery, filterStatus, filterTag, filterComplexity, filterOrigin, cancelledVisible, projectUseCases, byId]);
+
   const visibleNodes = useMemo(() => {
-    if (isFiltering) {
-      const q = searchQuery.trim().toLowerCase();
-      const textHit = (u: UseCase) =>
-        u.title.toLowerCase().includes(q) || u.code.toLowerCase().includes(q) || u.actor.toLowerCase().includes(q);
-      // Tên nhóm khớp thì lấy cả nhánh bên dưới.
-      const textMatch = (u: UseCase) => {
-        if (q === '') return true;
-        let cur: UseCase | undefined = u;
+    if (matchedIds) {
+      return nodes.filter(n => {
+        if (!matchedIds.has(n.useCase.id)) return false;
+        let cur = n.useCase.parentId ? byId.get(n.useCase.parentId) : undefined;
         while (cur) {
-          if (textHit(cur)) return true;
+          if (!activeOpen.has(cur.id)) return false;
           cur = cur.parentId ? byId.get(cur.parentId) : undefined;
         }
-        return false;
-      };
-      const keep = new Set<string>();
-      projectUseCases.forEach(uc => {
-        if (uc.kind === 'group') return;
-        const ok =
-          textMatch(uc) &&
-          (filterStatus === 'all' || uc.status === filterStatus) &&
-          (filterTag === 'all' || uc.tags.includes(filterTag)) &&
-          (filterComplexity === 'all' || uc.complexity === filterComplexity) &&
-          (filterOrigin === 'all' || uc.origin === filterOrigin) &&
-          (cancelledVisible || uc.status !== 'cancelled');
-        if (!ok) return;
-        let cur: UseCase | undefined = uc;
-        while (cur && !keep.has(cur.id)) {
-          keep.add(cur.id);
-          cur = cur.parentId ? byId.get(cur.parentId) : undefined;
-        }
+        return true;
       });
-      return nodes.filter(n => keep.has(n.useCase.id));
     }
 
     return nodes.filter(n => {
@@ -238,29 +263,18 @@ export const UseCasesView: React.FC = () => {
       }
       return true;
     });
-  }, [
-    nodes,
-    byId,
-    projectUseCases,
-    searchQuery,
-    filterStatus,
-    filterTag,
-    filterComplexity,
-    filterOrigin,
-    cancelledVisible,
-    isFiltering,
-    effectiveOpen
-  ]);
+  }, [nodes, byId, matchedIds, cancelledVisible, effectiveOpen, activeOpen]);
 
+  const setOpen = isFiltering ? setFilterOpen : setOpenNodes;
   const toggleOpen = (id: string) =>
-    setOpenNodes(() => {
-      const next = new Set(effectiveOpen);
+    setOpen(() => {
+      const next = new Set(activeOpen);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  const openAll = () => setOpenNodes(new Set(nodes.filter(n => n.childCount > 0).map(n => n.useCase.id)));
-  const closeAll = () => setOpenNodes(new Set());
+  const openAll = () => setOpen(new Set(nodes.filter(n => n.childCount > 0).map(n => n.useCase.id)));
+  const closeAll = () => setOpen(new Set());
   const clearFilters = () => {
     setSearchQuery('');
     setFilterStatus('all');
@@ -271,9 +285,9 @@ export const UseCasesView: React.FC = () => {
 
   // Use case lá có thể chọn: đang lọc thì chỉ lấy các use case khớp, không thì lấy tất cả.
   const selectableLeafIds = useMemo(() => {
-    const pool = isFiltering ? visibleNodes : nodes;
+    const pool = matchedIds ? nodes.filter(n => matchedIds.has(n.useCase.id)) : nodes;
     return pool.filter(n => n.useCase.kind !== 'group' && n.childCount === 0).map(n => n.useCase.id);
-  }, [isFiltering, visibleNodes, nodes]);
+  }, [matchedIds, nodes]);
 
   const toggleSelected = (ids: string[], on: boolean) =>
     setSelected(prev => {
@@ -607,7 +621,7 @@ export const UseCasesView: React.FC = () => {
 
       {isFiltering && (
         <div className="flex items-center gap-3 text-xs text-slate-600">
-          <span>Đang lọc: {visibleNodes.filter(n => n.useCase.kind !== 'group').length} use case khớp</span>
+          <span>Đang lọc: {matchedIds ? nodes.filter(n => matchedIds.has(n.useCase.id) && n.useCase.kind !== 'group').length : 0} use case khớp</span>
           <button onClick={clearFilters} className="text-indigo-700 hover:underline">
             Xóa bộ lọc
           </button>
@@ -625,7 +639,7 @@ export const UseCasesView: React.FC = () => {
             const isGroup = uc.kind === 'group';
             const isExpanded = expandedId === uc.id;
             const isParent = childCount > 0;
-            const isOpen = effectiveOpen.has(uc.id) || isFiltering;
+            const isOpen = activeOpen.has(uc.id);
             const statusInfo = statusMap[uc.status];
             const totalCriteria = uc.acceptanceCriteria.length;
             const completedCriteria = uc.acceptanceCriteria.filter(c => c.completed).length;
@@ -651,7 +665,7 @@ export const UseCasesView: React.FC = () => {
               >
                 {/* Header Row */}
                 <div className="flex items-center hover:bg-slate-50/70 transition-colors">
-                  {isParent && !isFiltering ? (
+                  {isParent ? (
                     <button
                       onClick={() => toggleOpen(uc.id)}
                       className="p-2.5 text-slate-500 hover:text-slate-900 shrink-0"
