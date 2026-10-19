@@ -107,6 +107,12 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - `0018` chỉ thay các hàm `can_*` bằng bản luôn trả true/false. **Không nên hoàn tác** (bản cũ để người ngoài dự án vượt kiểm tra của các RPC). Giao diện không phụ thuộc vào nó.
 - `0020`: giao diện bản mới chạy được với DB cũ ở phần tick từng bước (chỉ mất quy tắc tuần tự); các nút "Đặt mức tiến độ" và "Kiểm tra quyền thực tế" cần `0020`. Hoàn tác DB: `supabase/rollback/0020_rollback.sql` (không mất dữ liệu; các bước đã tick giữ nguyên). Thứ tự hoàn tác: `0020` trước `0018`.
 
+## 4j. Hoàn tác migration `0021` (cấu hình ma trận phân quyền)
+
+- `0021` chuyển các hàm `can_*` sang tra bảng `role_permissions`; không cấu hình gì thì hành vi y hệt trước. Giao diện bản mới chạy được với DB cũ (ma trận chỉ đọc theo mặc định, nút chỉnh sửa báo cần chạy migration).
+- Hoàn tác DB: `supabase/rollback/0021_rollback.sql` trả các hàm về ma trận CỐ ĐỊNH. **MẤT DỮ LIỆU:** mọi cấu hình phân quyền và nhật ký thay đổi. Nếu admin đã nới quyền cho vai trò nào thì sau hoàn tác họ mất quyền đó ngay. Thứ tự hoàn tác: `0021` -> `0020` -> `0018`.
+- Nếu một cấu hình làm hệ thống khó dùng: quản trị viên luôn đủ mọi quyền, mở Đội ngũ -> Chỉnh sửa phân quyền -> "Khôi phục mặc định" (không cần rollback).
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

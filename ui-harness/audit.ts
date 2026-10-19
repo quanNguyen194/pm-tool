@@ -169,6 +169,22 @@ function overflowAudit() {
       }
     }
     if (tab === 'team') {
+      if (clickText('button', 'Lịch sử thay đổi')) {
+        await wait(500);
+        res['team:lịch-sử-phân-quyền'] = snap();
+        clickText('button', 'Lịch sử thay đổi');
+        await wait(200);
+      }
+      if (clickText('button', 'Chỉnh sửa phân quyền')) {
+        await wait(600);
+        document.querySelector<HTMLElement>('button[aria-label*="Lập trình viên (DEV)"][aria-label*="module/use case"]')?.click();
+        document.querySelector<HTMLElement>('button[aria-label*="Quan sát"][aria-label*="Tick bước Lập trình"]')?.click();
+        document.querySelector<HTMLElement>('button[aria-label*="Lập trình viên (DEV)"][aria-label*="quản lý thành viên"]')?.click();
+        await wait(300);
+        res['team:chỉnh-sửa-phân-quyền'] = snap();
+        clickText('button', 'Hủy');
+        await wait(300);
+      }
       if (clickText('button', 'Kiểm tra ngay')) {
         await wait(600);
         res['team:kiểm-tra-quyền'] = snap();

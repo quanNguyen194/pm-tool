@@ -27,7 +27,12 @@ export interface PermissionRow {
   group: string;
   label: string;
   description: string;
+  /** Vai trò có quyền theo MẶC ĐỊNH (quản trị viên cấu hình có thể đổi ở các quyền `configurable`). */
   roles: Role[];
+  /** Quyền có kiểm tra thật ở CSDL nên quản trị viên cấu hình được (bảng role_permissions, migration 0021). */
+  configurable?: boolean;
+  /** Quyền không tách riêng ở CSDL: đi theo một quyền khác (VD nhắc việc/xác nhận tiêu chí đi theo Quản lý dự án). */
+  follows?: PermissionId;
 }
 
 export const ALL_ROLES: Role[] = ['admin', 'pm', 'dev', 'ba', 'tester', 'viewer'];
@@ -56,6 +61,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'manage_project',
+    configurable: true,
     group: 'Dự án',
     label: 'Sửa thông tin dự án, quản lý thành viên và vai trò',
     description: 'Chỉnh sửa lộ trình, phân công PM, thêm/xóa thành viên, đổi vai trò',
@@ -63,6 +69,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'remind_report',
+    follows: 'manage_project',
     group: 'Dự án',
     label: 'Gửi nhắc nhở deadline, tạo báo cáo ngay',
     description: 'Nhắc việc thủ công tới người chủ trì và tạo báo cáo định kỳ',
@@ -77,6 +84,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'write_tasks',
+    configurable: true,
     group: 'Nhiệm vụ',
     label: 'Tạo, sửa, phân công nhiệm vụ; cập nhật tiến độ',
     description: 'Kéo thả trạng thái, sửa tiến độ %, nỗ lực, đánh giá, liên kết use case',
@@ -84,6 +92,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'write_usecases',
+    configurable: true,
     group: 'Use case',
     label: 'Tạo, sửa module/use case và tiêu chí nghiệm thu',
     description: 'Cây 3 cấp, luồng nghiệp vụ, thuộc tính, nguồn gốc; xóa use case',
@@ -91,6 +100,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'stage_analysis',
+    configurable: true,
     group: 'Use case',
     label: 'Tick bước Phân tích',
     description: 'Bước 1/5 (10% tiến độ use case)',
@@ -98,6 +108,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'stage_design',
+    configurable: true,
     group: 'Use case',
     label: 'Tick bước Thiết kế',
     description: 'Bước 2/5 (10%); tự tick Phân tích nếu chưa xong',
@@ -105,13 +116,15 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'stage_coding',
+    configurable: true,
     group: 'Use case',
     label: 'Tick bước Lập trình',
-    description: 'Bước 3/5 (40%); cần Phân tích và Thiết kế đã xong (BA/PM) mới tick được',
+    description: 'Bước 3/5 (40%); cần các bước trước đã xong mới tick được',
     roles: ['admin', 'pm', 'dev']
   },
   {
     id: 'stage_testing',
+    configurable: true,
     group: 'Use case',
     label: 'Tick bước Kiểm thử',
     description: 'Bước 4/5 (25%); cần các bước trước đã xong',
@@ -119,13 +132,15 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'stage_acceptance',
+    configurable: true,
     group: 'Use case',
     label: 'Tick bước Nghiệm thu',
-    description: 'Bước 5/5 (15%); chỉ PM/Admin',
+    description: 'Bước 5/5 (15%)',
     roles: ['admin', 'pm']
   },
   {
     id: 'tick_criteria',
+    follows: 'manage_project',
     group: 'Use case',
     label: 'Xác nhận tiêu chí nghiệm thu (dự án tính tiến độ theo tiêu chí)',
     description: 'Tick từng tiêu chí nghiệm thu, quyết định tiến độ use case ở mô hình theo tiêu chí',
@@ -133,6 +148,7 @@ export const PERMISSIONS: PermissionRow[] = [
   },
   {
     id: 'approve_quality',
+    configurable: true,
     group: 'Chất lượng',
     label: 'Thẩm định tiêu chuẩn Quality Gates',
     description: 'Đánh giá Đạt/Chưa đạt các tiêu chuẩn DoD từng giai đoạn',
@@ -140,7 +156,33 @@ export const PERMISSIONS: PermissionRow[] = [
   }
 ];
 
-export const can = (role: Role, id: PermissionId): boolean => PERMISSIONS.find(p => p.id === id)?.roles.includes(role) ?? false;
+export const CONFIG_ROLES: Role[] = ['pm', 'dev', 'ba', 'tester', 'viewer'];
+export const CONFIGURABLE_IDS: PermissionId[] = PERMISSIONS.filter(p => p.configurable).map(p => p.id);
+
+export interface MatrixCell {
+  allowed: boolean;
+  /** Giá trị đến từ mặc định có sẵn, cấu hình toàn hệ thống, hay ghi đè riêng của dự án. */
+  source: 'default' | 'global' | 'project';
+}
+export type MatrixData = Partial<Record<PermissionId, Partial<Record<Role, MatrixCell>>>>;
+
+// Ma trận hiệu lực của dự án đang chọn (do AppContext nạp từ CSDL). Chưa nạp được thì dùng mặc định.
+let effective: MatrixData | null = null;
+export function setEffectiveMatrix(m: MatrixData | null) {
+  effective = m;
+}
+
+/** Các vai trò có quyền `id` theo cấu hình hiệu lực (quản trị viên luôn có). */
+export function rolesWith(id: PermissionId, matrix: MatrixData | null = effective): Role[] {
+  const row = PERMISSIONS.find(p => p.id === id);
+  if (!row) return [];
+  const src = row.follows ?? id;
+  const cells = matrix?.[src];
+  if (cells && CONFIGURABLE_IDS.includes(src)) return ['admin', ...CONFIG_ROLES.filter(r => cells[r]?.allowed)];
+  return PERMISSIONS.find(p => p.id === src)?.roles ?? row.roles;
+}
+
+export const can = (role: Role, id: PermissionId): boolean => rolesWith(id).includes(role);
 
 /** Nhóm các dòng theo `group`, giữ thứ tự xuất hiện. */
 export function permissionGroups(): { group: string; rows: PermissionRow[] }[] {

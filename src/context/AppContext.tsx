@@ -30,7 +30,7 @@ import {
   TelegramInfo
 } from '../types';
 import { supabase, describeError, fetchAll } from '../lib/supabase';
-import { can, AccessReport } from '../utils/permissions';
+import { can, setEffectiveMatrix, AccessReport, MatrixData, PermissionId } from '../utils/permissions';
 import {
   Profile,
   MemberRow,
@@ -140,6 +140,16 @@ interface AppContextType {
   getAccessReport: () => Promise<AccessReport>;
   /** Admin/PM: quyền thực tế của một thành viên theo CSDL. */
   getMemberAccessReport: (userId: string) => Promise<AccessReport>;
+  /** Ma trận phân quyền hiệu lực của dự án đang chọn (kèm nguồn: mặc định / toàn hệ thống / riêng dự án). */
+  permissionMatrix: MatrixData | null;
+  /** Ma trận ở phạm vi toàn hệ thống (null = dự án) để quản trị viên chỉnh. */
+  getPermissionMatrix: (scope: 'global' | 'project') => Promise<MatrixData>;
+  /** Admin: lưu thay đổi ma trận. Trả về thông báo lỗi hoặc null nếu thành công. */
+  savePermissions: (scope: 'global' | 'project', changes: { role: string; permission: PermissionId; allowed: boolean }[]) => Promise<string | null>;
+  /** Admin: xóa mọi ghi đè của phạm vi, trả về số ghi đè đã xóa hoặc thông báo lỗi. */
+  resetPermissions: (scope: 'global' | 'project') => Promise<{ removed: number } | { error: string }>;
+  /** Admin: nhật ký thay đổi của phạm vi. */
+  getPermissionLog: (scope: 'global' | 'project') => Promise<{ role: string; permission: string; from: boolean; to: boolean; by: string; at: string }[]>;
   // Quality gates
   /** actorId: chỉ admin được chọn người thực hiện khác (ghi nhận người duyệt). */
   toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string, actorId?: string) => void;
@@ -198,7 +208,8 @@ type Slice =
   | 'notifications'
   | 'snapshots'
   | 'reports'
-  | 'merges';
+  | 'merges'
+  | 'permissions';
 const ALL_SLICES: Slice[] = [
   'profiles',
   'members',
@@ -209,7 +220,8 @@ const ALL_SLICES: Slice[] = [
   'notifications',
   'snapshots',
   'reports',
-  'merges'
+  'merges',
+  'permissions'
 ];
 
 // Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
@@ -227,7 +239,8 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   progress_snapshots: ['snapshots'],
   report_schedules: ['reports'],
   report_runs: ['reports'],
-  account_merge_requests: ['merges', 'profiles']
+  account_merge_requests: ['merges', 'profiles'],
+  role_permissions: ['permissions']
 };
 
 type Row = Record<string, any>;
@@ -280,6 +293,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [scheduleRows, setScheduleRows] = useState<ReportSchedule[]>([]);
   const [runRows, setRunRows] = useState<ReportRun[]>([]);
   const [mergeRows, setMergeRows] = useState<MergeRequest[]>([]);
+  // Ma trận phân quyền hiệu lực của dự án đang chọn (null = chưa nạp được: dùng mặc định có sẵn)
+  const [permMatrix, setPermMatrix] = useState<MatrixData | null>(null);
+  const activeProjectIdRef = useRef('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -388,6 +404,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
         setSnapshotRows((data || []).map(mapSnapshot));
       },
+      permissions: async () => {
+        // Bản DB cũ chưa có migration 0021: bỏ qua, dùng mặc định có sẵn.
+        const res = await supabase.rpc('get_permission_matrix', { pid: activeProjectIdRef.current || null });
+        if (res.error) {
+          console.warn('Không tải được cấu hình phân quyền:', res.error.message);
+          setPermMatrix(null);
+          return;
+        }
+        setPermMatrix(res.data as MatrixData);
+      },
       merges: async () => {
         // Chỉ admin đọc được; người khác nhận danh sách rỗng. Lỗi (vd chưa chạy migration 0013) không chặn app.
         const { data, error } = await supabase
@@ -475,6 +501,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [projects, activeProjectIdState]
   );
   const activeProjectId = activeProject?.id || '';
+  activeProjectIdRef.current = activeProjectId;
+  // Đổi dự án: nạp ma trận phân quyền của dự án đó (có ghi đè riêng thì khác mặc định)
+  useEffect(() => {
+    if (activeProjectId) refresh(['permissions']).catch(() => undefined);
+  }, [activeProjectId, refresh]);
 
   useEffect(() => {
     if (activeProjectId) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
@@ -546,6 +577,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [unreadNotificationCount, isLoading]);
 
   // --- Quyền ---
+  setEffectiveMatrix(permMatrix); // phải đặt trước khi tính các cờ quyền bên dưới
   const role = currentUser.role;
   const isAdmin = profile.isAdmin;
   const canManageProjectId = (projectId: string) => {
@@ -1082,6 +1114,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     check(res);
     return res.data as AccessReport;
   };
+  const scopeId = (scope: 'global' | 'project') => (scope === 'global' ? null : activeProjectId);
+  const getPermissionMatrix = async (scope: 'global' | 'project'): Promise<MatrixData> => {
+    const res = await supabase.rpc('get_permission_matrix', { pid: scopeId(scope) });
+    check(res);
+    return res.data as MatrixData;
+  };
+  const savePermissions = async (
+    scope: 'global' | 'project',
+    changes: { role: string; permission: PermissionId; allowed: boolean }[]
+  ): Promise<string | null> => {
+    try {
+      check(await supabase.rpc('set_role_permissions', { p_project: scopeId(scope), p_changes: changes }));
+      await refresh(['permissions']);
+      pushToast('success', 'Đã lưu cấu hình phân quyền (' + changes.length + ' thay đổi).');
+      return null;
+    } catch (e) {
+      return describeError(e);
+    }
+  };
+  const resetPermissions = async (scope: 'global' | 'project'): Promise<{ removed: number } | { error: string }> => {
+    try {
+      const res = await supabase.rpc('reset_role_permissions', { p_project: scopeId(scope) });
+      check(res);
+      await refresh(['permissions']);
+      return { removed: Number((res.data as { removed?: number } | null)?.removed ?? 0) };
+    } catch (e) {
+      return { error: describeError(e) };
+    }
+  };
+  const getPermissionLog = async (scope: 'global' | 'project') => {
+    const res = await supabase.rpc('get_permission_log', { p_project: scopeId(scope), p_limit: 50 });
+    check(res);
+    return (res.data || []) as { role: string; permission: string; from: boolean; to: boolean; by: string; at: string }[];
+  };
   const getMemberAccessReport = async (userId: string): Promise<AccessReport> => {
     const res = await supabase.rpc('member_access_report', { pid: activeProjectId, uid: userId });
     check(res);
@@ -1382,6 +1448,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setUseCaseLevel,
         getAccessReport,
         getMemberAccessReport,
+        permissionMatrix: permMatrix,
+        getPermissionMatrix,
+        savePermissions,
+        resetPermissions,
+        getPermissionLog,
         toggleQualityItemPassed,
         updateQualityNotes,
         addQualityItem,

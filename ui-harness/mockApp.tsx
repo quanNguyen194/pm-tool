@@ -145,6 +145,34 @@ export const MockProvider = ({ children }: any) => {
         role: 'dev', isAdmin: false, view: true, manage: false, writeTasks: true, writeUseCases: true, approveQuality: false,
         stages: { analysis: false, design: false, coding: true, testing: false, acceptance: false }
       }),
+      permissionMatrix: (() => {
+        const m: any = {};
+        const defaults: Record<string, string[]> = {
+          manage_project: ['pm'], write_tasks: ['pm', 'dev', 'ba', 'tester'], write_usecases: ['pm', 'dev', 'ba'], approve_quality: ['pm', 'tester'],
+          stage_analysis: ['pm', 'ba'], stage_design: ['pm', 'ba'], stage_coding: ['pm', 'dev'], stage_testing: ['pm', 'tester'], stage_acceptance: ['pm']
+        };
+        for (const [p, rs] of Object.entries(defaults)) {
+          m[p] = {};
+          for (const r of ['pm', 'dev', 'ba', 'tester', 'viewer']) m[p][r] = { allowed: rs.includes(r), source: 'default' };
+        }
+        m.write_usecases.ba = { allowed: false, source: 'global' }; // một ô tùy chỉnh để thử hiển thị chấm đánh dấu
+        m.manage_project.dev = { allowed: true, source: 'project' };
+        return m;
+      })(),
+      getPermissionMatrix: async () => {
+        const m: any = {};
+        for (const p of ['manage_project', 'write_tasks', 'write_usecases', 'approve_quality', 'stage_analysis', 'stage_design', 'stage_coding', 'stage_testing', 'stage_acceptance']) {
+          m[p] = {};
+          for (const r of ['pm', 'dev', 'ba', 'tester', 'viewer']) m[p][r] = { allowed: p === 'write_tasks' ? r !== 'viewer' : r === 'pm', source: 'default' };
+        }
+        return m;
+      },
+      savePermissions: async () => null,
+      resetPermissions: async () => ({ removed: 2 }),
+      getPermissionLog: async () => [
+        { role: 'dev', permission: 'manage_project', from: false, to: true, by: 'quan.ntm194', at: new Date().toISOString() },
+        { role: 'ba', permission: 'write_usecases', from: true, to: false, by: 'quan.ntm194', at: new Date().toISOString() }
+      ],
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
