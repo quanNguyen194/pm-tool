@@ -56,7 +56,8 @@ export const MergeRequestsPanel: React.FC = () => {
                     if (
                       await confirm({
                         title: 'Hợp nhất tài khoản?',
-                        message: 'Hợp nhất "' + (ph?.name ?? '—') + '" vào tài khoản ' + (real?.email || real?.name || '—') + '. Mọi dự án, nhiệm vụ và dữ liệu cũ của người này chuyển sang tài khoản thật.',
+                        message: 'Mọi dự án, nhiệm vụ và dữ liệu cũ của tài khoản chưa đăng ký sẽ chuyển sang tài khoản thật vừa đăng ký.',
+                        target: { title: (ph?.name ?? '—') + '  →  ' + (real?.name ?? '—'), badge: 'HỢP NHẤT', badgeTone: 'neutral', description: real?.email || undefined },
                         warnings: ['Tài khoản chưa đăng ký sẽ bị xóa sau khi chuyển dữ liệu. Không thể hoàn tác.'],
                         confirmLabel: 'Duyệt hợp nhất',
                         tone: 'warning'

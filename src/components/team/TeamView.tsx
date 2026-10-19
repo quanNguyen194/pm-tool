@@ -128,8 +128,9 @@ export const TeamView: React.FC = () => {
                           onClick={async () => {
                             if (
                               await confirm({
-                                title: 'Gỡ ' + user.name + ' khỏi dự án?',
+                                title: 'Gỡ thành viên khỏi dự án?',
                                 message: 'Người này sẽ không còn truy cập dự án ' + activeProject.code + '. Nhiệm vụ họ đang phụ trách vẫn giữ nguyên người chủ trì cho đến khi bạn giao lại.',
+                                target: { title: user.name, badge: ROLE_SHORT[user.role], description: user.email || undefined },
                                 confirmLabel: 'Gỡ khỏi dự án',
                                 tone: 'danger'
                               })
@@ -146,10 +147,11 @@ export const TeamView: React.FC = () => {
                             onClick={async () => {
                               if (
                                 await confirm({
-                                  title: 'Xóa hẳn tài khoản "' + user.name + '"?',
-                                  message: 'Tài khoản chưa đăng ký này sẽ bị xóa khỏi hệ thống: người này rời mọi dự án và các nhiệm vụ họ phụ trách thành chưa giao.',
+                                  title: 'Xóa tài khoản chưa đăng ký?',
+                                  message: 'Tài khoản này sẽ bị xóa khỏi hệ thống: người này rời mọi dự án và các nhiệm vụ họ phụ trách thành chưa giao.',
+                                  target: { title: user.name, badge: 'CHƯA ĐĂNG KÝ', badgeTone: 'neutral' },
                                   warnings: ['Không thể hoàn tác.'],
-                                  confirmLabel: 'Xóa tài khoản',
+                                  confirmLabel: 'Xác nhận xóa',
                                   tone: 'danger'
                                 })
                               ) {

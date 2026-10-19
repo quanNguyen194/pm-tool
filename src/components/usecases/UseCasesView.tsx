@@ -455,10 +455,11 @@ export const UseCasesView: React.FC = () => {
     const n = descendantIds(uc.id, projectUseCases).size - 1;
     const label = uc.kind === 'group' ? 'nhóm' : 'use case';
     const ok = await confirm({
-      title: 'Xóa ' + label + ' ' + uc.code + '?',
-      message: '"' + uc.title + '" sẽ bị xóa. Nhiệm vụ đã gắn vào nó chỉ mất liên kết, không bị xóa.',
+      title: 'Xóa ' + label + '?',
+      message: 'Bạn có chắc chắn muốn xóa ' + label + ' này? Nhiệm vụ đã gắn vào nó chỉ mất liên kết, không bị xóa. Hành động này không thể hoàn tác.',
+      target: { title: uc.title, badge: uc.code, description: uc.kind === 'group' ? undefined : uc.description },
       warnings: n > 0 ? [n + ' nút con/cháu bên dưới cũng sẽ bị xóa theo.'] : undefined,
-      confirmLabel: 'Xóa ' + label,
+      confirmLabel: 'Xác nhận xóa',
       tone: 'danger'
     });
     if (ok) deleteUseCase(uc.id);

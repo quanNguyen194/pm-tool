@@ -69,10 +69,21 @@ export const QualityGatesView: React.FC = () => {
   };
   const handleDeleteItem = async (item: QualityCheckItem) => {
     const ok = await confirm({
-      title: 'Xóa tiêu chuẩn "' + item.title + '"?',
-      message: 'Tiêu chuẩn sẽ bị xóa khỏi giai đoạn này của dự án. Chỉ ảnh hưởng dự án này, mẫu mặc định của hệ thống giữ nguyên.',
+      title: 'Xóa tiêu chuẩn kiểm soát?',
+      message: (
+        <>
+          Bạn có chắc chắn muốn xóa tiêu chuẩn này khỏi <strong className="font-semibold text-slate-800">{selectedPhase.name}</strong>? Hành động này không thể hoàn tác.
+          Chỉ ảnh hưởng dự án này, mẫu mặc định của hệ thống giữ nguyên.
+        </>
+      ),
+      target: {
+        title: item.title,
+        badge: item.isMandatory ? 'BẮT BUỘC' : 'KHUYẾN NGHỊ',
+        badgeTone: item.isMandatory ? 'danger' : 'neutral',
+        description: item.description
+      },
       warnings: item.isPassed ? ['Tiêu chuẩn này ĐÃ ĐẠT: xóa sẽ mất cả lịch sử thẩm định của nó.'] : undefined,
-      confirmLabel: 'Xóa tiêu chuẩn',
+      confirmLabel: 'Xác nhận xóa',
       tone: 'danger'
     });
     if (ok) deleteQualityItem(item.id);

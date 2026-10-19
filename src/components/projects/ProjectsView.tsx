@@ -306,10 +306,11 @@ export const ProjectsView: React.FC = () => {
                     onClick={async () => {
                       if (
                         await confirm({
-                          title: 'Xóa dự án "' + project.name + '"?',
+                          title: 'Xóa dự án?',
                           message: 'Toàn bộ nhiệm vụ, use case, tiêu chuẩn chất lượng, báo cáo và thành viên của dự án này sẽ bị xóa vĩnh viễn.',
+                          target: { title: project.name, badge: project.code, description: project.description },
                           warnings: ['Không thể hoàn tác. Hãy xuất sao lưu trước nếu cần giữ dữ liệu.'],
-                          confirmLabel: 'Xóa dự án',
+                          confirmLabel: 'Xác nhận xóa',
                           tone: 'danger'
                         })
                       ) {

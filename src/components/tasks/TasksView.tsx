@@ -813,7 +813,7 @@ export const TasksView: React.FC = () => {
                                   </button>
                                   <button
                                     onClick={async () => {
-                                      if (await confirm({ title: 'Xóa nhiệm vụ ' + task.code + '?', message: '"' + task.title + '" sẽ bị xóa cùng các liên kết use case và người phối hợp của nó.', confirmLabel: 'Xóa nhiệm vụ', tone: 'danger' })) deleteTask(task.id);
+                                      if (await confirm({ title: 'Xóa nhiệm vụ?', message: 'Bạn có chắc chắn muốn xóa nhiệm vụ này? Các liên kết use case và người phối hợp của nó cũng bị xóa. Hành động này không thể hoàn tác.', target: { title: task.title, badge: task.code, description: task.description }, confirmLabel: 'Xác nhận xóa', tone: 'danger' })) deleteTask(task.id);
                                     }}
                                     className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                     title="Xóa"
@@ -950,7 +950,7 @@ export const TasksView: React.FC = () => {
                                 </button>
                                 <button
                                   onClick={async () => {
-                                    if (await confirm({ title: 'Xóa nhiệm vụ ' + task.code + '?', message: '"' + task.title + '" sẽ bị xóa cùng các liên kết use case và người phối hợp của nó.', confirmLabel: 'Xóa nhiệm vụ', tone: 'danger' })) deleteTask(task.id);
+                                    if (await confirm({ title: 'Xóa nhiệm vụ?', message: 'Bạn có chắc chắn muốn xóa nhiệm vụ này? Các liên kết use case và người phối hợp của nó cũng bị xóa. Hành động này không thể hoàn tác.', target: { title: task.title, badge: task.code, description: task.description }, confirmLabel: 'Xác nhận xóa', tone: 'danger' })) deleteTask(task.id);
                                   }}
                                   className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                   title="Xóa"

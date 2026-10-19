@@ -169,6 +169,14 @@ function overflowAudit() {
       }
     }
     if (tab === 'quality') {
+      const del = document.querySelector<HTMLElement>('button[aria-label^="Xóa tiêu chuẩn"]');
+      if (del) {
+        del.click();
+        await wait(400);
+        res['quality:xác-nhận-xóa-tiêu-chuẩn'] = snap();
+        document.querySelector<HTMLElement>('[role="alertdialog"] button[aria-label="Đóng"]')?.click();
+        await wait(300);
+      }
       if (clickText('button[aria-label^="Sửa tiêu chuẩn"]', 'Sửa')) {
         await wait(400);
         res['quality:sửa-tiêu-chuẩn'] = snap();
