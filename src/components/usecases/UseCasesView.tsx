@@ -20,7 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { exportUseCasesToCSV } from '../../utils/exportUtils';
-import { STAGES, StageKey } from '../../utils/stages';
+import { STAGES, StageKey, stageBlockReason, stageLevel } from '../../utils/stages';
 import { ActorSelect, useActor } from '../common/ActorSelect';
 import {
   COMPLEXITY_LABEL,
@@ -100,6 +100,7 @@ export const UseCasesView: React.FC = () => {
     canManageUseCases,
     canTickStage,
     setUseCaseStages,
+    setUseCaseLevel,
     allUsers,
     currentUser
   } = useApp();
@@ -121,6 +122,8 @@ export const UseCasesView: React.FC = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<StageKey>('analysis');
   const [bulkBusy, setBulkBusy] = useState(false);
+  // Mức tiến độ muốn đưa các use case đã chọn về (0 = chưa bắt đầu ... 5 = xong nghiệm thu)
+  const [bulkLevel, setBulkLevel] = useState(0);
   // Admin: ghi nhận người khác là người thực hiện (rỗng = chính mình)
   const [actorChoice, setActorChoice] = useState('');
   const actorId = useActor(actorChoice);
@@ -302,6 +305,24 @@ export const UseCasesView: React.FC = () => {
     setBulkBusy(false);
     if (ok) setSelected(new Set());
   };
+
+  const applyLevel = async () => {
+    setBulkBusy(true);
+    const ok = await setUseCaseLevel([...selected], bulkLevel, actorId);
+    setBulkBusy(false);
+    if (ok) setSelected(new Set());
+  };
+
+  // Số liệu hiện tại của các use case đang chọn, để người dùng thấy trước tác động (kể cả việc bỏ đánh dấu).
+  const selectedStats = useMemo(() => {
+    const ucs = [...selected].map(id => byId.get(id)).filter((u): u is UseCase => !!u);
+    const doneKeys = (u: UseCase) => u.stagesDone.map(d => d.stage);
+    return {
+      total: ucs.length,
+      withStage: (key: StageKey) => ucs.filter(u => doneKeys(u).includes(key)).length,
+      atLevel: (level: number) => ucs.filter(u => stageLevel(doneKeys(u)) === level).length
+    };
+  }, [selected, byId]);
 
   const openCreateModal = (parent?: UseCase, kind: UseCaseKind = 'usecase') => {
     setEditingUc(null);
@@ -881,21 +902,28 @@ export const UseCasesView: React.FC = () => {
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                               <h4 className="text-xs font-bold text-slate-900">Các Bước Thực Hiện (tiến độ {uc.progressPercent}%)</h4>
                               <span className="text-[11px] text-slate-500">
+                                Làm tuần tự: tick một bước sẽ tự tick các bước trước; bỏ một bước sẽ bỏ cả các bước sau.
                                 Mỗi vai trò tick bước của mình; PM/Admin tick được mọi bước
                               </span>
                               <ActorSelect value={actorChoice} onChange={setActorChoice} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                              {STAGES.map(st => {
+                              {STAGES.map((st, stIdx) => {
                                 const rec = uc.stagesDone.find(d => d.stage === st.key);
-                                const allowed = canTickStage(st.key);
+                                const blockReason = stageBlockReason(
+                                  currentUser.role,
+                                  uc.stagesDone.map(d => d.stage),
+                                  st.key,
+                                  !rec
+                                );
+                                const allowed = blockReason === null;
                                 return (
                                   <label
                                     key={st.key}
                                     className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
                                       allowed ? 'cursor-pointer' : 'cursor-not-allowed'
                                     } ${rec ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/60'}`}
-                                    title={allowed ? undefined : `Bước này do ${st.who} (hoặc PM/Admin) cập nhật`}
+                                    title={blockReason ?? undefined}
                                   >
                                     <input
                                       type="checkbox"
@@ -906,7 +934,7 @@ export const UseCasesView: React.FC = () => {
                                     />
                                     <span className="min-w-0">
                                       <span className="block font-semibold text-slate-800">
-                                        {st.label} <span className="font-mono font-normal text-slate-500">{st.weight}%</span>
+                                        {stIdx + 1}. {st.label} <span className="font-mono font-normal text-slate-500">{st.weight}%</span>
                                       </span>
                                       <span className="block text-[11px] text-slate-500 truncate">
                                         {rec
@@ -1094,50 +1122,89 @@ export const UseCasesView: React.FC = () => {
 
       {canTickAny && selected.size > 0 && (
         <div
-          className="sticky bottom-3 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 bg-white border border-indigo-300 rounded-2xl shadow-lg"
+          className="sticky bottom-3 z-30 space-y-2.5 px-4 py-3 bg-white border border-indigo-300 rounded-2xl shadow-lg"
           role="region"
           aria-label="Cập nhật hàng loạt"
         >
-          <span className="text-xs font-semibold text-slate-900">
-            Đã chọn <span className="font-mono">{selected.size}</span> use case
-          </span>
-          <label className="flex items-center gap-1.5 text-xs text-slate-700">
-            <span>Bước:</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="text-xs font-semibold text-slate-900">
+              Đã chọn <span className="font-mono">{selected.size}</span> use case
+            </span>
+            <ActorSelect value={actorChoice} onChange={setActorChoice} />
+            <button
+              onClick={() => setSelected(new Set())}
+              className="ml-auto px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-lg"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+
+          {/* Cách 1: đưa cả nhóm về một mức tiến độ (vừa đánh dấu vừa bỏ đánh dấu cho đúng thứ tự) */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-800">Đặt mức tiến độ:</span>
             <select
+              aria-label="Mức tiến độ cần đặt"
+              value={bulkLevel}
+              onChange={e => setBulkLevel(Number(e.target.value))}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
+            >
+              <option value={0}>Chưa bắt đầu (bỏ hết các bước)</option>
+              {STAGES.map((st, i) => (
+                <option key={st.key} value={i + 1}>
+                  Đã xong đến hết: {i + 1}. {st.label} ({STAGES.slice(0, i + 1).reduce((sum, x) => sum + x.weight, 0)}%)
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={bulkBusy}
+              onClick={() => void applyLevel()}
+              className="px-3 py-1.5 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg"
+            >
+              Áp dụng mức này
+            </button>
+            <span className="text-[11px] text-slate-600">
+              Hiện có {selectedStats.atLevel(bulkLevel)}/{selectedStats.total} use case đang ở đúng mức này
+            </span>
+          </div>
+
+          {/* Cách 2: đánh dấu hoặc bỏ đánh dấu riêng một bước */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-800">Hoặc một bước:</span>
+            <select
+              aria-label="Bước cần cập nhật"
               value={effectiveBulkStage}
               onChange={e => setBulkStage(e.target.value as StageKey)}
               className="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1"
             >
-              {STAGES.map(st => (
+              {STAGES.map((st, i) => (
                 <option key={st.key} value={st.key} disabled={!canTickStage(st.key)}>
-                  {st.label} ({st.weight}%)
+                  {i + 1}. {st.label} ({st.weight}%)
                 </option>
               ))}
             </select>
-          </label>
-          <ActorSelect value={actorChoice} onChange={setActorChoice} />
-          <div className="flex items-center gap-2 ml-auto">
             <button
               disabled={bulkBusy || !canTickStage(effectiveBulkStage)}
               onClick={() => void applyBulk(true)}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg"
+              className="px-3 py-1.5 font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg"
+              title="Đánh dấu xong bước này (các bước trước tự được đánh dấu theo)"
             >
               Đánh dấu xong
             </button>
             <button
               disabled={bulkBusy || !canTickStage(effectiveBulkStage)}
               onClick={() => void applyBulk(false)}
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 rounded-lg"
+              className="px-3 py-1.5 font-semibold text-rose-700 bg-white border border-rose-300 hover:bg-rose-50 disabled:opacity-50 rounded-lg"
+              title="Bỏ đánh dấu bước này (các bước sau cũng bị bỏ theo)"
             >
               Bỏ đánh dấu
             </button>
-            <button
-              onClick={() => setSelected(new Set())}
-              className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-lg"
-            >
-              Bỏ chọn
-            </button>
+            <span className="text-[11px] text-slate-600">
+              {selectedStats.withStage(effectiveBulkStage)}/{selectedStats.total} use case đã xong bước này
+            </span>
           </div>
+          <p className="text-[11px] text-slate-600">
+            5 bước làm tuần tự. Use case mà bạn không đủ quyền tick/bỏ các bước liên quan sẽ được bỏ qua và báo lại sau khi áp dụng.
+          </p>
         </div>
       )}
 

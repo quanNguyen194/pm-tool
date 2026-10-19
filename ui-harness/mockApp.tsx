@@ -134,6 +134,17 @@ export const MockProvider = ({ children }: any) => {
       getTelegram: async () => ({ chatId: '', enabled: true, configured: false, botUsername: 'omni_pm_bot' }),
       saveTelegram: async () => null,
       testTelegram: async () => ({ ok: false, message: 'Bad Request: chat not found' }),
+      setUseCaseLevel: async () => true,
+      getAccessReport: async () => ({
+        role: role === 'admin' ? null : role, isAdmin: role === 'admin', view: true, manage: role === 'admin' || role === 'pm',
+        writeTasks: role !== 'viewer', writeUseCases: role !== 'viewer' && role !== 'tester', approveQuality: role === 'admin' || role === 'pm' || role === 'tester',
+        stages: { analysis: role === 'admin' || role === 'pm' || role === 'ba', design: role === 'admin' || role === 'pm' || role === 'ba', coding: role === 'admin' || role === 'pm' || role === 'dev', testing: role === 'admin' || role === 'pm' || role === 'tester', acceptance: role === 'admin' || role === 'pm' },
+        visible: { useCases: 73, tasks: 6, members: 4 }, total: { useCases: 73, tasks: 6, members: 4 }
+      }),
+      getMemberAccessReport: async () => ({
+        role: 'dev', isAdmin: false, view: true, manage: false, writeTasks: true, writeUseCases: true, approveQuality: false,
+        stages: { analysis: false, design: false, coding: true, testing: false, acceptance: false }
+      }),
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };

@@ -29,7 +29,8 @@ import {
   MergeRequest,
   TelegramInfo
 } from '../types';
-import { supabase, describeError } from '../lib/supabase';
+import { supabase, describeError, fetchAll } from '../lib/supabase';
+import { can, AccessReport } from '../utils/permissions';
 import {
   Profile,
   MemberRow,
@@ -47,7 +48,7 @@ import {
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
 import { sound } from '../utils/soundAlert';
-import { StageKey, STAGE_LABEL, canTickStage as roleCanTickStage } from '../utils/stages';
+import { StageKey, STAGES, STAGE_LABEL, canTickStage as roleCanTickStage } from '../utils/stages';
 
 interface AppContextType {
   activeTab: NavigationTab;
@@ -133,6 +134,12 @@ interface AppContextType {
   toggleAcceptanceCriteria: (useCaseId: string, criteriaId: string) => void;
   /** Đánh dấu/bỏ đánh dấu một bước chuẩn cho một hoặc nhiều use case lá. */
   setUseCaseStages: (useCaseIds: string[], stage: StageKey, done: boolean, actorId?: string) => Promise<boolean>;
+  /** Đưa các use case lá về một mức tiến độ (0 = chưa bắt đầu ... 5 = xong nghiệm thu): vừa đánh dấu vừa bỏ đánh dấu đúng thứ tự. */
+  setUseCaseLevel: (useCaseIds: string[], level: number, actorId?: string) => Promise<boolean>;
+  /** Quyền thực tế của chính mình trong dự án đang chọn, theo CSDL (kèm số dòng đọc được). */
+  getAccessReport: () => Promise<AccessReport>;
+  /** Admin/PM: quyền thực tế của một thành viên theo CSDL. */
+  getMemberAccessReport: (userId: string) => Promise<AccessReport>;
   // Quality gates
   /** actorId: chỉ admin được chọn người thực hiện khác (ghi nhận người duyệt). */
   toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string, actorId?: string) => void;
@@ -305,9 +312,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setProfiles((data || []).map(mapProfile));
       },
       members: async () => {
-        const { data, error } = await supabase.from('project_members').select('*');
+        const { data, error } = await fetchAll<MemberRow>((a, b) =>
+          supabase.from('project_members').select('*').order('project_id').order('user_id').range(a, b)
+        );
         if (error) throw error;
-        setMembers((data || []).map(mapMember));
+        setMembers(data.map(mapMember));
       },
       projects: async () => {
         const { data, error } = await supabase
@@ -320,31 +329,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       },
       tasks: async () => {
         const [tk, co, tu] = await Promise.all([
-          supabase.from('tasks').select('*').order('created_at', { ascending: false }).order('code'),
-          supabase.from('task_collaborators').select('*'),
-          supabase.from('task_use_cases').select('*')
+          fetchAll<any>((a, b) => supabase.from('tasks').select('*').order('created_at', { ascending: false }).order('code').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('task_collaborators').select('*').order('task_id').order('user_id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('task_use_cases').select('*').order('task_id').order('use_case_id').range(a, b))
         ]);
         if (tk.error) throw tk.error;
         if (co.error) throw co.error;
         // Liên kết nhiều use case là phần phụ: lỗi (vd chưa chạy migration 0012) thì dùng cột cũ use_case_id.
         if (tu.error) console.warn('Không tải được liên kết use case của nhiệm vụ:', tu.error.message);
-        setTaskRows(tk.data || []);
-        setCollabRows(co.data || []);
-        setTaskUcRows(tu.error ? [] : tu.data || []);
+        setTaskRows(tk.data);
+        setCollabRows(co.data);
+        setTaskUcRows(tu.error ? [] : tu.data);
       },
       usecases: async () => {
         const [uc, cr, st] = await Promise.all([
-          supabase.from('use_cases').select('*').order('created_at', { ascending: false }).order('code'),
-          supabase.from('acceptance_criteria').select('*'),
-          supabase.from('use_case_stages').select('*')
+          fetchAll<any>((a, b) => supabase.from('use_cases').select('*').order('created_at', { ascending: false }).order('code').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('acceptance_criteria').select('*').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('use_case_stages').select('*').order('use_case_id').order('stage').range(a, b))
         ]);
         if (uc.error) throw uc.error;
         if (cr.error) throw cr.error;
         // Bảng bước chuẩn là phần phụ: lỗi (vd chưa chạy migration 0010) chỉ làm trống phần này.
         if (st.error) console.warn('Không tải được các bước use case:', st.error.message);
-        setUcRows(uc.data || []);
-        setCriteriaRows(cr.data || []);
-        setStageRows(st.error ? [] : st.data || []);
+        setUcRows(uc.data);
+        setCriteriaRows(cr.data);
+        setStageRows(st.error ? [] : st.data);
       },
       quality: async () => {
         const [defs, items] = await Promise.all([
@@ -543,11 +552,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const r = roleIn(projectId, profile);
     return r === 'admin' || r === 'pm';
   };
-  const canManageProject = role === 'admin' || role === 'pm';
-  const canManageTasks = role === 'admin' || role === 'pm' || role === 'dev' || role === 'ba' || role === 'tester';
-  const canManageUseCases = role === 'admin' || role === 'pm' || role === 'dev' || role === 'ba';
-  const canApproveQuality = role === 'admin' || role === 'pm' || role === 'tester';
-  const canApproveUseCase = role === 'admin' || role === 'pm';
+  const canManageProject = can(role, 'manage_project');
+  const canManageTasks = can(role, 'write_tasks');
+  const canManageUseCases = can(role, 'write_usecases');
+  const canApproveQuality = can(role, 'approve_quality');
+  const canApproveUseCase = can(role, 'tick_criteria');
   const isViewer = role === 'viewer';
   const canTickStage = (stage: StageKey) => roleCanTickStage(role, stage);
 
@@ -1003,6 +1012,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  /** Kết quả set_use_case_stages / set_use_case_level (bản DB cũ trả một số nguyên = số use case đổi). */
+  const parseStageResult = (data: unknown) => {
+    if (typeof data === 'number') return { changed: data, unchanged: 0, blocked: 0, blockedCodes: [] as string[] };
+    const d = (data || {}) as { changed?: number; unchanged?: number; blocked?: number; blockedCodes?: string[] };
+    return { changed: d.changed ?? 0, unchanged: d.unchanged ?? 0, blocked: d.blocked ?? 0, blockedCodes: d.blockedCodes ?? [] };
+  };
+  const reportStageResult = (r: ReturnType<typeof parseStageResult>, doneText: string) => {
+    if (r.blocked > 0) {
+      const codes = r.blockedCodes.length ? ' (' + r.blockedCodes.join(', ') + (r.blocked > r.blockedCodes.length ? '…' : '') + ')' : '';
+      pushToast(
+        'info',
+        (r.changed > 0 ? doneText + ' cho ' + r.changed + ' use case. ' : '') +
+          'Bỏ qua ' + r.blocked + ' use case' + codes +
+          ': 5 bước phải theo thứ tự, và bạn không có quyền tick/bỏ các bước liên quan (cần BA/PM hoàn thành bước trước, hoặc PM bỏ các bước sau).'
+      );
+    } else if (r.changed > 0) {
+      pushToast('success', doneText + ' cho ' + r.changed + ' use case.');
+    } else {
+      pushToast('info', 'Không có use case nào thay đổi (đã ở đúng trạng thái này, hoặc dự án chưa dùng mô hình 5 bước).');
+    }
+  };
+
   const setUseCaseStages = (useCaseIds: string[], stage: StageKey, done: boolean, actorId?: string) => {
     const ids = [...new Set(useCaseIds)];
     if (ids.length === 0) return Promise.resolve(false);
@@ -1015,17 +1046,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           p_actor: actorId && actorId !== profile.id ? actorId : null
         });
         check(res);
-        const n = Number(res.data ?? 0);
-        pushToast(
-          n > 0 ? 'success' : 'info',
-          n > 0
-            ? `${done ? 'Đã đánh dấu' : 'Đã bỏ đánh dấu'} bước "${STAGE_LABEL[stage]}" cho ${n} use case.`
-            : `Không có use case nào thay đổi (bước "${STAGE_LABEL[stage]}" đã ở trạng thái này, hoặc dự án chưa dùng mô hình 5 bước).`
+        reportStageResult(
+          parseStageResult(res.data),
+          done ? 'Đã đánh dấu xong bước "' + STAGE_LABEL[stage] + '" (và các bước trước)' : 'Đã bỏ bước "' + STAGE_LABEL[stage] + '" (và các bước sau)'
         );
       },
       ['usecases', 'projects'],
       false
     );
+  };
+
+  const setUseCaseLevel = (useCaseIds: string[], level: number, actorId?: string) => {
+    const ids = [...new Set(useCaseIds)];
+    if (ids.length === 0) return Promise.resolve(false);
+    return run(
+      async () => {
+        const res = await supabase.rpc('set_use_case_level', {
+          p_use_cases: ids,
+          p_level: level,
+          p_actor: actorId && actorId !== profile.id ? actorId : null
+        });
+        check(res);
+        reportStageResult(
+          parseStageResult(res.data),
+          level === 0 ? 'Đã đưa về "Chưa bắt đầu"' : 'Đã đặt tiến độ đến hết bước "' + STAGES[level - 1].label + '"'
+        );
+      },
+      ['usecases', 'projects'],
+      false
+    );
+  };
+
+  const getAccessReport = async (): Promise<AccessReport> => {
+    const res = await supabase.rpc('my_access_report', { pid: activeProjectId });
+    check(res);
+    return res.data as AccessReport;
+  };
+  const getMemberAccessReport = async (userId: string): Promise<AccessReport> => {
+    const res = await supabase.rpc('member_access_report', { pid: activeProjectId, uid: userId });
+    check(res);
+    return res.data as AccessReport;
   };
 
   // Quality gates
@@ -1319,6 +1379,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteUseCase,
         toggleAcceptanceCriteria,
         setUseCaseStages,
+        setUseCaseLevel,
+        getAccessReport,
+        getMemberAccessReport,
         toggleQualityItemPassed,
         updateQualityNotes,
         addQualityItem,

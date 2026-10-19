@@ -169,6 +169,10 @@ function overflowAudit() {
       }
     }
     if (tab === 'team') {
+      if (clickText('button', 'Kiểm tra ngay')) {
+        await wait(600);
+        res['team:kiểm-tra-quyền'] = snap();
+      }
       const input = document.querySelector<HTMLInputElement>('input[aria-label="Tên hoặc email thành viên"]');
       if (input) {
         input.focus();

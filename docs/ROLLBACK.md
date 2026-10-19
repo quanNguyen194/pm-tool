@@ -102,6 +102,11 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - `0015` chỉ đổi thời gian chờ gọi Telegram (`supabase/rollback/0015_rollback.sql`). `0016` đổi `send_task_reminder` để trả kết quả giao tin và gửi bản sao cho người bấm (`supabase/rollback/0016_rollback.sql` trả về bản gốc, không mất dữ liệu). Giao diện bản mới chạy được với cả bản DB cũ (chỉ hiện thông báo chung). Thứ tự hoàn tác: `0017` -> `0016` -> `0015` -> `0014`.
 - `0017` (nhắc lặp lại hằng ngày): `supabase/rollback/0017_rollback.sql` trả `scan_deadlines` về bản chỉ nhắc việc mới (mất bảng nhật ký `telegram_digest_log`, không ảnh hưởng dữ liệu khác).
 
+## 4i. Migration `0018` (sửa lỗ hổng phân quyền) và `0020` (bước tuần tự, đặt mức, báo cáo quyền)
+
+- `0018` chỉ thay các hàm `can_*` bằng bản luôn trả true/false. **Không nên hoàn tác** (bản cũ để người ngoài dự án vượt kiểm tra của các RPC). Giao diện không phụ thuộc vào nó.
+- `0020`: giao diện bản mới chạy được với DB cũ ở phần tick từng bước (chỉ mất quy tắc tuần tự); các nút "Đặt mức tiến độ" và "Kiểm tra quyền thực tế" cần `0020`. Hoàn tác DB: `supabase/rollback/0020_rollback.sql` (không mất dữ liệu; các bước đã tick giữ nguyên). Thứ tự hoàn tác: `0020` trước `0018`.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

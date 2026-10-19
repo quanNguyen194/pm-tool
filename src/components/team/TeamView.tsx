@@ -1,15 +1,15 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { MemberRole, Role } from '../../types';
+import { MemberRole } from '../../types';
 import { MEMBER_ROLES, ROLE_BADGES, ROLE_DESCRIPTIONS, ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
 import { WorkloadBar } from './WorkloadPanel';
 import { MemberInvite } from './MemberInvite';
 import { MergeRequestsPanel } from './MergeRequestsPanel';
+import { PermissionMatrix } from './PermissionMatrix';
+import { AccessCheckPanel } from './AccessCheckPanel';
 import { computeWorkload } from '../../utils/workload';
 import {
   Shield,
-  CheckCircle2,
-  XCircle,
   Building,
   UserX,
   Trash2
@@ -29,55 +29,6 @@ export const TeamView: React.FC = () => {
   } = useApp();
 
   const workloadById = new Map(computeWorkload(users, projectTasks).map(w => [w.user.id, w]));
-
-  const permissionsMatrix: {
-    permission: string;
-    description: string;
-    roles: Record<Role, boolean>;
-  }[] = [
-    {
-      permission: 'Khởi tạo & Quản lý Dự Án',
-      description: 'Tạo dự án mới (chỉ Admin), chỉnh sửa thông tin, lộ trình, phân công PM và thành viên',
-      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
-    },
-    {
-      permission: 'Tạo & Phân Công Nhiệm Vụ',
-      description: 'Tạo task, chọn người chủ trì/phối hợp, bộ phận, deadline, tiến độ và nỗ lực',
-      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: false }
-    },
-    {
-      permission: 'Cập Nhật Tiến Độ Công Việc',
-      description: 'Kéo thả đổi trạng thái trên Kanban, sửa tiến độ %, nỗ lực thực tế và đánh giá',
-      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: false }
-    },
-    {
-      permission: 'Tạo & Sửa Use Case',
-      description: 'Tạo use case theo cây 3 cấp, sửa luồng nghiệp vụ và tiêu chí nghiệm thu',
-      roles: { admin: true, pm: true, dev: true, ba: true, tester: false, viewer: false }
-    },
-    {
-      permission: 'Xác Nhận Tiêu Chí Nghiệm Thu',
-      description: 'Tick hoàn thành tiêu chí nghiệm thu của use case (quyết định tiến độ use case)',
-      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
-    },
-    {
-      permission: 'Thẩm Định Tiêu Chuẩn Quality Gates',
-      description: 'Đánh giá Đạt/Chưa đạt các tiêu chuẩn kiểm soát chất lượng DoD từng giai đoạn',
-      roles: { admin: true, pm: true, dev: false, ba: false, tester: true, viewer: false }
-    },
-    {
-      permission: 'Xuất Báo Cáo Định Kỳ & Bàn Giao',
-      description: 'Xuất tệp báo cáo PDF/Excel và sao lưu dữ liệu toàn diện của dự án',
-      roles: { admin: true, pm: true, dev: true, ba: true, tester: true, viewer: true }
-    },
-    {
-      permission: 'Gửi Nhắc Nhở Deadline & Tạo Báo Cáo',
-      description: 'Gửi nhắc việc thủ công tới người chủ trì và tạo báo cáo định kỳ ngay',
-      roles: { admin: true, pm: true, dev: false, ba: false, tester: false, viewer: false }
-    }
-  ];
-
-  const matrixRoles: Role[] = ['admin', 'pm', 'dev', 'ba', 'tester', 'viewer'];
 
   return (
     <div className="space-y-6">
@@ -107,58 +58,9 @@ export const TeamView: React.FC = () => {
         {canManageProject && <MemberInvite projectCode={activeProject.code} />}
       </div>
 
-      {/* Permissions Matrix Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/80">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Ma Trận Phân Quyền Chi Tiết (Role-Based Access Control)
-          </h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Bảng quy định quyền hạn cụ thể cho từng vai trò trong quy trình vận hành dự án
-          </p>
-        </div>
+      <PermissionMatrix myRole={currentUser.role} />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-700 font-semibold text-[11px]">
-                <th className="py-3 px-4">Chức Năng & Quyền Hạn</th>
-                {matrixRoles.map(r => (
-                  <th key={r} className="py-3 px-3 text-center w-20">
-                    {r === 'admin' ? 'Admin' : r === 'viewer' ? 'Quan sát' : ROLE_SHORT[r]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {permissionsMatrix.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="font-semibold text-slate-900">{item.permission}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">{item.description}</div>
-                  </td>
-                  {matrixRoles.map(role => {
-                    const hasPerm = item.roles[role];
-                    return (
-                      <td key={role} className="py-3 px-3 text-center">
-                        {hasPerm ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400">
-                            <XCircle className="w-4 h-4" />
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <AccessCheckPanel />
 
       {/* Team Members Directory */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
