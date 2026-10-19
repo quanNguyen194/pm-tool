@@ -653,7 +653,17 @@ export const UseCasesView: React.FC = () => {
       <div className="space-y-2" role="tree" aria-label="Cây use case">
         {visibleNodes.length === 0 ? (
           <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-xs text-slate-500">
-            {projectUseCases.length === 0 ? 'Dự án chưa có Use Case nào' : 'Không tìm thấy Use Case nào phù hợp'}
+            {projectUseCases.length === 0 ? (
+              <>
+                Dự án chưa có Use Case nào.
+                <span className="block mt-1 text-[11px] text-slate-600">
+                  Nếu bạn chắc dự án đã có use case mà vẫn thấy trống, vào <strong>Đội ngũ &amp; Phân quyền → Kiểm tra quyền thực tế</strong> để xem bạn đọc được bao nhiêu
+                  use case so với tổng số thật.
+                </span>
+              </>
+            ) : (
+              'Không tìm thấy Use Case nào phù hợp'
+            )}
           </div>
         ) : (
           visibleNodes.map(({ useCase: uc, depth, childCount, leafCount, ucp, doneCount, avgProgress, leafIds }) => {
