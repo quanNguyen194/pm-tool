@@ -18,8 +18,10 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { ActorSelect, useActor } from '../common/ActorSelect';
+import { useConfirm } from '../common/ConfirmDialog';
 
 export const QualityGatesView: React.FC = () => {
+  const confirm = useConfirm();
   const {
     activeProject,
     projectQualityGates,
@@ -65,11 +67,15 @@ export const QualityGatesView: React.FC = () => {
     setEditingItem(null);
     setNewItemData({ title: '', description: '', isMandatory: true, notes: '' });
   };
-  const handleDeleteItem = (item: QualityCheckItem) => {
-    const extra = item.isPassed ? '\n\nTiêu chuẩn này ĐÃ ĐẠT; xóa sẽ mất cả lịch sử thẩm định của nó.' : '';
-    if (window.confirm('Xóa tiêu chuẩn "' + item.title + '" khỏi giai đoạn này của dự án?' + extra + '\n\nChỉ ảnh hưởng dự án này, mẫu mặc định của hệ thống giữ nguyên.')) {
-      deleteQualityItem(item.id);
-    }
+  const handleDeleteItem = async (item: QualityCheckItem) => {
+    const ok = await confirm({
+      title: 'Xóa tiêu chuẩn "' + item.title + '"?',
+      message: 'Tiêu chuẩn sẽ bị xóa khỏi giai đoạn này của dự án. Chỉ ảnh hưởng dự án này, mẫu mặc định của hệ thống giữ nguyên.',
+      warnings: item.isPassed ? ['Tiêu chuẩn này ĐÃ ĐẠT: xóa sẽ mất cả lịch sử thẩm định của nó.'] : undefined,
+      confirmLabel: 'Xóa tiêu chuẩn',
+      tone: 'danger'
+    });
+    if (ok) deleteQualityItem(item.id);
   };
 
   const handleOpenNotes = (phaseId: string, item: QualityCheckItem) => {

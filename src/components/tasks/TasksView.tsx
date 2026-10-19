@@ -27,6 +27,7 @@ import { AssessmentBadge, OwnerAvatars, TaskProgress } from './TaskParts';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS, ASSESSMENT_STYLES, effectiveAssessment, suggestAssessment } from '../../utils/taskAssessment';
 import { DEPARTMENT_LABELS, ROLE_SHORT } from '../../utils/roles';
 import { UseCaseLinks } from './UseCaseLinks';
+import { useConfirm } from '../common/ConfirmDialog';
 import { PeriodMode, periodLabel, periodRange, shiftAnchor, taskInPeriod } from '../../utils/period';
 
 type SortKey = 'code' | 'title' | 'status' | 'priority' | 'assignee' | 'progress' | 'effort' | 'due';
@@ -72,6 +73,7 @@ interface TaskForm {
 }
 
 export const TasksView: React.FC = () => {
+  const confirm = useConfirm();
   const {
     activeProject,
     projectTasks,
@@ -810,8 +812,8 @@ export const TasksView: React.FC = () => {
                                     <Edit3 className="w-3 h-3" />
                                   </button>
                                   <button
-                                    onClick={() => {
-                                      if (window.confirm(`Xóa nhiệm vụ ${task.code}?`)) deleteTask(task.id);
+                                    onClick={async () => {
+                                      if (await confirm({ title: 'Xóa nhiệm vụ ' + task.code + '?', message: '"' + task.title + '" sẽ bị xóa cùng các liên kết use case và người phối hợp của nó.', confirmLabel: 'Xóa nhiệm vụ', tone: 'danger' })) deleteTask(task.id);
                                     }}
                                     className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                     title="Xóa"
@@ -947,8 +949,8 @@ export const TasksView: React.FC = () => {
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (window.confirm(`Xóa nhiệm vụ ${task.code}?`)) deleteTask(task.id);
+                                  onClick={async () => {
+                                    if (await confirm({ title: 'Xóa nhiệm vụ ' + task.code + '?', message: '"' + task.title + '" sẽ bị xóa cùng các liên kết use case và người phối hợp của nó.', confirmLabel: 'Xóa nhiệm vụ', tone: 'danger' })) deleteTask(task.id);
                                   }}
                                   className="p-1 text-slate-500 hover:text-rose-700 rounded"
                                   title="Xóa"

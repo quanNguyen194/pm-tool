@@ -173,6 +173,7 @@ export const MockProvider = ({ children }: any) => {
         { role: 'dev', permission: 'manage_project', from: false, to: true, by: 'quan.ntm194', at: new Date().toISOString() },
         { role: 'ba', permission: 'write_usecases', from: true, to: false, by: 'quan.ntm194', at: new Date().toISOString() }
       ],
+      removeMember: (id: string) => { (window as any).__removed = id; },
       editQualityItem: () => undefined,
       deleteQualityItem: () => undefined,
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,

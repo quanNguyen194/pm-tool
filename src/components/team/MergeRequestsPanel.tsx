@@ -1,9 +1,11 @@
 import React from 'react';
 import { GitMerge, Check, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useConfirm } from '../common/ConfirmDialog';
 
 /** Admin: các yêu cầu hợp nhất tài khoản ảo vào tài khoản thật vừa đăng ký trùng tên. */
 export const MergeRequestsPanel: React.FC = () => {
+  const confirm = useConfirm();
   const { isAdmin, mergeRequests, allUsers, projects, tasks, resolveMerge } = useApp();
   if (!isAdmin || mergeRequests.length === 0) return null;
 
@@ -50,8 +52,16 @@ export const MergeRequestsPanel: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => {
-                    if (window.confirm(`Hợp nhất "${ph?.name}" vào tài khoản ${real?.email || real?.name}?\nTài khoản chưa đăng ký sẽ bị xóa sau khi chuyển dữ liệu.`)) {
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: 'Hợp nhất tài khoản?',
+                        message: 'Hợp nhất "' + (ph?.name ?? '—') + '" vào tài khoản ' + (real?.email || real?.name || '—') + '. Mọi dự án, nhiệm vụ và dữ liệu cũ của người này chuyển sang tài khoản thật.',
+                        warnings: ['Tài khoản chưa đăng ký sẽ bị xóa sau khi chuyển dữ liệu. Không thể hoàn tác.'],
+                        confirmLabel: 'Duyệt hợp nhất',
+                        tone: 'warning'
+                      })
+                    ) {
                       resolveMerge(r.id, true);
                     }
                   }}

@@ -21,8 +21,10 @@ import { ThemeToggle } from './ThemeToggle';
 import { projectColor, projectInitials } from '../../utils/projectColor';
 import { ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
 import { TelegramDialog } from './TelegramDialog';
+import { useConfirm } from '../common/ConfirmDialog';
 
 export const Header: React.FC = () => {
+  const confirm = useConfirm();
   const {
     projects,
     activeProjectId,
@@ -367,9 +369,17 @@ export const Header: React.FC = () => {
                     <span>Quét deadline ngay</span>
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       setIsUserDropdownOpen(false);
-                      if (window.confirm('Nạp thêm 3 dự án demo? (Bỏ qua nếu đã nạp trước đó)')) seedDemoData();
+                      if (
+                        await confirm({
+                          title: 'Nạp dữ liệu demo?',
+                          message: 'Thêm 3 dự án minh họa (Omni-Bank, E-Shop B2B, TeleHealth) cùng nhiệm vụ và use case mẫu. Nếu đã nạp trước đó thì bỏ qua, không tạo trùng.',
+                          confirmLabel: 'Nạp dữ liệu demo',
+                          tone: 'primary'
+                        })
+                      )
+                        seedDemoData();
                     }}
                     className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                   >

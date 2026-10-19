@@ -22,6 +22,7 @@ import {
 import { exportUseCasesToCSV } from '../../utils/exportUtils';
 import { STAGES, StageKey, stageBlockReason, stageLevel } from '../../utils/stages';
 import { ActorSelect, useActor } from '../common/ActorSelect';
+import { useConfirm } from '../common/ConfirmDialog';
 import {
   COMPLEXITY_LABEL,
   COMPLEXITY_STYLE,
@@ -89,6 +90,7 @@ interface FormState {
 }
 
 export const UseCasesView: React.FC = () => {
+  const confirm = useConfirm();
   const {
     activeProject,
     projectUseCases,
@@ -449,10 +451,17 @@ export const UseCasesView: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const confirmDelete = (uc: UseCase) => {
+  const confirmDelete = async (uc: UseCase) => {
     const n = descendantIds(uc.id, projectUseCases).size - 1;
-    const warn = n > 0 ? `\n\nLƯU Ý: ${n} nút con/cháu bên dưới cũng sẽ bị xóa.` : '';
-    if (window.confirm(`Xóa ${uc.kind === 'group' ? 'nhóm' : 'Use Case'} ${uc.code}?${warn}`)) deleteUseCase(uc.id);
+    const label = uc.kind === 'group' ? 'nhóm' : 'use case';
+    const ok = await confirm({
+      title: 'Xóa ' + label + ' ' + uc.code + '?',
+      message: '"' + uc.title + '" sẽ bị xóa. Nhiệm vụ đã gắn vào nó chỉ mất liên kết, không bị xóa.',
+      warnings: n > 0 ? [n + ' nút con/cháu bên dưới cũng sẽ bị xóa theo.'] : undefined,
+      confirmLabel: 'Xóa ' + label,
+      tone: 'danger'
+    });
+    if (ok) deleteUseCase(uc.id);
   };
 
   const inputCls = 'w-full px-3 py-2 text-xs border border-slate-300 rounded-lg';

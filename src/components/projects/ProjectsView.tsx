@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Project, ProjectStatus, Priority, ProgressModel } from '../../types';
+import { useConfirm } from '../common/ConfirmDialog';
 import {
   FolderPlus,
   Calendar,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export const ProjectsView: React.FC = () => {
+  const confirm = useConfirm();
   const {
     projects,
     activeProjectId,
@@ -301,8 +303,16 @@ export const ProjectsView: React.FC = () => {
 
                 {canManageProjectId(project.id) && (
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}" cùng mọi dữ liệu liên quan?`)) {
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          title: 'Xóa dự án "' + project.name + '"?',
+                          message: 'Toàn bộ nhiệm vụ, use case, tiêu chuẩn chất lượng, báo cáo và thành viên của dự án này sẽ bị xóa vĩnh viễn.',
+                          warnings: ['Không thể hoàn tác. Hãy xuất sao lưu trước nếu cần giữ dữ liệu.'],
+                          confirmLabel: 'Xóa dự án',
+                          tone: 'danger'
+                        })
+                      ) {
                         deleteProject(project.id);
                       }
                     }}

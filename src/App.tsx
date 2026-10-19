@@ -7,6 +7,7 @@ import React, { Suspense, lazy } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ConfirmProvider } from './components/common/ConfirmDialog';
 import { AppProvider, useApp } from './context/AppContext';
 import { isSupabaseConfigured } from './lib/supabase';
 import { LoginView } from './components/auth/LoginView';
@@ -145,9 +146,11 @@ const AuthGate: React.FC = () => {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AuthGate />
-      </AuthProvider>
+      <ConfirmProvider>
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
+      </ConfirmProvider>
     </ThemeProvider>
   );
 }

@@ -177,6 +177,14 @@ function overflowAudit() {
       }
     }
     if (tab === 'team') {
+      const rm = document.querySelector<HTMLElement>('button[title="Gỡ khỏi dự án"]');
+      if (rm) {
+        rm.click();
+        await wait(400);
+        res['team:xác-nhận-gỡ-thành-viên'] = snap();
+        document.querySelector<HTMLElement>('[role="alertdialog"] button')?.click(); // nút Hủy
+        await wait(300);
+      }
       if (clickText('button', 'Lịch sử thay đổi')) {
         await wait(500);
         res['team:lịch-sử-phân-quyền'] = snap();

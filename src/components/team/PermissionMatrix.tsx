@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import type { Role } from '../../types';
 import { ALL_ROLES, MatrixData, PERMISSIONS, PermissionId, permissionGroups, rolesWith } from '../../utils/permissions';
 import { ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
+import { useConfirm } from '../common/ConfirmDialog';
 
 type Scope = 'global' | 'project';
 const key = (id: PermissionId, role: Role) => `${id}|${role}`;
@@ -16,6 +17,7 @@ interface LogRow { role: string; permission: string; from: boolean; to: boolean;
  */
 export const PermissionMatrix: React.FC<{ myRole: Role }> = ({ myRole }) => {
   const { isAdmin, activeProject, permissionMatrix, getPermissionMatrix, savePermissions, resetPermissions, getPermissionLog } = useApp();
+  const confirm = useConfirm();
   const groups = permissionGroups();
   const headerName = (r: Role) => (r === 'admin' ? 'Admin' : r === 'viewer' ? 'Quan sát' : ROLE_SHORT[r]);
 
@@ -63,7 +65,16 @@ export const PermissionMatrix: React.FC<{ myRole: Role }> = ({ myRole }) => {
   };
   const changeScope = async (sc: Scope) => {
     if (sc === scope) return;
-    if (Object.keys(draft).length > 0 && !window.confirm('Chuyển phạm vi sẽ bỏ các thay đổi chưa lưu. Tiếp tục?')) return;
+    if (
+      Object.keys(draft).length > 0 &&
+      !(await confirm({
+        title: 'Bỏ các thay đổi chưa lưu?',
+        message: 'Chuyển phạm vi áp dụng sẽ bỏ các thay đổi bạn vừa chọn nhưng chưa lưu.',
+        confirmLabel: 'Bỏ thay đổi và chuyển',
+        tone: 'warning'
+      }))
+    )
+      return;
     setScope(sc);
     await loadBase(sc);
   };
@@ -112,7 +123,14 @@ export const PermissionMatrix: React.FC<{ myRole: Role }> = ({ myRole }) => {
   const save = async () => {
     if (changes.length === 0) return;
     const where = scope === 'global' ? 'TOÀN HỆ THỐNG (mọi dự án)' : `riêng dự án ${activeProject.code}`;
-    if (!window.confirm(`Lưu ${changes.length} thay đổi phân quyền, áp dụng ${where}?${warnings.length ? '\n\nLưu ý:\n- ' + warnings.join('\n- ') : ''}`)) return;
+    const ok = await confirm({
+      title: 'Lưu ' + changes.length + ' thay đổi phân quyền?',
+      message: 'Áp dụng ' + where + '. Có hiệu lực ngay với mọi người dùng.',
+      warnings: warnings.length ? warnings : undefined,
+      confirmLabel: 'Lưu phân quyền',
+      tone: warnings.length ? 'warning' : 'primary'
+    });
+    if (!ok) return;
     setBusy(true);
     const err = await savePermissions(scope, changes);
     setBusy(false);
@@ -128,7 +146,13 @@ export const PermissionMatrix: React.FC<{ myRole: Role }> = ({ myRole }) => {
 
   const reset = async () => {
     const where = scope === 'global' ? 'toàn hệ thống' : `dự án ${activeProject.code}`;
-    if (!window.confirm(`Khôi phục ${where} về ${scope === 'global' ? 'mặc định có sẵn' : 'cấu hình toàn hệ thống'}? Mọi ghi đè của phạm vi này sẽ bị xóa.`)) return;
+    const ok = await confirm({
+      title: 'Khôi phục mặc định?',
+      message: 'Khôi phục ' + where + ' về ' + (scope === 'global' ? 'mặc định có sẵn' : 'cấu hình toàn hệ thống') + '. Mọi ghi đè của phạm vi này sẽ bị xóa.',
+      confirmLabel: 'Khôi phục',
+      tone: 'warning'
+    });
+    if (!ok) return;
     setBusy(true);
     const res = await resetPermissions(scope);
     setBusy(false);

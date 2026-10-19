@@ -7,6 +7,7 @@ import { MemberInvite } from './MemberInvite';
 import { MergeRequestsPanel } from './MergeRequestsPanel';
 import { PermissionMatrix } from './PermissionMatrix';
 import { AccessCheckPanel } from './AccessCheckPanel';
+import { useConfirm } from '../common/ConfirmDialog';
 import { computeWorkload } from '../../utils/workload';
 import {
   Shield,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export const TeamView: React.FC = () => {
+  const confirm = useConfirm();
   const {
     users,
     currentUser,
@@ -123,8 +125,16 @@ export const TeamView: React.FC = () => {
                           ))}
                         </select>
                         <button
-                          onClick={() => {
-                            if (window.confirm(`Gỡ ${user.name} khỏi dự án ${activeProject.code}?`)) removeMember(user.id);
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                title: 'Gỡ ' + user.name + ' khỏi dự án?',
+                                message: 'Người này sẽ không còn truy cập dự án ' + activeProject.code + '. Nhiệm vụ họ đang phụ trách vẫn giữ nguyên người chủ trì cho đến khi bạn giao lại.',
+                                confirmLabel: 'Gỡ khỏi dự án',
+                                tone: 'danger'
+                              })
+                            )
+                              removeMember(user.id);
                           }}
                           className="p-1 text-rose-700 hover:bg-rose-50 rounded"
                           title="Gỡ khỏi dự án"
@@ -133,8 +143,16 @@ export const TeamView: React.FC = () => {
                         </button>
                         {isAdmin && user.isPlaceholder && (
                           <button
-                            onClick={() => {
-                              if (window.confirm(`Xóa hẳn tài khoản chưa đăng ký "${user.name}" khỏi hệ thống?\nNgười này sẽ rời mọi dự án; nhiệm vụ họ phụ trách thành chưa giao.`)) {
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: 'Xóa hẳn tài khoản "' + user.name + '"?',
+                                  message: 'Tài khoản chưa đăng ký này sẽ bị xóa khỏi hệ thống: người này rời mọi dự án và các nhiệm vụ họ phụ trách thành chưa giao.',
+                                  warnings: ['Không thể hoàn tác.'],
+                                  confirmLabel: 'Xóa tài khoản',
+                                  tone: 'danger'
+                                })
+                              ) {
                                 deletePlaceholder(user.id);
                               }
                             }}

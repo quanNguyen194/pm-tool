@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './harness.css';
 import { ThemeProvider } from '../src/context/ThemeContext';
+import { ConfirmProvider } from '../src/components/common/ConfirmDialog';
 import { MockProvider } from './mockApp';
 import { MainLayout } from '../src/App';
 import './audit';
@@ -14,8 +15,10 @@ if (theme) {
 
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
-    <MockProvider>
-      <MainLayout />
-    </MockProvider>
+    <ConfirmProvider>
+      <MockProvider>
+        <MainLayout />
+      </MockProvider>
+    </ConfirmProvider>
   </ThemeProvider>
 );
