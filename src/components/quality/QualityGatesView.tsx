@@ -9,6 +9,8 @@ import {
   Plus,
   FileCheck,
   UserCheck,
+  Pencil,
+  Trash2,
   Calendar,
   Lock,
   Unlock,
@@ -24,7 +26,10 @@ export const QualityGatesView: React.FC = () => {
     toggleQualityItemPassed,
     updateQualityNotes,
     addQualityItem,
+    editQualityItem,
+    deleteQualityItem,
     canApproveQuality,
+    canEditQualityItems,
     currentUser
   } = useApp();
 
@@ -34,6 +39,8 @@ export const QualityGatesView: React.FC = () => {
   const actorId = useActor(actorChoice);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>(activeProject.currentPhase || 'phase_1');
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+  // Đang sửa một tiêu chuẩn có sẵn (dùng chung hộp thoại với thêm mới)
+  const [editingItem, setEditingItem] = useState<QualityCheckItem | null>(null);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [selectedItemForNotes, setSelectedItemForNotes] = useState<{ phaseId: string; item: QualityCheckItem } | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -47,6 +54,23 @@ export const QualityGatesView: React.FC = () => {
   });
 
   const selectedPhase = phases.find(p => p.id === selectedPhaseId) || phases[0];
+
+  const openEditItem = (item: QualityCheckItem) => {
+    setEditingItem(item);
+    setNewItemData({ title: item.title, description: item.description, isMandatory: item.isMandatory, notes: '' });
+    setIsAddItemModalOpen(true);
+  };
+  const closeItemModal = () => {
+    setIsAddItemModalOpen(false);
+    setEditingItem(null);
+    setNewItemData({ title: '', description: '', isMandatory: true, notes: '' });
+  };
+  const handleDeleteItem = (item: QualityCheckItem) => {
+    const extra = item.isPassed ? '\n\nTiêu chuẩn này ĐÃ ĐẠT; xóa sẽ mất cả lịch sử thẩm định của nó.' : '';
+    if (window.confirm('Xóa tiêu chuẩn "' + item.title + '" khỏi giai đoạn này của dự án?' + extra + '\n\nChỉ ảnh hưởng dự án này, mẫu mặc định của hệ thống giữ nguyên.')) {
+      deleteQualityItem(item.id);
+    }
+  };
 
   const handleOpenNotes = (phaseId: string, item: QualityCheckItem) => {
     setSelectedItemForNotes({ phaseId, item });
@@ -63,13 +87,22 @@ export const QualityGatesView: React.FC = () => {
   const handleAddItemSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemData.title.trim()) return;
-    addQualityItem(selectedPhase.id, {
-      title: newItemData.title,
-      description: newItemData.description,
-      isMandatory: newItemData.isMandatory,
-      notes: newItemData.notes || undefined
-    });
+    if (editingItem) {
+      editQualityItem(editingItem.id, {
+        title: newItemData.title.trim(),
+        description: newItemData.description,
+        isMandatory: newItemData.isMandatory
+      });
+    } else {
+      addQualityItem(selectedPhase.id, {
+        title: newItemData.title,
+        description: newItemData.description,
+        isMandatory: newItemData.isMandatory,
+        notes: newItemData.notes || undefined
+      });
+    }
     setIsAddItemModalOpen(false);
+    setEditingItem(null);
     setNewItemData({
       title: '',
       description: '',
@@ -105,9 +138,12 @@ export const QualityGatesView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           {canApproveQuality && <ActorSelect value={actorChoice} onChange={setActorChoice} />}
-          {canApproveQuality && (
+          {canEditQualityItems && (
             <button
-              onClick={() => setIsAddItemModalOpen(true)}
+              onClick={() => {
+                setEditingItem(null);
+                setIsAddItemModalOpen(true);
+              }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs"
             >
               <Plus className="w-4 h-4" />
@@ -229,7 +265,7 @@ export const QualityGatesView: React.FC = () => {
                         } ${!canApproveQuality ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                         title={
                           !canApproveQuality
-                            ? 'Chỉ Quản trị viên, PM hoặc QA mới có quyền thẩm định tiêu chuẩn'
+                            ? 'Bạn không có quyền thẩm định tiêu chuẩn này (cần được cấp quyền thẩm định)'
                             : item.isPassed ? 'Bấm để hủy xác nhận' : 'Bấm để xác nhận đạt chuẩn'
                         }
                       >
@@ -286,15 +322,39 @@ export const QualityGatesView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
-                      <button
-                        onClick={() => handleOpenNotes(selectedPhase.id, item)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-[11px] flex items-center gap-1"
-                        title="Thêm hoặc sửa ghi chú kiểm thử"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span className="hidden sm:inline">Ghi chú</span>
-                      </button>
+                    <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+                      {canApproveQuality && (
+                        <button
+                          onClick={() => handleOpenNotes(selectedPhase.id, item)}
+                          className="p-1.5 text-slate-600 hover:text-indigo-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-[11px] flex items-center gap-1"
+                          title="Thêm hoặc sửa ghi chú kiểm thử"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span className="hidden sm:inline">Ghi chú</span>
+                        </button>
+                      )}
+                      {canEditQualityItems && (
+                        <>
+                          <button
+                            onClick={() => openEditItem(item)}
+                            className="p-1.5 text-slate-600 hover:text-indigo-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-[11px] flex items-center gap-1"
+                            title="Sửa tên, mô tả, mức bắt buộc của tiêu chuẩn"
+                            aria-label={`Sửa tiêu chuẩn ${item.title}`}
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span className="hidden sm:inline">Sửa</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item)}
+                            className="p-1.5 text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 text-[11px] flex items-center gap-1"
+                            title="Xóa tiêu chuẩn khỏi dự án này"
+                            aria-label={`Xóa tiêu chuẩn ${item.title}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span className="hidden sm:inline">Xóa</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -310,9 +370,9 @@ export const QualityGatesView: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-lg w-full p-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <h3 className="text-base font-bold text-slate-900">
-                Thêm Tiêu Chuẩn Chất Lượng (DoD Criteria)
+                {editingItem ? 'Sửa Tiêu Chuẩn Chất Lượng' : 'Thêm Tiêu Chuẩn Chất Lượng (DoD Criteria)'}
               </h3>
-              <button onClick={() => setIsAddItemModalOpen(false)} className="p-1 text-slate-500 hover:text-slate-600">
+              <button onClick={closeItemModal} className="p-1 text-slate-500 hover:text-slate-600" aria-label="Đóng">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -361,21 +421,23 @@ export const QualityGatesView: React.FC = () => {
                 </label>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Ghi Chú Ban Đầu</label>
-                <input
-                  type="text"
-                  value={newItemData.notes}
-                  onChange={e => setNewItemData({ ...newItemData, notes: e.target.value })}
-                  placeholder="Ghi chú người phụ trách hoặc tài liệu tham chiếu..."
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
-                />
-              </div>
+              {!editingItem && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ghi Chú Ban Đầu</label>
+                  <input
+                    type="text"
+                    value={newItemData.notes}
+                    onChange={e => setNewItemData({ ...newItemData, notes: e.target.value })}
+                    placeholder="Ghi chú người phụ trách hoặc tài liệu tham chiếu..."
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                  />
+                </div>
+              )}
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddItemModalOpen(false)}
+                  onClick={closeItemModal}
                   className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
                 >
                   Hủy bỏ
@@ -384,7 +446,7 @@ export const QualityGatesView: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                 >
-                  Thêm Tiêu Chuẩn
+                  {editingItem ? 'Lưu Thay Đổi' : 'Thêm Tiêu Chuẩn'}
                 </button>
               </div>
             </form>

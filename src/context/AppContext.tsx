@@ -100,6 +100,8 @@ interface AppContextType {
   /** Tạo/sửa/xóa use case + tiêu chí (admin, PM, DEV, BA). */
   canManageUseCases: boolean;
   canApproveQuality: boolean;
+  /** Thêm/sửa/xóa tiêu chuẩn Quality Gates (khác với thẩm định Đạt/Chưa đạt). */
+  canEditQualityItems: boolean;
   canApproveUseCase: boolean;
   /** Vai trò hiện tại có được tick bước chuẩn này của use case không. */
   canTickStage: (stage: StageKey) => boolean;
@@ -155,6 +157,10 @@ interface AppContextType {
   toggleQualityItemPassed: (phaseId: string, itemId: string, notes?: string, actorId?: string) => void;
   updateQualityNotes: (itemId: string, notes: string) => void;
   addQualityItem: (phaseId: string, item: Omit<QualityCheckItem, 'id' | 'isPassed'>) => void;
+  /** Sửa tên/mô tả/bắt buộc của một tiêu chuẩn (kể cả mặc định). */
+  editQualityItem: (itemId: string, patch: { title: string; description: string; isMandatory: boolean }) => void;
+  /** Xóa một tiêu chuẩn của dự án này (mẫu gốc của hệ thống không bị ảnh hưởng). */
+  deleteQualityItem: (itemId: string) => void;
   // Thông báo
   sendDeadlineReminder: (taskId: string) => void;
   // Nhắc nhở qua Telegram (liên kết của chính người đăng nhập)
@@ -588,6 +594,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const canManageTasks = can(role, 'write_tasks');
   const canManageUseCases = can(role, 'write_usecases');
   const canApproveQuality = can(role, 'approve_quality');
+  const canEditQualityItems = can(role, 'edit_quality_items');
   const canApproveUseCase = can(role, 'tick_criteria');
   const isViewer = role === 'viewer';
   const canTickStage = (stage: StageKey) => roleCanTickStage(role, stage);
@@ -1228,6 +1235,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const editQualityItem = (itemId: string, patch: { title: string; description: string; isMandatory: boolean }) => {
+    announce('Đã cập nhật tiêu chuẩn');
+    setQualityRows(prev =>
+      prev.map(i => (i.id === itemId ? { ...i, title: patch.title, description: patch.description, is_mandatory: patch.isMandatory } : i))
+    );
+    void run(
+      async () => {
+        check(
+          await supabase
+            .from('quality_items')
+            .update({ title: patch.title, description: patch.description, is_mandatory: patch.isMandatory })
+            .eq('id', itemId)
+        );
+      },
+      ['quality']
+    );
+  };
+
+  const deleteQualityItem = (itemId: string) => {
+    announce('Đã xóa tiêu chuẩn');
+    setQualityRows(prev => prev.filter(i => i.id !== itemId));
+    void run(
+      async () => {
+        // RLS không báo lỗi khi không có quyền xóa mà chỉ xóa 0 dòng: kiểm tra số dòng thực sự bị xóa.
+        const res = await supabase.from('quality_items').delete().eq('id', itemId).select('id');
+        check(res);
+        if (!res.data || res.data.length === 0) throw new Error('Không xóa được: bạn không có quyền xóa tiêu chuẩn này hoặc tiêu chuẩn không còn tồn tại.');
+      },
+      ['quality']
+    );
+  };
+
   // Thông báo
   const sendDeadlineReminder = (taskId: string) => {
     void run(
@@ -1421,6 +1460,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         canManageTasks,
         canManageUseCases,
         canApproveQuality,
+        canEditQualityItems,
         canApproveUseCase,
         canTickStage,
         isViewer,
@@ -1456,6 +1496,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleQualityItemPassed,
         updateQualityNotes,
         addQualityItem,
+        editQualityItem,
+        deleteQualityItem,
         sendDeadlineReminder,
         getTelegram,
         saveTelegram,

@@ -173,8 +173,10 @@ export const MockProvider = ({ children }: any) => {
         { role: 'dev', permission: 'manage_project', from: false, to: true, by: 'quan.ntm194', at: new Date().toISOString() },
         { role: 'ba', permission: 'write_usecases', from: true, to: false, by: 'quan.ntm194', at: new Date().toISOString() }
       ],
+      editQualityItem: () => undefined,
+      deleteQualityItem: () => undefined,
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
-      canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
+      canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canEditQualityItems: mgr, canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
   }, [activeTab, activeProjectId, role, focusTask]);
 

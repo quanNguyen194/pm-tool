@@ -113,6 +113,12 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0021_rollback.sql` trả các hàm về ma trận CỐ ĐỊNH. **MẤT DỮ LIỆU:** mọi cấu hình phân quyền và nhật ký thay đổi. Nếu admin đã nới quyền cho vai trò nào thì sau hoàn tác họ mất quyền đó ngay. Thứ tự hoàn tác: `0021` -> `0020` -> `0018`.
 - Nếu một cấu hình làm hệ thống khó dùng: quản trị viên luôn đủ mọi quyền, mở Đội ngũ -> Chỉnh sửa phân quyền -> "Khôi phục mặc định" (không cần rollback).
 
+## 4k. Hoàn tác migration `0022` (thêm/sửa/xóa tiêu chuẩn Quality Gates)
+
+- `0022` tách quyền định nghĩa tiêu chuẩn khỏi quyền thẩm định. Giao diện bản mới chạy được với DB cũ (PM thêm/sửa/xóa được vì quyền cũ đã gồm PM; Tester thì vẫn được như trước cho đến khi chạy `0022`).
+- Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
+- Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

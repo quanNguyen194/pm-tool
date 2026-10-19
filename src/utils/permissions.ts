@@ -20,6 +20,7 @@ export type PermissionId =
   | 'stage_acceptance'
   | 'tick_criteria'
   | 'approve_quality'
+  | 'edit_quality_items'
   | 'export';
 
 export interface PermissionRow {
@@ -147,6 +148,14 @@ export const PERMISSIONS: PermissionRow[] = [
     roles: ['admin', 'pm']
   },
   {
+    id: 'edit_quality_items',
+    configurable: true,
+    group: 'Chất lượng',
+    label: 'Thêm, sửa, xóa tiêu chuẩn Quality Gates',
+    description: 'Định nghĩa các tiêu chuẩn của từng giai đoạn (kể cả tiêu chuẩn mặc định của dự án)',
+    roles: ['admin', 'pm']
+  },
+  {
     id: 'approve_quality',
     configurable: true,
     group: 'Chất lượng',
@@ -204,6 +213,8 @@ export interface AccessReport {
   writeTasks: boolean;
   writeUseCases: boolean;
   approveQuality: boolean;
+  /** Có từ migration 0022; bản DB cũ không trả về. */
+  editQualityItems?: boolean;
   stages: Record<'analysis' | 'design' | 'coding' | 'testing' | 'acceptance', boolean>;
   visible?: { useCases: number; tasks: number; members: number };
   total?: { useCases: number; tasks: number; members: number } | null;
@@ -217,6 +228,7 @@ export function compareWithDb(role: Role, db: AccessReport): string[] {
     ['Tạo/sửa nhiệm vụ', can(role, 'write_tasks'), db.writeTasks],
     ['Tạo/sửa use case', can(role, 'write_usecases'), db.writeUseCases],
     ['Thẩm định Quality Gates', can(role, 'approve_quality'), db.approveQuality],
+    ...(db.editQualityItems === undefined ? [] : ([['Thêm/sửa/xóa tiêu chuẩn Quality Gates', can(role, 'edit_quality_items'), db.editQualityItems]] as [string, boolean, boolean][])),
     ['Tick bước Phân tích', can(role, 'stage_analysis'), db.stages.analysis],
     ['Tick bước Thiết kế', can(role, 'stage_design'), db.stages.design],
     ['Tick bước Lập trình', can(role, 'stage_coding'), db.stages.coding],

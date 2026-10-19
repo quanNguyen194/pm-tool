@@ -168,6 +168,14 @@ function overflowAudit() {
         res['tasks:bảng'] = snap();
       }
     }
+    if (tab === 'quality') {
+      if (clickText('button[aria-label^="Sửa tiêu chuẩn"]', 'Sửa')) {
+        await wait(400);
+        res['quality:sửa-tiêu-chuẩn'] = snap();
+        clickText('button', 'Hủy bỏ');
+        await wait(300);
+      }
+    }
     if (tab === 'team') {
       if (clickText('button', 'Lịch sử thay đổi')) {
         await wait(500);

@@ -164,7 +164,7 @@ export const ProjectsView: React.FC = () => {
               <span>Tạo Dự Án Mới</span>
             </button>
           ) : (
-            <div className="text-xs text-slate-500 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <div className="text-xs text-slate-600 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
               * Chỉ quản trị viên mới tạo được dự án
             </div>
           )}
