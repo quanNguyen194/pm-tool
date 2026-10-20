@@ -291,7 +291,8 @@ export const UseCasesView: React.FC = () => {
   // Use case lá có thể chọn: đang lọc thì chỉ lấy các use case khớp, không thì lấy tất cả.
   const selectableLeafIds = useMemo(() => {
     const pool = matchedIds ? nodes.filter(n => matchedIds.has(n.useCase.id)) : nodes;
-    return pool.filter(n => n.useCase.kind !== 'group' && n.childCount === 0).map(n => n.useCase.id);
+    // Use case "Không thực hiện" không tick được bước nên không đưa vào "Chọn tất cả" (số đếm cũng không tính chúng).
+    return pool.filter(n => n.useCase.kind !== 'group' && n.childCount === 0 && n.useCase.status !== 'cancelled').map(n => n.useCase.id);
   }, [matchedIds, nodes]);
 
   const toggleSelected = (ids: string[], on: boolean) =>

@@ -182,9 +182,9 @@ export const DashboardView: React.FC = () => {
       {(overdueTasks.length > 0 || approachingTasks.length > 0) && (
         <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
               <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-amber-900">
                   Cảnh Báo Deadline Tự Động: Có {overdueTasks.length} nhiệm vụ quá hạn và {approachingTasks.length} nhiệm vụ sắp đến hạn (&lt; 48 giờ)
                 </h3>
@@ -462,7 +462,7 @@ export const DashboardView: React.FC = () => {
       <ProgressChart />
 
       {/* Main 2-Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Column 1: Biểu đồ phân bổ trạng thái công việc & Nhiệm vụ ưu tiên */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
           <div>
@@ -572,7 +572,8 @@ export const DashboardView: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-3">
+            {/* Nhiều module thì cuộn trong khung, không kéo giãn cả hàng */}
+            <div className="space-y-3 max-h-[34rem] overflow-y-auto pr-1" tabIndex={0} aria-label="Danh sách tiến độ use case theo module">
               {flattenUseCaseTree(projectUseCases)
                 // Chỉ module gốc còn use case hiệu lực (bỏ module chỉ chứa use case "Không thực hiện")
                 .filter(n => n.depth === 1 && !(n.childCount > 0 && n.leafCount === 0))
