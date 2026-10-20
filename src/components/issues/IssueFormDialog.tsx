@@ -5,6 +5,8 @@ import { useApp } from '../../context/AppContext';
 import type { Issue, IssueSeverity, Priority } from '../../types';
 import { PRIORITY_LABEL, SEVERITY_LABEL } from './issueUi';
 import { SearchSelect } from '../common/SearchSelect';
+import { AttachmentPicker, usePendingFiles } from './AttachmentPicker';
+import { MAX_FILES_PER_ISSUE } from '../../utils/attachments';
 
 interface Props {
   /** Có `issue` = chế độ sửa nội dung; không có = ghi nhận mới. */
@@ -19,8 +21,9 @@ const labelCls = 'block text-xs font-semibold text-slate-700 mb-1';
 
 /** Ghi nhận issue mới hoặc sửa nội dung issue (người sửa phải có quyền sửa, hoặc là người báo khi issue còn ở trạng thái khởi tạo). */
 export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) => {
-  const { issueTypes, canAssignIssue, users, projectUseCases, projectTasks, createIssue, updateIssue } = useApp();
+  const { issueTypes, canAssignIssue, users, projectUseCases, projectTasks, createIssue, updateIssue, attachmentsAvailable } = useApp();
   const editing = !!issue;
+  const pending = usePendingFiles(MAX_FILES_PER_ISSUE);
 
   const activeTypes = issueTypes.filter(t => t.active || t.id === issue?.typeId);
   const [typeId, setTypeId] = useState(issue?.typeId ?? issueTypes.find(t => t.active)?.id ?? '');
@@ -71,7 +74,7 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
         dueDate: dueDate || undefined,
         useCaseId: useCaseId || undefined,
         taskId: taskId || undefined
-      });
+      }, pending.files);
       setBusy(false);
       if (res) {
         onCreated?.(res.id);
@@ -147,10 +150,17 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={5}
-              placeholder={'Các bước tái hiện, kết quả thực tế, kết quả mong đợi…\n(ảnh/video đính kèm thêm ở phần Cập nhật sau khi tạo)'}
+              placeholder={'Các bước tái hiện, kết quả thực tế, kết quả mong đợi…'}
               className={inputCls}
             />
           </div>
+
+          {!editing && attachmentsAvailable && (
+            <div>
+              <span className={labelCls}>Ảnh / video minh họa</span>
+              <AttachmentPicker pending={pending} disabled={busy} id="is-files" />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
@@ -216,7 +226,7 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
           </button>
           <button type="submit" disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60">
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-            {editing ? 'Lưu thay đổi' : 'Ghi nhận issue'}
+            {busy && pending.items.length > 0 ? 'Đang tải lên…' : editing ? 'Lưu thay đổi' : 'Ghi nhận issue'}
           </button>
         </div>
       </form>

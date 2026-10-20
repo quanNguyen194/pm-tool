@@ -12,6 +12,7 @@ import {
   Task,
   UseCase,
   Issue,
+  IssueAttachment,
   IssueJournal,
   IssueStatusDef,
   IssueTypeDef
@@ -269,6 +270,20 @@ export const mapIssue = (r: Row): Issue => ({
   closedAt: r.closed_at ?? undefined,
   createdAt: r.created_at,
   updatedAt: r.updated_at
+});
+
+export const mapIssueAttachment = (r: Row): IssueAttachment => ({
+  id: r.id,
+  issueId: r.issue_id,
+  projectId: r.project_id,
+  journalId: r.journal_id ?? undefined,
+  uploaderId: r.uploader_id ?? undefined,
+  fileName: r.file_name,
+  mimeType: r.mime_type,
+  sizeBytes: Number(r.size_bytes),
+  kind: r.kind,
+  storagePath: r.storage_path,
+  createdAt: r.created_at
 });
 
 export const mapIssueJournal = (r: Row, details: Row[]): IssueJournal => ({

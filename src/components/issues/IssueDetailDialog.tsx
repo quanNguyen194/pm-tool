@@ -5,6 +5,9 @@ import { useApp } from '../../context/AppContext';
 import { COLOR_BADGE, issueCode, PRIORITY_LABEL, PRIORITY_STYLE, SEVERITY_LABEL } from './issueUi';
 import { JournalTree } from './JournalTree';
 import { IssueFormDialog } from './IssueFormDialog';
+import { AttachmentGallery, AttachmentUsageMeter } from './AttachmentGallery';
+import { AttachmentPicker, usePendingFiles } from './AttachmentPicker';
+import { MAX_FILES_PER_ISSUE } from '../../utils/attachments';
 import { useConfirm } from '../common/ConfirmDialog';
 
 const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—');
@@ -21,7 +24,8 @@ const Prop: React.FC<{ label: string; children: React.ReactNode }> = ({ label, c
 export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void }> = ({ issueId, onClose }) => {
   const {
     projectIssues, issueTypes, issueStatuses, allUsers, users, projectUseCases, projectTasks, currentUser,
-    canUpdateIssue, canEditIssue, canAssignIssue, canDeleteIssue, updateIssue, deleteIssue
+    canUpdateIssue, canEditIssue, canAssignIssue, canDeleteIssue, updateIssue, deleteIssue,
+    attachmentsAvailable, getIssueAttachments
   } = useApp();
   const confirm = useConfirm();
   const issue = projectIssues.find(i => i.id === issueId);
@@ -31,6 +35,8 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const attachments = getIssueAttachments(issueId);
+  const pending = usePendingFiles(Math.max(0, MAX_FILES_PER_ISSUE - attachments.length));
 
   // Dữ liệu đổi từ nơi khác (realtime) thì đồng bộ lại ô chọn
   useEffect(() => {
@@ -62,13 +68,16 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
   const changes: Record<string, string | null> = {};
   if (statusId !== issue.statusId) changes.status_id = statusId;
   if (canAssignIssue && (assigneeId || null) !== (issue.assigneeId ?? null)) changes.assignee_id = assigneeId || null;
-  const dirty = Object.keys(changes).length > 0 || notes.trim() !== '';
+  const dirty = Object.keys(changes).length > 0 || notes.trim() !== '' || pending.items.length > 0;
 
   const save = async () => {
     setBusy(true);
-    const ok = await updateIssue(issue.id, changes, notes.trim());
+    const ok = await updateIssue(issue.id, changes, notes.trim(), undefined, pending.files);
     setBusy(false);
-    if (ok) setNotes('');
+    if (ok) {
+      setNotes('');
+      pending.clear();
+    }
   };
 
   const remove = async () => {
@@ -121,6 +130,16 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
               <p className="text-xs text-slate-800 whitespace-pre-wrap break-words">{issue.description || <span className="text-slate-600 italic">Chưa có mô tả.</span>}</p>
             </section>
 
+            {attachmentsAvailable && (attachments.length > 0 || canUpdateIssue) && (
+              <section aria-label="Tệp đính kèm">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
+                  Ảnh / video đính kèm ({attachments.length}/{MAX_FILES_PER_ISSUE})
+                </h4>
+                <AttachmentGallery attachments={attachments} canDelete={a => canDeleteIssue || (a.uploaderId === currentUser.id && canUpdateIssue)} />
+                <AttachmentUsageMeter refreshKey={attachments.length} />
+              </section>
+            )}
+
             {canUpdateIssue ? (
               <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4" aria-label="Cập nhật issue">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Cập nhật</h4>
@@ -159,6 +178,12 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
                     className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:outline-2 focus-visible:outline-indigo-500"
                   />
                 </div>
+                {attachmentsAvailable && attachments.length < MAX_FILES_PER_ISSUE && (
+                  <div className="mt-3">
+                    <span className="block text-xs font-semibold text-slate-700 mb-1">Đính kèm ảnh / video</span>
+                    <AttachmentPicker pending={pending} disabled={busy} id="iu-files" />
+                  </div>
+                )}
                 <div className="mt-3 flex items-center justify-end gap-2">
                   {dirty && (
                     <button
@@ -166,6 +191,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
                         setStatusId(issue.statusId);
                         setAssigneeId(issue.assigneeId ?? '');
                         setNotes('');
+                        pending.clear();
                       }}
                       className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
                     >
@@ -178,7 +204,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg"
                   >
                     {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-                    Lưu cập nhật
+                    {busy && pending.items.length > 0 ? 'Đang tải lên…' : 'Lưu cập nhật'}
                   </button>
                 </div>
               </section>

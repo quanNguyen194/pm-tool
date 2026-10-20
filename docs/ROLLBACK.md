@@ -119,6 +119,11 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4m. Hoàn tác migration `0024` (ảnh / video đính kèm issue)
+
+- Giao diện bản mới chạy được với DB cũ: khi chưa có `0024`, phần "Ảnh / video đính kèm" tự ẩn, issue vẫn dùng bình thường. Rollback Cloudflare/git là đủ để gỡ phần giao diện.
+- Hoàn tác DB: `supabase/rollback/0024_rollback.sql`. **MẤT DỮ LIỆU:** thông tin các tệp đính kèm (và dòng nhật ký "Tệp đính kèm"). Tệp thật trong Storage KHÔNG bị SQL xóa: vào Dashboard > Storage > bucket `issue-attachments` > Empty bucket rồi Delete bucket. Thứ tự: `0024` -> `0023`.
+
 ## 4l. Hoàn tác migration `0023` (quản lý issue)
 
 - Giao diện bản mới chạy được với DB cũ: khi chưa có `0023`, tab "Lỗi & Yêu Cầu" tự ẩn khỏi menu. Rollback Cloudflare/git là đủ để gỡ phần giao diện.

@@ -312,6 +312,29 @@ export interface IssueJournalDetail {
   newValue?: string;
 }
 
+/** Ảnh / video đính kèm issue (tệp thật nằm trong kho riêng tư của Supabase Storage). */
+export interface IssueAttachment {
+  id: string;
+  issueId: string;
+  projectId: string;
+  journalId?: string;
+  uploaderId?: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: 'image' | 'video';
+  storagePath: string;
+  createdAt: string;
+}
+
+export interface AttachmentUsage {
+  projectBytes: number;
+  projectCount: number;
+  /** Chỉ Admin thấy tổng toàn hệ thống. */
+  totalBytes?: number;
+  capBytes: number;
+}
+
 /** Một dòng nhật ký (kiểu Redmine): ai làm gì lúc nào, ghi chú, các trường đã đổi; có thể trả lời lồng nhau (tối đa 3 cấp). */
 export interface IssueJournal {
   id: string;

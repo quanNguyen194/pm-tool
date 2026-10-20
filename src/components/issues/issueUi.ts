@@ -57,7 +57,8 @@ export const FIELD_LABEL: Record<string, string> = {
   environment: 'Môi trường',
   due_date: 'Hạn xử lý',
   use_case: 'Use case',
-  task: 'Nhiệm vụ'
+  task: 'Nhiệm vụ',
+  attachment: 'Tệp đính kèm'
 };
 
 export const issueCode = (i: Pick<Issue, 'number'>) => `#${i.number}`;

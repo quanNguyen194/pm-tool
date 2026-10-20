@@ -125,6 +125,14 @@ const ISSUES = [
   { id: 'is3', projectId: 'p1', number: 10, typeId: 'ty1', statusId: 'st7', title: 'Sai tổng tiền khi áp dụng 2 mã giảm giá', description: 'Đã sửa và test xong.', priority: 'high', severity: 'major', environment: 'PROD', reporterId: 'u3', assigneeId: 'u2', createdAt: isoAgo(10), updatedAt: isoAgo(1), closedAt: isoAgo(1) },
   { id: 'is4', projectId: 'p1', number: 9, typeId: 'ty3', statusId: 'st8', title: 'Cải thiện tốc độ tải danh sách nhiệm vụ', description: '', priority: 'low', environment: '', reporterId: 'u4', assigneeId: 'u4', dueDate: ymd(5), createdAt: isoAgo(12), updatedAt: isoAgo(2) }
 ];
+const svgPic = (seed: string) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="hsl(${(seed.length * 47) % 360},60%,80%)"/><text x="20" y="110" font-size="28" fill="#334155">${seed.slice(-12)}</text></svg>`);
+const ISSUE_ATTACHMENTS = [
+  { id: 'at1', issueId: 'is1', projectId: 'p1', journalId: 'j1', uploaderId: 'u3', fileName: 'man-hinh-loi-dang-nhap-sau-khi-doi-mat-khau.png', mimeType: 'image/png', sizeBytes: 820 * 1024, kind: 'image', storagePath: 'p1/is1/at1.png', createdAt: isoAgo(5) },
+  { id: 'at2', issueId: 'is1', projectId: 'p1', uploaderId: 'u2', fileName: 'log.webp', mimeType: 'image/webp', sizeBytes: 140 * 1024, kind: 'image', storagePath: 'p1/is1/at2.webp', createdAt: isoAgo(2) },
+  { id: 'at3', issueId: 'is1', projectId: 'p1', uploaderId: 'u3', fileName: 'tai-hien.mp4', mimeType: 'video/mp4', sizeBytes: 17 * 1024 * 1024, kind: 'video', storagePath: 'p1/is1/at3.mp4', createdAt: isoAgo(5) }
+];
 const ISSUE_JOURNALS = [
   { id: 'j1', issueId: 'is1', userId: 'u3', notes: 'Lỗi xảy ra 100% trên UAT, đính kèm log phía dưới.', createdAt: isoAgo(5), details: [] },
   { id: 'j2', issueId: 'is1', userId: 'u1', parentId: 'j1', notes: 'Đã nhận. Giao cho Long xử lý.', createdAt: isoAgo(4), details: [] },
@@ -132,7 +140,8 @@ const ISSUE_JOURNALS = [
   { id: 'j4', issueId: 'is1', userId: 'u2', notes: 'Bắt đầu kiểm tra phiên đăng nhập.', createdAt: isoAgo(2), details: [{ id: 3, field: 'status', oldValue: 'Mới', newValue: 'Đang thực hiện' }] },
   { id: 'j5', issueId: 'is1', userId: 'u3', parentId: 'j4', notes: 'Cần sớm vì khách hàng chờ.', createdAt: isoAgo(1), details: [] },
   { id: 'j6', issueId: 'is1', userId: 'u2', parentId: 'j5', notes: 'OK, sáng mai có bản vá.', createdAt: isoAgo(0), details: [] },
-  { id: 'j7', issueId: 'is1', userId: 'u1', notes: '', createdAt: isoAgo(0), details: [{ id: 4, field: 'description', oldValue: 'Mô tả cũ', newValue: 'Mô tả mới chi tiết hơn' }] }
+  { id: 'j7', issueId: 'is1', userId: 'u1', notes: '', createdAt: isoAgo(0), details: [{ id: 4, field: 'description', oldValue: 'Mô tả cũ', newValue: 'Mô tả mới chi tiết hơn' }] },
+  { id: 'j8', issueId: 'is1', userId: 'u3', notes: 'Bổ sung ảnh chụp lỗi', createdAt: isoAgo(0), details: [{ id: 5, field: 'attachment', newValue: 'man-hinh-loi.png' }, { id: 6, field: 'attachment', oldValue: 'anh-cu.png' }] }
 ];
 
 export const MockProvider = ({ children }: any) => {
@@ -207,6 +216,11 @@ export const MockProvider = ({ children }: any) => {
       editQualityItem: () => undefined,
       deleteQualityItem: () => undefined,
       issuesAvailable: true,
+      attachmentsAvailable: true,
+      getIssueAttachments: (id: string) => ISSUE_ATTACHMENTS.filter(a => a.issueId === id),
+      getAttachmentUrls: async (paths: string[]) => Object.fromEntries(paths.map(p => [p, svgPic(p)])),
+      deleteIssueAttachment: async () => true,
+      getAttachmentUsage: async () => ({ projectBytes: 18 * 1024 * 1024, projectCount: 3, totalBytes: role === 'admin' ? 640 * 1024 * 1024 : undefined, capBytes: 900 * 1024 * 1024 }),
       issueTypes: ISSUE_TYPES,
       issueStatuses: ISSUE_STATUSES,
       projectIssues: ISSUES,

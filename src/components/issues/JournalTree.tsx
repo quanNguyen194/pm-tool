@@ -67,7 +67,12 @@ const JournalItem: React.FC<{ node: JournalNode; depth: number; issue: Issue; us
               {j.details.map(d => (
                 <li key={d.id} className="flex flex-wrap items-center gap-1.5">
                   <strong>{FIELD_LABEL[d.field] ?? d.field}</strong>
-                  {LONG_FIELDS.has(d.field) ? (
+                  {d.field === 'attachment' ? (
+                    <>
+                      <span>{d.newValue ? 'đã thêm' : 'đã xóa'}</span>
+                      <span className="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-slate-700 break-words max-w-full">{d.newValue ?? d.oldValue}</span>
+                    </>
+                  ) : LONG_FIELDS.has(d.field) ? (
                     <details className="inline">
                       <summary className="cursor-pointer text-indigo-700">đã được thay đổi (xem chi tiết)</summary>
                       <div className="mt-1 grid gap-1.5 sm:grid-cols-2">

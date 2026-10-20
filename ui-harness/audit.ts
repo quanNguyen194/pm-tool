@@ -186,6 +186,16 @@ function overflowAudit() {
         first.click();
         await wait(500);
         res['issues:chi-tiết'] = snap();
+        const thumb = document.querySelector<HTMLElement>('[role="dialog"] button[aria-label^="Xem ảnh"]');
+        if (thumb) {
+          thumb.click();
+          await wait(400);
+          res['issues:xem-ảnh-phóng-to'] = snap();
+          document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          await wait(300);
+          // Esc chỉ đóng ảnh, hộp thoại chi tiết còn mở
+          res['issues:esc-đóng-ảnh-chi-tiết-còn'] = { ...snap(), detailOpen: !!document.querySelector('[aria-label^="Chi tiết issue"]'), lightboxOpen: !!document.querySelector('[aria-label^="Xem tệp"]') } as any;
+        }
         clickText('[role="dialog"] button', 'Trả lời');
         await wait(300);
         res['issues:đang-trả-lời'] = snap();

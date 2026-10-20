@@ -28,7 +28,9 @@ import {
   AccountSuggestion,
   MergeRequest,
   TelegramInfo,
+  AttachmentUsage,
   Issue,
+  IssueAttachment,
   IssueJournal,
   IssueStatusDef,
   IssueTypeDef
@@ -44,6 +46,7 @@ import {
   mapTask,
   mapUseCase,
   mapIssue,
+  mapIssueAttachment,
   mapIssueJournal,
   mapIssueStatus,
   mapIssueType,
@@ -56,6 +59,7 @@ import {
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
 import { sound } from '../utils/soundAlert';
+import { ATTACH_BUCKET, checkPrepared, extForMime, mimeOf } from '../utils/attachments';
 import { StageKey, STAGES, STAGE_LABEL, canTickStage as roleCanTickStage } from '../utils/stages';
 
 interface AppContextType {
@@ -137,12 +141,19 @@ interface AppContextType {
     dueDate?: string;
     useCaseId?: string;
     taskId?: string;
-  }) => Promise<{ id: string; number: number } | null>;
+  }, files?: File[]) => Promise<{ id: string; number: number } | null>;
   /** Cập nhật issue + ghi nhật ký. changes dùng khóa DB: status_id, assignee_id, type_id, priority, severity, title, description, environment, due_date, use_case_id, task_id. */
-  updateIssue: (issueId: string, changes: Record<string, string | null>, notes?: string, parentId?: string) => Promise<boolean>;
+  updateIssue: (issueId: string, changes: Record<string, string | null>, notes?: string, parentId?: string, files?: File[]) => Promise<boolean>;
   editIssueNote: (journalId: string, notes: string) => Promise<boolean>;
   deleteIssueNote: (journalId: string) => Promise<boolean>;
   deleteIssue: (issueId: string) => Promise<boolean>;
+  /** Ảnh / video đính kèm. attachmentsAvailable=false khi DB chưa chạy migration 0024. */
+  attachmentsAvailable: boolean;
+  getIssueAttachments: (issueId: string) => IssueAttachment[];
+  /** Link xem có hạn (signed URL) cho các tệp; tệp lỗi sẽ vắng mặt trong kết quả. */
+  getAttachmentUrls: (paths: string[]) => Promise<Record<string, string>>;
+  deleteIssueAttachment: (attachmentId: string) => Promise<boolean>;
+  getAttachmentUsage: () => Promise<AttachmentUsage | null>;
   saveIssueTypes: (items: { id?: string; name: string; color: string; active: boolean }[], removeIds: string[]) => Promise<string | null>;
   saveIssueStatuses: (
     items: { id?: string; name: string; color: string; category: string; active: boolean; initial: boolean }[],
@@ -302,6 +313,7 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   issues: ['issues'],
   issue_journals: ['issues'],
   issue_journal_details: ['issues'],
+  issue_attachments: ['issues'],
   issue_types: ['issues'],
   issue_statuses: ['issues']
 };
@@ -362,6 +374,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [issueTypeRows, setIssueTypeRows] = useState<IssueTypeDef[]>([]);
   const [issueStatusRows, setIssueStatusRows] = useState<IssueStatusDef[]>([]);
   const [issuesAvailable, setIssuesAvailable] = useState(true);
+  const [issueAttachmentRows, setIssueAttachmentRows] = useState<IssueAttachment[]>([]);
+  const [attachmentsAvailable, setAttachmentsAvailable] = useState(false);
   const [focusIssue, setFocusIssue] = useState<{ issueId: string; projectId: string } | null>(null);
   // Ma trận phân quyền hiệu lực của dự án đang chọn (null = chưa nạp được: dùng mặc định có sẵn)
   const [permMatrix, setPermMatrix] = useState<MatrixData | null>(null);
@@ -475,12 +489,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setSnapshotRows((data || []).map(mapSnapshot));
       },
       issues: async () => {
-        const [ty, st, is, jo, de] = await Promise.all([
+        const [ty, st, is, jo, de, at] = await Promise.all([
           fetchAll<any>((a, b) => supabase.from('issue_types').select('*').order('project_id').order('sort').range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issue_statuses').select('*').order('project_id').order('sort').range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issues').select('*').order('project_id').order('number', { ascending: false }).range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issue_journals').select('*').order('created_at').order('id').range(a, b)),
-          fetchAll<any>((a, b) => supabase.from('issue_journal_details').select('*').order('id').range(a, b))
+          fetchAll<any>((a, b) => supabase.from('issue_journal_details').select('*').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issue_attachments').select('*').order('created_at').order('id').range(a, b))
         ]);
         // Bản DB cũ chưa có migration 0023: tắt chức năng, không làm hỏng cả ứng dụng.
         const err = ty.error || st.error || is.error || jo.error || de.error;
@@ -488,6 +503,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           console.warn('Không tải được dữ liệu issue:', err.message);
           setIssuesAvailable(false);
           setIssueRows([]);
+          setIssueAttachmentRows([]);
+          setAttachmentsAvailable(false);
           setIssueJournals([]);
           setIssueTypeRows([]);
           setIssueStatusRows([]);
@@ -498,6 +515,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIssueStatusRows(st.data.map(mapIssueStatus));
         setIssueRows(is.data.map(mapIssue));
         setIssueJournals(jo.data.map((r: any) => mapIssueJournal(r, de.data)));
+        // Chưa chạy migration 0024: chỉ tắt phần đính kèm, issue vẫn dùng bình thường.
+        if (at.error) {
+          setAttachmentsAvailable(false);
+          setIssueAttachmentRows([]);
+        } else {
+          setAttachmentsAvailable(true);
+          setIssueAttachmentRows(at.data.map(mapIssueAttachment));
+        }
       },
       permissions: async () => {
         // Bản DB cũ chưa có migration 0021: bỏ qua, dùng mặc định có sẵn.
@@ -1515,7 +1540,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ----- Issue -----
   const getIssueJournals = (issueId: string) => issueJournals.filter(j => j.issueId === issueId);
 
-  const createIssue: AppContextType['createIssue'] = async input => {
+  const createIssue: AppContextType['createIssue'] = async (input, files = []) => {
     try {
       const res = await supabase.rpc('create_issue', {
         p_project: activeProjectId,
@@ -1531,9 +1556,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         p_task: input.taskId || null
       });
       check(res);
-      await refresh(['issues', 'notifications']);
       const d = res.data as { id: string; number: number };
-      pushToast('success', 'Đã ghi nhận issue #' + d.number);
+      let attachError = '';
+      if (files.length) {
+        try {
+          const items = await uploadObjects(activeProjectId, d.id, files);
+          try {
+            check(await registerObjects(d.id, items, null, false));
+          } catch (e) {
+            await removeObjects(items.map(i => i.path));
+            throw e;
+          }
+        } catch (e) {
+          attachError = describeError(e);
+        }
+      }
+      await refresh(['issues', 'notifications']);
+      if (attachError) pushToast('error', `Đã ghi nhận issue #${d.number} nhưng chưa đính kèm được tệp: ${attachError}. Mở issue để đính kèm lại.`);
+      else pushToast('success', 'Đã ghi nhận issue #' + d.number);
       sound.playSuccess();
       return d;
     } catch (e) {
@@ -1555,15 +1595,144 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const updateIssue: AppContextType['updateIssue'] = (issueId, changes, notes = '', parentId) =>
-    issueCall(
-      () => supabase.rpc('update_issue', { p_issue: issueId, p_changes: changes, p_notes: notes, p_parent: parentId || null }),
-      parentId ? 'Đã gửi trả lời' : 'Đã cập nhật issue'
-    );
+  const updateIssue: AppContextType['updateIssue'] = async (issueId, changes, notes = '', parentId, files = []) => {
+    const issue = issueRows.find(i => i.id === issueId);
+    const hasFields = Object.keys(changes).length > 0 || notes.trim() !== '';
+    if (!files.length || !issue) {
+      return issueCall(
+        () => supabase.rpc('update_issue', { p_issue: issueId, p_changes: changes, p_notes: notes, p_parent: parentId || null }),
+        parentId ? 'Đã gửi trả lời' : 'Đã cập nhật issue'
+      );
+    }
+    // Có tệp: tải lên Storage trước (lỗi thì chưa lưu gì), rồi ghi cập nhật, rồi đăng ký tệp vào đúng dòng nhật ký đó.
+    let items: UploadedObject[] = [];
+    try {
+      items = await uploadObjects(issue.projectId, issueId, files);
+      let journalId: string | null = null;
+      if (hasFields) {
+        try {
+          const res = await supabase.rpc('update_issue', { p_issue: issueId, p_changes: changes, p_notes: notes, p_parent: parentId || null });
+          check(res);
+          journalId = (res.data as { journalId?: string } | null)?.journalId ?? null;
+        } catch (e) {
+          await removeObjects(items.map(i => i.path));
+          throw e;
+        }
+      }
+      try {
+        check(await registerObjects(issueId, items, journalId, true));
+      } catch (e) {
+        await removeObjects(items.map(i => i.path));
+        await refresh(['issues', 'notifications']);
+        pushToast('error', `${hasFields ? 'Đã lưu cập nhật nhưng ' : ''}chưa đính kèm được tệp: ${describeError(e)}`);
+        return hasFields;
+      }
+      await refresh(['issues', 'notifications']);
+      pushToast('success', 'Đã cập nhật issue');
+      return true;
+    } catch (e) {
+      pushToast('error', describeError(e));
+      refresh(['issues']).catch(() => undefined);
+      return false;
+    }
+  };
   const editIssueNote = (journalId: string, notes: string) =>
     issueCall(() => supabase.rpc('edit_issue_note', { p_journal: journalId, p_notes: notes }), 'Đã sửa ghi chú');
   const deleteIssueNote = (journalId: string) => issueCall(() => supabase.rpc('delete_issue_note', { p_journal: journalId }), 'Đã xóa ghi chú');
-  const deleteIssue = (issueId: string) => issueCall(() => supabase.rpc('delete_issue', { p_issue: issueId }), 'Đã xóa issue');
+  const deleteIssue = async (issueId: string) => {
+    const paths = issueAttachmentRows.filter(a => a.issueId === issueId).map(a => a.storagePath);
+    const ok = await issueCall(() => supabase.rpc('delete_issue', { p_issue: issueId }), 'Đã xóa issue');
+    if (ok) await removeObjects(paths);
+    return ok;
+  };
+
+  // ----- Ảnh / video đính kèm -----
+  type UploadedObject = { id: string; name: string; path: string };
+  const urlCache = useRef(new Map<string, { url: string; exp: number }>());
+
+  const removeObjects = async (paths: string[]) => {
+    if (!paths.length) return;
+    const { error } = await supabase.storage.from(ATTACH_BUCKET).remove(paths);
+    if (error) console.warn('Không xóa được tệp trong Storage:', error.message);
+  };
+
+  /** Tải từng tệp lên Storage; lỗi giữa chừng thì gỡ các tệp đã tải rồi ném lỗi. */
+  const uploadObjects = async (projectId: string, issueId: string, files: File[]): Promise<UploadedObject[]> => {
+    const done: UploadedObject[] = [];
+    try {
+      for (const f of files) {
+        const bad = checkPrepared(f);
+        if (bad) throw new Error(bad);
+        const mime = mimeOf(f);
+        const id = crypto.randomUUID();
+        const path = `${projectId}/${issueId}/${id}.${extForMime(mime)}`;
+        const { error } = await supabase.storage.from(ATTACH_BUCKET).upload(path, f, { contentType: mime, upsert: false, cacheControl: '3600' });
+        if (error) throw new Error(`Không tải lên được "${f.name}": ${describeError(error)}`);
+        done.push({ id, name: f.name, path });
+      }
+      return done;
+    } catch (e) {
+      await removeObjects(done.map(d => d.path));
+      throw e;
+    }
+  };
+
+  const registerObjects = (issueId: string, items: UploadedObject[], journalId: string | null, log: boolean) =>
+    supabase.rpc('add_issue_attachments', {
+      p_issue: issueId,
+      p_items: items.map(({ id, name }) => ({ id, name })),
+      p_journal: journalId,
+      p_log: log
+    });
+
+  const getIssueAttachments = (issueId: string) => issueAttachmentRows.filter(a => a.issueId === issueId);
+
+  const getAttachmentUrls = async (paths: string[]): Promise<Record<string, string>> => {
+    const now = Date.now();
+    const out: Record<string, string> = {};
+    const need: string[] = [];
+    for (const p of paths) {
+      const c = urlCache.current.get(p);
+      if (c && c.exp - now > 5 * 60 * 1000) out[p] = c.url;
+      else need.push(p);
+    }
+    if (need.length) {
+      const { data, error } = await supabase.storage.from(ATTACH_BUCKET).createSignedUrls(need, 3600);
+      if (error) {
+        console.warn('Không lấy được link xem tệp:', error.message);
+        return out;
+      }
+      for (const d of data ?? []) {
+        if (d.path && d.signedUrl) {
+          urlCache.current.set(d.path, { url: d.signedUrl, exp: now + 3600 * 1000 });
+          out[d.path] = d.signedUrl;
+        }
+      }
+    }
+    return out;
+  };
+
+  const deleteIssueAttachment = async (attachmentId: string): Promise<boolean> => {
+    try {
+      const res = await supabase.rpc('delete_issue_attachment', { p_id: attachmentId });
+      check(res);
+      await removeObjects([res.data as string]);
+      await refresh(['issues']);
+      pushToast('success', 'Đã xóa tệp đính kèm');
+      return true;
+    } catch (e) {
+      pushToast('error', describeError(e));
+      refresh(['issues']).catch(() => undefined);
+      return false;
+    }
+  };
+
+  const getAttachmentUsage = async (): Promise<AttachmentUsage | null> => {
+    const res = await supabase.rpc('issue_attachment_usage', { p_project: activeProjectId });
+    if (res.error || !res.data) return null;
+    const d = res.data as { projectBytes: number; projectCount: number; totalBytes: number | null; capBytes: number };
+    return { projectBytes: Number(d.projectBytes), projectCount: Number(d.projectCount), totalBytes: d.totalBytes == null ? undefined : Number(d.totalBytes), capBytes: Number(d.capBytes) };
+  };
 
   const saveIssueConfig = async (fn: string, items: unknown, removeIds: string[]): Promise<string | null> => {
     try {
@@ -1617,6 +1786,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         editIssueNote,
         deleteIssueNote,
         deleteIssue,
+        attachmentsAvailable,
+        getIssueAttachments,
+        getAttachmentUrls,
+        deleteIssueAttachment,
+        getAttachmentUsage,
         saveIssueTypes,
         saveIssueStatuses,
         focusIssue,
