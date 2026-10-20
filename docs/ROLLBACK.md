@@ -119,6 +119,11 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4l. Hoàn tác migration `0023` (quản lý issue)
+
+- Giao diện bản mới chạy được với DB cũ: khi chưa có `0023`, tab "Lỗi & Yêu Cầu" tự ẩn khỏi menu. Rollback Cloudflare/git là đủ để gỡ phần giao diện.
+- Hoàn tác DB: `supabase/rollback/0023_rollback.sql`. **MẤT DỮ LIỆU:** mọi issue, nhật ký, loại/trạng thái issue, cấu hình phân quyền của các quyền issue và thông báo loại "issue". Nếu đã chạy `0024` (tệp đính kèm) thì hoàn tác `0024` trước. Thứ tự: `0024` -> `0023` -> `0022`.
+
 ## 5. Không khuyến khích: `git reset --hard` + `git push --force`
 
 Xóa lịch sử trên GitHub và có thể ghi đè công việc AI Studio vừa đẩy. Chỉ dùng khi bắt buộc (ví dụ lỡ đẩy khóa bí mật), và nên thống nhất trước.

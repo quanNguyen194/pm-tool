@@ -22,6 +22,7 @@ const DashboardView = lazy(() => import('./components/dashboard/DashboardView').
 const ProjectsView = lazy(() => import('./components/projects/ProjectsView').then(m => ({ default: m.ProjectsView })));
 const TasksView = lazy(() => import('./components/tasks/TasksView').then(m => ({ default: m.TasksView })));
 const UseCasesView = lazy(() => import('./components/usecases/UseCasesView').then(m => ({ default: m.UseCasesView })));
+const IssuesView = lazy(() => import('./components/issues/IssuesView').then(m => ({ default: m.IssuesView })));
 const QualityGatesView = lazy(() => import('./components/quality/QualityGatesView').then(m => ({ default: m.QualityGatesView })));
 const ReportsView = lazy(() => import('./components/reports/ReportsView').then(m => ({ default: m.ReportsView })));
 const TeamView = lazy(() => import('./components/team/TeamView').then(m => ({ default: m.TeamView })));
@@ -67,6 +68,7 @@ export const MainLayout: React.FC = () => {
               {activeTab === 'projects' && <ProjectsView />}
               {activeTab === 'tasks' && <TasksView />}
               {activeTab === 'usecases' && <UseCasesView />}
+              {activeTab === 'issues' && <IssuesView />}
               {activeTab === 'quality' && <QualityGatesView />}
               {activeTab === 'reports' && <ReportsView />}
               {activeTab === 'team' && <TeamView />}

@@ -168,7 +168,7 @@ export interface ProjectQualityGates {
   phases: QualityGatePhase[];
 }
 
-export type NotificationType = 'overdue' | 'deadline_warning' | 'quality_alert' | 'system';
+export type NotificationType = 'overdue' | 'deadline_warning' | 'quality_alert' | 'system' | 'issue';
 
 export interface NotificationItem {
   id: string;
@@ -178,6 +178,7 @@ export interface NotificationItem {
   message: string;
   taskId?: string;
   useCaseId?: string;
+  issueId?: string;
   createdAt: string;
   isRead: boolean;
 }
@@ -242,6 +243,7 @@ export type NavigationTab =
   | 'tasks' 
   | 'usecases' 
   | 'quality' 
+  | 'issues'
   | 'reports' 
   | 'team';
 
@@ -252,4 +254,73 @@ export interface TelegramInfo {
   /** Quản trị viên đã lưu token bot vào Vault chưa. */
   configured: boolean;
   botUsername: string | null;
+}
+
+// ---------- Quản lý issue (bug / yêu cầu thay đổi) ----------
+export type IssueColor = 'indigo' | 'emerald' | 'blue' | 'amber' | 'rose' | 'purple' | 'slate';
+export type IssueStatusCategory = 'open' | 'in_progress' | 'closed';
+export type IssueSeverity = 'minor' | 'major' | 'critical' | 'blocker';
+
+export interface IssueTypeDef {
+  id: string;
+  projectId: string;
+  name: string;
+  color: IssueColor;
+  sort: number;
+  active: boolean;
+}
+
+export interface IssueStatusDef {
+  id: string;
+  projectId: string;
+  name: string;
+  color: IssueColor;
+  /** open: còn mở; in_progress: đang xử lý; closed: đã đóng (không tính vào "còn mở"). */
+  category: IssueStatusCategory;
+  sort: number;
+  active: boolean;
+  /** Trạng thái gán cho issue mới (đúng một trạng thái đang bật). */
+  initial: boolean;
+}
+
+export interface Issue {
+  id: string;
+  projectId: string;
+  /** Số thứ tự trong dự án (hiển thị #12). */
+  number: number;
+  typeId: string;
+  statusId: string;
+  title: string;
+  description: string;
+  priority: Priority;
+  severity?: IssueSeverity;
+  environment: string;
+  reporterId?: string;
+  assigneeId?: string;
+  dueDate?: string;
+  useCaseId?: string;
+  taskId?: string;
+  closedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueJournalDetail {
+  id: number;
+  field: string;
+  oldValue?: string;
+  newValue?: string;
+}
+
+/** Một dòng nhật ký (kiểu Redmine): ai làm gì lúc nào, ghi chú, các trường đã đổi; có thể trả lời lồng nhau (tối đa 3 cấp). */
+export interface IssueJournal {
+  id: string;
+  issueId: string;
+  parentId?: string;
+  userId?: string;
+  notes: string;
+  createdAt: string;
+  editedAt?: string;
+  deletedAt?: string;
+  details: IssueJournalDetail[];
 }

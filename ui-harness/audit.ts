@@ -99,7 +99,7 @@ function overflowAudit() {
     el?.click();
     return !!el;
   };
-  for (const tab of ['dashboard', 'projects', 'tasks', 'usecases', 'quality', 'reports', 'team']) {
+  for (const tab of ['dashboard', 'projects', 'tasks', 'usecases', 'issues', 'quality', 'reports', 'team']) {
     (window as any).__setTab(tab);
     await wait(1300);
     res[tab] = snap();
@@ -166,6 +166,46 @@ function overflowAudit() {
       if (clickText('button', 'Bảng Chi Tiết')) {
         await wait(500);
         res['tasks:bảng'] = snap();
+      }
+    }
+    if (tab === 'issues') {
+      const setVal = (el: HTMLInputElement, v: string) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, v);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const search = document.querySelector<HTMLInputElement>('input[aria-label="Tìm issue theo mã hoặc tên"]');
+      if (search) {
+        setVal(search, '#12');
+        await wait(300);
+        res['issues:tìm-theo-mã'] = snap();
+        setVal(search, '');
+        await wait(200);
+      }
+      const first = [...document.querySelectorAll<HTMLElement>('table button, ul button')].find(b => (b.textContent || '').includes('SSO'));
+      if (first) {
+        first.click();
+        await wait(500);
+        res['issues:chi-tiết'] = snap();
+        clickText('[role="dialog"] button', 'Trả lời');
+        await wait(300);
+        res['issues:đang-trả-lời'] = snap();
+        document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+        await wait(300);
+      }
+      if (clickText('button', 'Ghi nhận issue')) {
+        await wait(500);
+        res['issues:ghi-nhận'] = snap();
+        document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+        await wait(300);
+      }
+      if (clickText('button', 'Cấu hình')) {
+        await wait(500);
+        res['issues:cấu-hình-loại'] = snap();
+        clickText('[role="tab"]', 'Trạng thái');
+        await wait(300);
+        res['issues:cấu-hình-trạng-thái'] = snap();
+        document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+        await wait(300);
       }
     }
     if (tab === 'quality') {

@@ -21,6 +21,13 @@ export type PermissionId =
   | 'tick_criteria'
   | 'approve_quality'
   | 'edit_quality_items'
+  | 'issue_create'
+  | 'issue_update'
+  | 'issue_edit'
+  | 'issue_assign'
+  | 'issue_delete'
+  | 'config_issue_types'
+  | 'config_issue_statuses'
   | 'export';
 
 export interface PermissionRow {
@@ -156,6 +163,62 @@ export const PERMISSIONS: PermissionRow[] = [
     roles: ['admin', 'pm']
   },
   {
+    id: 'issue_create',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Ghi nhận lỗi / yêu cầu thay đổi (issue)',
+    description: 'Tạo issue mới kèm mô tả, mức ưu tiên và tệp đính kèm',
+    roles: ['admin', 'pm', 'dev', 'ba', 'tester']
+  },
+  {
+    id: 'issue_update',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Cập nhật issue: đổi trạng thái, bình luận, đính kèm',
+    description: 'Mọi thay đổi đều được lưu vào nhật ký (ai, làm gì, lúc nào)',
+    roles: ['admin', 'pm', 'dev', 'ba', 'tester']
+  },
+  {
+    id: 'issue_edit',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Sửa nội dung issue',
+    description: 'Tiêu đề, mô tả, loại, ưu tiên, hạn xử lý. Người báo luôn sửa được issue của mình khi còn ở trạng thái khởi tạo',
+    roles: ['admin', 'pm', 'ba']
+  },
+  {
+    id: 'issue_assign',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Phân công người xử lý issue',
+    description: 'Chọn hoặc đổi người xử lý',
+    roles: ['admin', 'pm']
+  },
+  {
+    id: 'issue_delete',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Xóa issue và ghi chú',
+    description: 'Xóa hẳn issue (kèm nhật ký) hoặc xóa nội dung một ghi chú',
+    roles: ['admin', 'pm']
+  },
+  {
+    id: 'config_issue_types',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Cấu hình loại issue',
+    description: 'Thêm, đổi tên, đổi màu, sắp xếp, ẩn các loại (Bug, Yêu cầu thay đổi...)',
+    roles: ['admin', 'pm']
+  },
+  {
+    id: 'config_issue_statuses',
+    configurable: true,
+    group: 'Lỗi & yêu cầu',
+    label: 'Cấu hình trạng thái issue',
+    description: 'Thêm, đổi tên, đổi màu, sắp xếp, ẩn các trạng thái và chọn trạng thái khởi tạo',
+    roles: ['admin', 'pm']
+  },
+  {
     id: 'approve_quality',
     configurable: true,
     group: 'Chất lượng',
@@ -215,6 +278,8 @@ export interface AccessReport {
   approveQuality: boolean;
   /** Có từ migration 0022; bản DB cũ không trả về. */
   editQualityItems?: boolean;
+  /** Có từ migration 0023. */
+  issues?: { create: boolean; update: boolean; edit: boolean; assign: boolean; delete: boolean; configTypes: boolean; configStatuses: boolean };
   stages: Record<'analysis' | 'design' | 'coding' | 'testing' | 'acceptance', boolean>;
   visible?: { useCases: number; tasks: number; members: number };
   total?: { useCases: number; tasks: number; members: number } | null;
@@ -228,6 +293,17 @@ export function compareWithDb(role: Role, db: AccessReport): string[] {
     ['Tạo/sửa nhiệm vụ', can(role, 'write_tasks'), db.writeTasks],
     ['Tạo/sửa use case', can(role, 'write_usecases'), db.writeUseCases],
     ['Thẩm định Quality Gates', can(role, 'approve_quality'), db.approveQuality],
+    ...(db.issues === undefined
+      ? []
+      : ([
+          ['Ghi nhận issue', can(role, 'issue_create'), db.issues.create],
+          ['Cập nhật issue', can(role, 'issue_update'), db.issues.update],
+          ['Sửa nội dung issue', can(role, 'issue_edit'), db.issues.edit],
+          ['Phân công issue', can(role, 'issue_assign'), db.issues.assign],
+          ['Xóa issue', can(role, 'issue_delete'), db.issues.delete],
+          ['Cấu hình loại issue', can(role, 'config_issue_types'), db.issues.configTypes],
+          ['Cấu hình trạng thái issue', can(role, 'config_issue_statuses'), db.issues.configStatuses]
+        ] as [string, boolean, boolean][])),
     ...(db.editQualityItems === undefined ? [] : ([['Thêm/sửa/xóa tiêu chuẩn Quality Gates', can(role, 'edit_quality_items'), db.editQualityItems]] as [string, boolean, boolean][])),
     ['Tick bước Phân tích', can(role, 'stage_analysis'), db.stages.analysis],
     ['Tick bước Thiết kế', can(role, 'stage_design'), db.stages.design],

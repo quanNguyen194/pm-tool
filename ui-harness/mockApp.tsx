@@ -105,6 +105,36 @@ const notifications = [
 
 const Ctx = createContext<any>(null);
 
+
+const ISSUE_TYPES = [
+  { id: 'ty1', projectId: 'p1', name: 'Bug', color: 'rose', sort: 10, active: true },
+  { id: 'ty2', projectId: 'p1', name: 'Yêu cầu thay đổi (CR)', color: 'amber', sort: 20, active: true },
+  { id: 'ty3', projectId: 'p1', name: 'Cải tiến', color: 'blue', sort: 30, active: true },
+  { id: 'ty4', projectId: 'p1', name: 'Câu hỏi / Hỗ trợ', color: 'purple', sort: 40, active: false }
+];
+const ISSUE_STATUSES = [
+  ['Mới', 'blue', 'open', true], ['Đang thực hiện', 'indigo', 'in_progress', false], ['Code xong', 'purple', 'in_progress', false],
+  ['Test xong', 'emerald', 'in_progress', false], ['Chờ triển khai', 'amber', 'in_progress', false], ['Sẵn sàng bàn giao', 'emerald', 'in_progress', false],
+  ['Đóng', 'slate', 'closed', false], ['Mở lại', 'rose', 'open', false], ['Chưa hoàn thiện', 'amber', 'open', false]
+].map(([name, color, category, initial], i) => ({ id: `st${i + 1}`, projectId: 'p1', name, color, category, sort: (i + 1) * 10, active: true, initial }));
+const isoAgo = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400000).toISOString();
+const ymd = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+const ISSUES = [
+  { id: 'is1', projectId: 'p1', number: 12, typeId: 'ty1', statusId: 'st2', title: 'Không đăng nhập được bằng tài khoản SSO sau khi đổi mật khẩu, màn hình trắng', description: '1. Đổi mật khẩu\n2. Đăng xuất\n3. Đăng nhập lại bằng SSO -> trắng trang.', priority: 'urgent', severity: 'critical', environment: 'UAT', reporterId: 'u3', assigneeId: 'u2', dueDate: ymd(-2), useCaseId: 'uc1', createdAt: isoAgo(5), updatedAt: isoAgo(0) },
+  { id: 'is2', projectId: 'p1', number: 11, typeId: 'ty2', statusId: 'st1', title: 'Bổ sung cột Mã vật tư vào báo cáo tồn kho', description: '', priority: 'medium', environment: '', reporterId: 'u1', createdAt: isoAgo(3), updatedAt: isoAgo(3) },
+  { id: 'is3', projectId: 'p1', number: 10, typeId: 'ty1', statusId: 'st7', title: 'Sai tổng tiền khi áp dụng 2 mã giảm giá', description: 'Đã sửa và test xong.', priority: 'high', severity: 'major', environment: 'PROD', reporterId: 'u3', assigneeId: 'u2', createdAt: isoAgo(10), updatedAt: isoAgo(1), closedAt: isoAgo(1) },
+  { id: 'is4', projectId: 'p1', number: 9, typeId: 'ty3', statusId: 'st8', title: 'Cải thiện tốc độ tải danh sách nhiệm vụ', description: '', priority: 'low', environment: '', reporterId: 'u4', assigneeId: 'u4', dueDate: ymd(5), createdAt: isoAgo(12), updatedAt: isoAgo(2) }
+];
+const ISSUE_JOURNALS = [
+  { id: 'j1', issueId: 'is1', userId: 'u3', notes: 'Lỗi xảy ra 100% trên UAT, đính kèm log phía dưới.', createdAt: isoAgo(5), details: [] },
+  { id: 'j2', issueId: 'is1', userId: 'u1', parentId: 'j1', notes: 'Đã nhận. Giao cho Long xử lý.', createdAt: isoAgo(4), details: [] },
+  { id: 'j3', issueId: 'is1', userId: 'u1', notes: 'Giao việc', createdAt: isoAgo(4), details: [{ id: 1, field: 'assignee', oldValue: '—', newValue: 'Lê Hoàng Long' }, { id: 2, field: 'priority', oldValue: 'Cao', newValue: 'Khẩn cấp' }] },
+  { id: 'j4', issueId: 'is1', userId: 'u2', notes: 'Bắt đầu kiểm tra phiên đăng nhập.', createdAt: isoAgo(2), details: [{ id: 3, field: 'status', oldValue: 'Mới', newValue: 'Đang thực hiện' }] },
+  { id: 'j5', issueId: 'is1', userId: 'u3', parentId: 'j4', notes: 'Cần sớm vì khách hàng chờ.', createdAt: isoAgo(1), details: [] },
+  { id: 'j6', issueId: 'is1', userId: 'u2', parentId: 'j5', notes: 'OK, sáng mai có bản vá.', createdAt: isoAgo(0), details: [] },
+  { id: 'j7', issueId: 'is1', userId: 'u1', notes: '', createdAt: isoAgo(0), details: [{ id: 4, field: 'description', oldValue: 'Mô tả cũ', newValue: 'Mô tả mới chi tiết hơn' }] }
+];
+
 export const MockProvider = ({ children }: any) => {
   const params = new URLSearchParams(location.search);
   const role = params.get('role') || 'admin';
@@ -124,7 +154,7 @@ export const MockProvider = ({ children }: any) => {
       currentUser: { ...users[0], role }, useCases, projectUseCases: useCases, qualityGates: [{ projectId: 'p1', phases }],
       projectQualityGates: { projectId: 'p1', phases }, notifications, unreadNotificationCount: 1, projectSnapshots: snaps,
       reportSchedules: [{ id: 's1', projectId: 'p1', frequency: 'weekly', enabled: true }],
-      reportRuns: [{ id: 'r1', projectId: 'p1', frequency: 'weekly', periodStart: iso(-7), periodEnd: iso(-1), createdAt: new Date().toISOString(), summary }],
+      reportRuns: [{ id: 'r1', projectId: 'p1', frequency: 'weekly', periodStart: isoAgo(-7), periodEnd: isoAgo(-1), createdAt: new Date().toISOString(), summary }],
       mergeRequests: [{ id: 'm1', placeholderId: 'u5', userId: 'u3', status: 'pending', createdAt: new Date().toISOString() }],
       suggestAccounts: async (q: string) =>
         [
@@ -176,6 +206,16 @@ export const MockProvider = ({ children }: any) => {
       removeMember: (id: string) => { (window as any).__removed = id; },
       editQualityItem: () => undefined,
       deleteQualityItem: () => undefined,
+      issuesAvailable: true,
+      issueTypes: ISSUE_TYPES,
+      issueStatuses: ISSUE_STATUSES,
+      projectIssues: ISSUES,
+      getIssueJournals: (id: string) => ISSUE_JOURNALS.filter(j => j.issueId === id),
+      canCreateIssue: role !== 'viewer', canUpdateIssue: role !== 'viewer', canEditIssue: mgr || role === 'ba', canAssignIssue: mgr, canDeleteIssue: mgr,
+      canConfigIssueTypes: mgr, canConfigIssueStatuses: mgr,
+      createIssue: async () => ({ id: 'i1', number: 99 }), updateIssue: async () => true, editIssueNote: async () => true, deleteIssueNote: async () => true, deleteIssue: async () => true,
+      saveIssueTypes: async () => null, saveIssueStatuses: async () => null,
+      focusIssue: null, openIssue: () => undefined, clearFocusIssue: () => undefined,
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canEditQualityItems: mgr, canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };

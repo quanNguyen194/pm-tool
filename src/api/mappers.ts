@@ -10,7 +10,11 @@ import {
   QualityCheckItem,
   QualityGatePhase,
   Task,
-  UseCase
+  UseCase,
+  Issue,
+  IssueJournal,
+  IssueStatusDef,
+  IssueTypeDef
 } from '../types';
 
 // Các class màu avatar do DB gán (profiles.avatar_color). Liệt kê nguyên văn ở đây
@@ -162,6 +166,7 @@ export const mapNotification = (r: Row): NotificationItem => ({
   message: r.message,
   taskId: r.task_id ?? undefined,
   useCaseId: r.use_case_id ?? undefined,
+  issueId: r.issue_id ?? undefined,
   createdAt: new Date(r.created_at).toLocaleString('vi-VN'),
   isRead: !!r.is_read
 });
@@ -224,3 +229,59 @@ export function buildQualityGates(projectIds: string[], defs: Row[], items: Row[
     )
   }));
 }
+
+export const mapIssueType = (r: Row): IssueTypeDef => ({
+  id: r.id,
+  projectId: r.project_id,
+  name: r.name,
+  color: r.color,
+  sort: r.sort,
+  active: !!r.is_active
+});
+
+export const mapIssueStatus = (r: Row): IssueStatusDef => ({
+  id: r.id,
+  projectId: r.project_id,
+  name: r.name,
+  color: r.color,
+  category: r.category,
+  sort: r.sort,
+  active: !!r.is_active,
+  initial: !!r.is_initial
+});
+
+export const mapIssue = (r: Row): Issue => ({
+  id: r.id,
+  projectId: r.project_id,
+  number: r.number,
+  typeId: r.type_id,
+  statusId: r.status_id,
+  title: r.title,
+  description: r.description ?? '',
+  priority: r.priority,
+  severity: r.severity ?? undefined,
+  environment: r.environment ?? '',
+  reporterId: r.reporter_id ?? undefined,
+  assigneeId: r.assignee_id ?? undefined,
+  dueDate: r.due_date ?? undefined,
+  useCaseId: r.use_case_id ?? undefined,
+  taskId: r.task_id ?? undefined,
+  closedAt: r.closed_at ?? undefined,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at
+});
+
+export const mapIssueJournal = (r: Row, details: Row[]): IssueJournal => ({
+  id: r.id,
+  issueId: r.issue_id,
+  parentId: r.parent_id ?? undefined,
+  userId: r.user_id ?? undefined,
+  notes: r.notes ?? '',
+  createdAt: r.created_at,
+  editedAt: r.edited_at ?? undefined,
+  deletedAt: r.deleted_at ?? undefined,
+  details: details
+    .filter(d => d.journal_id === r.id)
+    .sort((a, b) => a.id - b.id)
+    .map(d => ({ id: d.id, field: d.field, oldValue: d.old_value ?? undefined, newValue: d.new_value ?? undefined }))
+});

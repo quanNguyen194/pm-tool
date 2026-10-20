@@ -27,7 +27,11 @@ import {
   Toast,
   AccountSuggestion,
   MergeRequest,
-  TelegramInfo
+  TelegramInfo,
+  Issue,
+  IssueJournal,
+  IssueStatusDef,
+  IssueTypeDef
 } from '../types';
 import { supabase, describeError, fetchAll } from '../lib/supabase';
 import { can, setEffectiveMatrix, AccessReport, MatrixData, PermissionId } from '../utils/permissions';
@@ -39,6 +43,10 @@ import {
   mapProject,
   mapTask,
   mapUseCase,
+  mapIssue,
+  mapIssueJournal,
+  mapIssueStatus,
+  mapIssueType,
   mapMergeRequest,
   mapNotification,
   mapSnapshot,
@@ -102,6 +110,48 @@ interface AppContextType {
   canApproveQuality: boolean;
   /** Thêm/sửa/xóa tiêu chuẩn Quality Gates (khác với thẩm định Đạt/Chưa đạt). */
   canEditQualityItems: boolean;
+  // --- Issue (bug / yêu cầu thay đổi) ---
+  /** false khi DB chưa chạy migration 0023: tab hiện hướng dẫn thay vì dữ liệu. */
+  issuesAvailable: boolean;
+  projectIssues: Issue[];
+  issueTypes: IssueTypeDef[];
+  issueStatuses: IssueStatusDef[];
+  /** Nhật ký của một issue (đã xếp theo thời gian; dựng cây bằng parentId). */
+  getIssueJournals: (issueId: string) => IssueJournal[];
+  canCreateIssue: boolean;
+  canUpdateIssue: boolean;
+  canEditIssue: boolean;
+  canAssignIssue: boolean;
+  canDeleteIssue: boolean;
+  canConfigIssueTypes: boolean;
+  canConfigIssueStatuses: boolean;
+  /** Ghi nhận issue; trả về { id, number } hoặc null nếu lỗi (đã báo bằng thông báo). */
+  createIssue: (input: {
+    typeId: string;
+    title: string;
+    description: string;
+    priority: string;
+    severity?: string;
+    environment: string;
+    assigneeId?: string;
+    dueDate?: string;
+    useCaseId?: string;
+    taskId?: string;
+  }) => Promise<{ id: string; number: number } | null>;
+  /** Cập nhật issue + ghi nhật ký. changes dùng khóa DB: status_id, assignee_id, type_id, priority, severity, title, description, environment, due_date, use_case_id, task_id. */
+  updateIssue: (issueId: string, changes: Record<string, string | null>, notes?: string, parentId?: string) => Promise<boolean>;
+  editIssueNote: (journalId: string, notes: string) => Promise<boolean>;
+  deleteIssueNote: (journalId: string) => Promise<boolean>;
+  deleteIssue: (issueId: string) => Promise<boolean>;
+  saveIssueTypes: (items: { id?: string; name: string; color: string; active: boolean }[], removeIds: string[]) => Promise<string | null>;
+  saveIssueStatuses: (
+    items: { id?: string; name: string; color: string; category: string; active: boolean; initial: boolean }[],
+    removeIds: string[]
+  ) => Promise<string | null>;
+  focusIssue: { issueId: string; projectId: string } | null;
+  /** Chuyển sang tab Lỗi & Yêu cầu và mở chi tiết issue (đổi dự án nếu cần). */
+  openIssue: (issueId: string, projectId?: string) => void;
+  clearFocusIssue: () => void;
   canApproveUseCase: boolean;
   /** Vai trò hiện tại có được tick bước chuẩn này của use case không. */
   canTickStage: (stage: StageKey) => boolean;
@@ -215,7 +265,8 @@ type Slice =
   | 'snapshots'
   | 'reports'
   | 'merges'
-  | 'permissions';
+  | 'permissions'
+  | 'issues';
 const ALL_SLICES: Slice[] = [
   'profiles',
   'members',
@@ -227,7 +278,8 @@ const ALL_SLICES: Slice[] = [
   'snapshots',
   'reports',
   'merges',
-  'permissions'
+  'permissions',
+  'issues'
 ];
 
 // Bảng nào thay đổi thì tải lại những phần dữ liệu nào.
@@ -246,7 +298,12 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   report_schedules: ['reports'],
   report_runs: ['reports'],
   account_merge_requests: ['merges', 'profiles'],
-  role_permissions: ['permissions']
+  role_permissions: ['permissions'],
+  issues: ['issues'],
+  issue_journals: ['issues'],
+  issue_journal_details: ['issues'],
+  issue_types: ['issues'],
+  issue_statuses: ['issues']
 };
 
 type Row = Record<string, any>;
@@ -299,6 +356,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [scheduleRows, setScheduleRows] = useState<ReportSchedule[]>([]);
   const [runRows, setRunRows] = useState<ReportRun[]>([]);
   const [mergeRows, setMergeRows] = useState<MergeRequest[]>([]);
+  // Quản lý issue (bug / yêu cầu thay đổi). issuesAvailable=false khi DB chưa chạy migration 0023.
+  const [issueRows, setIssueRows] = useState<Issue[]>([]);
+  const [issueJournals, setIssueJournals] = useState<IssueJournal[]>([]);
+  const [issueTypeRows, setIssueTypeRows] = useState<IssueTypeDef[]>([]);
+  const [issueStatusRows, setIssueStatusRows] = useState<IssueStatusDef[]>([]);
+  const [issuesAvailable, setIssuesAvailable] = useState(true);
+  const [focusIssue, setFocusIssue] = useState<{ issueId: string; projectId: string } | null>(null);
   // Ma trận phân quyền hiệu lực của dự án đang chọn (null = chưa nạp được: dùng mặc định có sẵn)
   const [permMatrix, setPermMatrix] = useState<MatrixData | null>(null);
   const activeProjectIdRef = useRef('');
@@ -409,6 +473,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
         }
         setSnapshotRows((data || []).map(mapSnapshot));
+      },
+      issues: async () => {
+        const [ty, st, is, jo, de] = await Promise.all([
+          fetchAll<any>((a, b) => supabase.from('issue_types').select('*').order('project_id').order('sort').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issue_statuses').select('*').order('project_id').order('sort').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issues').select('*').order('project_id').order('number', { ascending: false }).range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issue_journals').select('*').order('created_at').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issue_journal_details').select('*').order('id').range(a, b))
+        ]);
+        // Bản DB cũ chưa có migration 0023: tắt chức năng, không làm hỏng cả ứng dụng.
+        const err = ty.error || st.error || is.error || jo.error || de.error;
+        if (err) {
+          console.warn('Không tải được dữ liệu issue:', err.message);
+          setIssuesAvailable(false);
+          setIssueRows([]);
+          setIssueJournals([]);
+          setIssueTypeRows([]);
+          setIssueStatusRows([]);
+          return;
+        }
+        setIssuesAvailable(true);
+        setIssueTypeRows(ty.data.map(mapIssueType));
+        setIssueStatusRows(st.data.map(mapIssueStatus));
+        setIssueRows(is.data.map(mapIssue));
+        setIssueJournals(jo.data.map((r: any) => mapIssueJournal(r, de.data)));
       },
       permissions: async () => {
         // Bản DB cũ chưa có migration 0021: bỏ qua, dùng mặc định có sẵn.
@@ -527,6 +616,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [projects, qualityDefs, qualityRows]
   );
 
+  const projectIssues = useMemo(() => issueRows.filter(i => i.projectId === activeProjectId), [issueRows, activeProjectId]);
+  const issueTypes = useMemo(() => issueTypeRows.filter(t => t.projectId === activeProjectId).sort((a, b) => a.sort - b.sort), [issueTypeRows, activeProjectId]);
+  const issueStatuses = useMemo(() => issueStatusRows.filter(s => s.projectId === activeProjectId).sort((a, b) => a.sort - b.sort), [issueStatusRows, activeProjectId]);
   const projectTasks = useMemo(() => tasks.filter(t => t.projectId === activeProjectId), [tasks, activeProjectId]);
   const projectUseCases = useMemo(
     () => useCases.filter(u => u.projectId === activeProjectId),
@@ -595,6 +687,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const canManageUseCases = can(role, 'write_usecases');
   const canApproveQuality = can(role, 'approve_quality');
   const canEditQualityItems = can(role, 'edit_quality_items');
+  const canCreateIssue = can(role, 'issue_create');
+  const canUpdateIssue = can(role, 'issue_update');
+  const canEditIssue = can(role, 'issue_edit');
+  const canAssignIssue = can(role, 'issue_assign');
+  const canDeleteIssue = can(role, 'issue_delete');
+  const canConfigIssueTypes = can(role, 'config_issue_types');
+  const canConfigIssueStatuses = can(role, 'config_issue_statuses');
   const canApproveUseCase = can(role, 'tick_criteria');
   const isViewer = role === 'viewer';
   const canTickStage = (stage: StageKey) => roleCanTickStage(role, stage);
@@ -1413,6 +1512,80 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  // ----- Issue -----
+  const getIssueJournals = (issueId: string) => issueJournals.filter(j => j.issueId === issueId);
+
+  const createIssue: AppContextType['createIssue'] = async input => {
+    try {
+      const res = await supabase.rpc('create_issue', {
+        p_project: activeProjectId,
+        p_type: input.typeId,
+        p_title: input.title,
+        p_description: input.description,
+        p_priority: input.priority,
+        p_severity: input.severity || null,
+        p_environment: input.environment,
+        p_assignee: input.assigneeId || null,
+        p_due: input.dueDate || null,
+        p_use_case: input.useCaseId || null,
+        p_task: input.taskId || null
+      });
+      check(res);
+      await refresh(['issues', 'notifications']);
+      const d = res.data as { id: string; number: number };
+      pushToast('success', 'Đã ghi nhận issue #' + d.number);
+      sound.playSuccess();
+      return d;
+    } catch (e) {
+      pushToast('error', describeError(e));
+      return null;
+    }
+  };
+
+  const issueCall = async (fn: () => PromiseLike<{ error: unknown }>, success?: string): Promise<boolean> => {
+    try {
+      check(await fn());
+      await refresh(['issues', 'notifications']);
+      if (success) pushToast('success', success);
+      return true;
+    } catch (e) {
+      pushToast('error', describeError(e));
+      refresh(['issues']).catch(() => undefined);
+      return false;
+    }
+  };
+
+  const updateIssue: AppContextType['updateIssue'] = (issueId, changes, notes = '', parentId) =>
+    issueCall(
+      () => supabase.rpc('update_issue', { p_issue: issueId, p_changes: changes, p_notes: notes, p_parent: parentId || null }),
+      parentId ? 'Đã gửi trả lời' : 'Đã cập nhật issue'
+    );
+  const editIssueNote = (journalId: string, notes: string) =>
+    issueCall(() => supabase.rpc('edit_issue_note', { p_journal: journalId, p_notes: notes }), 'Đã sửa ghi chú');
+  const deleteIssueNote = (journalId: string) => issueCall(() => supabase.rpc('delete_issue_note', { p_journal: journalId }), 'Đã xóa ghi chú');
+  const deleteIssue = (issueId: string) => issueCall(() => supabase.rpc('delete_issue', { p_issue: issueId }), 'Đã xóa issue');
+
+  const saveIssueConfig = async (fn: string, items: unknown, removeIds: string[]): Promise<string | null> => {
+    try {
+      check(await supabase.rpc(fn, { p_project: activeProjectId, p_items: items, p_delete: removeIds }));
+      await refresh(['issues']);
+      pushToast('success', 'Đã lưu cấu hình issue');
+      return null;
+    } catch (e) {
+      return describeError(e);
+    }
+  };
+  const saveIssueTypes: AppContextType['saveIssueTypes'] = (items, removeIds) => saveIssueConfig('save_issue_types', items, removeIds);
+  const saveIssueStatuses: AppContextType['saveIssueStatuses'] = (items, removeIds) => saveIssueConfig('save_issue_statuses', items, removeIds);
+
+  const openIssue = (issueId: string, projectId?: string) => {
+    const pid = projectId || activeProjectId;
+    if (pid !== activeProjectId) setActiveProjectIdState(pid);
+    setFocusIssue({ issueId, projectId: pid });
+    setActiveTab('issues');
+  };
+  const clearFocusIssue = () => setFocusIssue(null);
+
   const openTask = (taskId: string, projectId?: string) => {
     const pid = projectId || activeProjectId;
     if (pid !== activeProjectId) setActiveProjectIdState(pid);
@@ -1427,6 +1600,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab,
         setActiveTab,
         focusTask,
+        issuesAvailable,
+        projectIssues,
+        issueTypes,
+        issueStatuses,
+        getIssueJournals,
+        canCreateIssue,
+        canUpdateIssue,
+        canEditIssue,
+        canAssignIssue,
+        canDeleteIssue,
+        canConfigIssueTypes,
+        canConfigIssueStatuses,
+        createIssue,
+        updateIssue,
+        editIssueNote,
+        deleteIssueNote,
+        deleteIssue,
+        saveIssueTypes,
+        saveIssueStatuses,
+        focusIssue,
+        openIssue,
+        clearFocusIssue,
         openTask,
         clearFocusTask,
         users,

@@ -4,6 +4,7 @@ import {
   FolderKanban,
   CheckSquare,
   Boxes,
+  Bug,
   ShieldCheck,
   FileBarChart2,
   Users2
@@ -20,7 +21,8 @@ interface NavItem {
 
 /** Menu điều hướng chính, hiển thị ngang dưới thanh trên. Các mục và nhãn giữ nguyên như menu bên trái trước đây. */
 export const TopNav: React.FC = () => {
-  const { activeTab, setActiveTab, projectTasks, projectUseCases, projectQualityGates } = useApp();
+  const { activeTab, setActiveTab, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
+  const openIssues = projectIssues.filter(i => issueStatuses.find(s => s.id === i.statusId)?.category !== 'closed').length;
 
   const totalQualityItems = projectQualityGates?.phases.reduce((sum, p) => sum + p.items.length, 0) || 0;
   const passedQualityItems =
@@ -31,6 +33,7 @@ export const TopNav: React.FC = () => {
     { id: 'projects', label: 'Danh Sách Dự Án', icon: FolderKanban },
     { id: 'tasks', label: 'Nhiệm Vụ & Kanban', icon: CheckSquare, badge: projectTasks.length },
     { id: 'usecases', label: 'Quản Lý Use Case', icon: Boxes, badge: projectUseCases.length },
+    ...(issuesAvailable ? [{ id: 'issues' as const, label: 'Lỗi & Yêu Cầu', icon: Bug, badge: openIssues }] : []),
     { id: 'quality', label: 'Tiêu Chuẩn Quality Gates', icon: ShieldCheck, badge: `${passedQualityItems}/${totalQualityItems}` },
     { id: 'reports', label: 'Báo Cáo Định Kỳ', icon: FileBarChart2 },
     { id: 'team', label: 'Đội Ngũ & Phân Quyền', icon: Users2 }

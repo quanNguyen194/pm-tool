@@ -43,6 +43,7 @@ export const Header: React.FC = () => {
     markAllNotificationsAsRead,
     sendDeadlineReminder,
     openTask,
+    openIssue,
     soundMuted,
     toggleSound,
     projectTasks,
@@ -254,7 +255,10 @@ export const Header: React.FC = () => {
                       key={n.id}
                       onClick={() => {
                         markNotificationAsRead(n.id);
-                        if (n.taskId) {
+                        if (n.issueId) {
+                          openIssue(n.issueId, n.projectId);
+                          setIsNotifOpen(false);
+                        } else if (n.taskId) {
                           openTask(n.taskId, n.projectId);
                           setIsNotifOpen(false);
                         }
