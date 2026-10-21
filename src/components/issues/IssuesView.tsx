@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CircleDot, Plus, Search, Settings2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, CircleDot, Download, Plus, Search, Settings2, UserRound, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Issue } from '../../types';
 import { norm } from '../../utils/text';
+import { exportIssuesToCSV } from '../../utils/issueExport';
 import { COLOR_BADGE, issueCode, matchesQuery } from './issueUi';
 import { IssueFormDialog } from './IssueFormDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
@@ -24,7 +25,7 @@ const Badge: React.FC<{ color: keyof typeof COLOR_BADGE; children: React.ReactNo
 export const IssuesView: React.FC = () => {
   const {
     activeProject, issuesAvailable, projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, currentUser,
-    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue
+    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue, projectUseCases, projectTasks, getIssueAttachments
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -115,6 +116,20 @@ export const IssuesView: React.FC = () => {
           <p className="text-xs text-slate-600 mt-1">Ghi nhận, phân công và theo dõi bug, yêu cầu thay đổi (CR) của dự án. Mọi cập nhật được lưu vào nhật ký.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() =>
+              exportIssuesToCSV(rows, {
+                project: activeProject, types: issueTypes, statuses: issueStatuses, priorities: issuePriorities, users: allUsers,
+                useCases: projectUseCases, tasks: projectTasks, attachmentCount: id => getIssueAttachments(id).length
+              })
+            }
+            disabled={rows.length === 0}
+            title={filtered ? 'Xuất danh sách đang lọc ra CSV' : 'Xuất toàn bộ issue đang hiển thị ra CSV'}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" aria-hidden="true" />
+            <span>Xuất CSV</span>
+          </button>
           {(canConfigIssueTypes || canConfigIssueStatuses) && (
             <button onClick={() => setConfigOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg">
               <Settings2 className="w-4 h-4" aria-hidden="true" />

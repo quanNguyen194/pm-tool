@@ -1,5 +1,6 @@
 import { Project, Task, UseCase, QualityGatePhase, User, ProgressSnapshot, ReportRun } from '../types';
 import { buildProgressChartSvg } from './chartSvg';
+import { buildCsv } from './csv';
 import { flattenUseCaseTree, leafUseCases } from './useCaseTree';
 import { ASSESSMENT_LABELS, effectiveAssessment } from './taskAssessment';
 
@@ -17,13 +18,7 @@ function esc(value: unknown): string {
  * Downloads a UTF-8 CSV string with BOM so that Vietnamese accents render correctly in Excel.
  */
 export function downloadCSV(filename: string, rows: (string | number)[][]) {
-  const processCell = (cell: string | number): string => {
-    if (cell === null || cell === undefined) return '""';
-    const text = String(cell).replace(/"/g, '""');
-    return `"${text}"`;
-  };
-
-  const csvContent = '\uFEFF' + rows.map(e => e.map(processCell).join(',')).join('\n');
+  const csvContent = buildCsv(rows);
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
