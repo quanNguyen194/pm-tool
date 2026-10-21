@@ -1,4 +1,4 @@
-import type { Issue, IssueColor, IssueJournal, IssueSeverity, Priority } from '../../types';
+import type { Issue, IssueColor, IssueJournal, IssueSeverity } from '../../types';
 
 /** Màu huy hiệu theo khóa màu cấu hình (viết nguyên văn để Tailwind và bộ sinh giao diện tối nhận ra). */
 export const COLOR_BADGE: Record<IssueColor, string> = {
@@ -30,14 +30,6 @@ export const COLOR_NAME: Record<IssueColor, string> = {
   slate: 'Xám'
 };
 
-export const PRIORITY_LABEL: Record<Priority, string> = { low: 'Thấp', medium: 'Trung bình', high: 'Cao', urgent: 'Khẩn cấp' };
-export const PRIORITY_ORDER: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
-export const PRIORITY_STYLE: Record<Priority, string> = {
-  low: 'bg-slate-100 text-slate-700 border-slate-200',
-  medium: 'bg-blue-100 text-blue-800 border-blue-200',
-  high: 'bg-amber-100 text-amber-800 border-amber-200',
-  urgent: 'bg-rose-100 text-rose-800 border-rose-200'
-};
 export const SEVERITY_LABEL: Record<IssueSeverity, string> = {
   minor: 'Nhẹ',
   major: 'Nghiêm trọng',

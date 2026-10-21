@@ -14,6 +14,7 @@ import {
   Issue,
   IssueAttachment,
   IssueJournal,
+  IssuePriorityDef,
   IssueStatusDef,
   IssueTypeDef
 } from '../types';
@@ -259,7 +260,7 @@ export const mapIssue = (r: Row): Issue => ({
   statusId: r.status_id,
   title: r.title,
   description: r.description ?? '',
-  priority: r.priority,
+  priorityId: r.priority_id,
   severity: r.severity ?? undefined,
   environment: r.environment ?? '',
   reporterId: r.reporter_id ?? undefined,
@@ -270,6 +271,16 @@ export const mapIssue = (r: Row): Issue => ({
   closedAt: r.closed_at ?? undefined,
   createdAt: r.created_at,
   updatedAt: r.updated_at
+});
+
+export const mapIssuePriority = (r: Row): IssuePriorityDef => ({
+  id: r.id,
+  projectId: r.project_id,
+  name: r.name,
+  color: r.color,
+  sort: r.sort,
+  active: r.is_active,
+  isDefault: r.is_default
 });
 
 export const mapIssueAttachment = (r: Row): IssueAttachment => ({

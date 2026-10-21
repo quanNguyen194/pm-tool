@@ -119,6 +119,11 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4n. Hoàn tác migration `0025` (độ ưu tiên issue cấu hình được)
+
+- **Khác các lần trước:** giao diện bản mới (từ commit độ ưu tiên) cần `0025`; giao diện bản cũ cần DB chưa có `0025`. Hoàn tác DB thì phải rollback Cloudflare/git về bản trước đó, nếu không tab Lỗi & Yêu Cầu tự ẩn (thiếu bảng độ ưu tiên).
+- Hoàn tác DB: `supabase/rollback/0025_rollback.sql`. Issue được chuyển về 4 mức chữ theo tên mức (Khẩn cấp, Cao, Thấp giữ nguyên; mọi mức khác, kể cả "Vừa" và tên tự đặt, thành "Trung bình"). **MẤT:** cấu hình độ ưu tiên đã chỉnh. Thứ tự: `0025` -> `0024` -> `0023`.
+
 ## 4m. Hoàn tác migration `0024` (ảnh / video đính kèm issue)
 
 - Giao diện bản mới chạy được với DB cũ: khi chưa có `0024`, phần "Ảnh / video đính kèm" tự ẩn, issue vẫn dùng bình thường. Rollback Cloudflare/git là đủ để gỡ phần giao diện.

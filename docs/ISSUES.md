@@ -20,6 +20,8 @@ Cần migration `0024_issue_attachments.sql` (chưa chạy thì phần này tự
 ## Cấu hình (Admin, PM)
 Nút **Cấu hình** trong tab: thêm, đổi tên, đổi màu, sắp xếp, ẩn **loại issue** và **trạng thái**. Mục đã có issue dùng chỉ ẩn được, không xóa được. Mỗi dự án phải có đúng một trạng thái **khởi tạo** (dành cho issue mới, không thuộc nhóm "đã đóng"). Nhóm của trạng thái ("Còn mở / Đang xử lý / Đã đóng") quyết định issue có tính vào số "còn mở" hay không.
 
+**Độ ưu tiên** cũng cấu hình được (tab "Độ ưu tiên" của hộp Cấu hình, cần migration `0025`): thêm, đổi tên, đổi màu, sắp xếp (trên cùng là cao nhất), ẩn; mục đã có issue dùng chỉ ẩn được. Có đúng một mức **mặc định** gán cho issue mới khi người ghi nhận không chọn. Mặc định mỗi dự án: Khẩn cấp, Cao, Vừa (mặc định), Thấp. Quyền cấu hình độ ưu tiên dùng chung với "Cấu hình loại issue".
+
 Mặc định mỗi dự án có loại: Bug, Yêu cầu thay đổi (CR), Cải tiến, Câu hỏi / Hỗ trợ; trạng thái: Mới, Đang thực hiện, Code xong, Test xong, Chờ triển khai, Sẵn sàng bàn giao, Đóng, Mở lại, Chưa hoàn thiện.
 
 ## Phân quyền (ma trận phân quyền, nhóm "Lỗi & yêu cầu")
@@ -30,7 +32,7 @@ Mặc định mỗi dự án có loại: Bug, Yêu cầu thay đổi (CR), Cải
 | Sửa nội dung issue | PM, BA (người báo sửa được issue của mình khi còn ở trạng thái khởi tạo) |
 | Phân công người xử lý | PM |
 | Xóa issue / ghi chú | PM |
-| Cấu hình loại issue | Admin, PM |
+| Cấu hình loại và độ ưu tiên issue | Admin, PM |
 | Cấu hình trạng thái issue | Admin, PM |
 
 Quan sát chỉ xem. Quản trị viên luôn có mọi quyền. Không có ràng buộc "chỉ vai trò X mới được chuyển sang trạng thái Y": truy vết bằng nhật ký.

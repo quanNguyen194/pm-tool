@@ -206,8 +206,8 @@ export const PERMISSIONS: PermissionRow[] = [
     id: 'config_issue_types',
     configurable: true,
     group: 'Lỗi & yêu cầu',
-    label: 'Cấu hình loại issue',
-    description: 'Thêm, đổi tên, đổi màu, sắp xếp, ẩn các loại (Bug, Yêu cầu thay đổi...)',
+    label: 'Cấu hình loại và độ ưu tiên issue',
+    description: 'Thêm, đổi tên, đổi màu, sắp xếp, ẩn các loại (Bug, Yêu cầu thay đổi...) và các mức độ ưu tiên (Khẩn cấp, Cao, Vừa, Thấp...)',
     roles: ['admin', 'pm']
   },
   {
@@ -301,7 +301,7 @@ export function compareWithDb(role: Role, db: AccessReport): string[] {
           ['Sửa nội dung issue', can(role, 'issue_edit'), db.issues.edit],
           ['Phân công issue', can(role, 'issue_assign'), db.issues.assign],
           ['Xóa issue', can(role, 'issue_delete'), db.issues.delete],
-          ['Cấu hình loại issue', can(role, 'config_issue_types'), db.issues.configTypes],
+          ['Cấu hình loại và độ ưu tiên issue', can(role, 'config_issue_types'), db.issues.configTypes],
           ['Cấu hình trạng thái issue', can(role, 'config_issue_statuses'), db.issues.configStatuses]
         ] as [string, boolean, boolean][])),
     ...(db.editQualityItems === undefined ? [] : ([['Thêm/sửa/xóa tiêu chuẩn Quality Gates', can(role, 'edit_quality_items'), db.editQualityItems]] as [string, boolean, boolean][])),

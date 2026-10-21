@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bug, Loader2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { Issue, IssueSeverity, Priority } from '../../types';
-import { PRIORITY_LABEL, SEVERITY_LABEL } from './issueUi';
+import type { Issue, IssueSeverity } from '../../types';
+import { SEVERITY_LABEL } from './issueUi';
 import { SearchSelect } from '../common/SearchSelect';
 import { AttachmentPicker, usePendingFiles } from './AttachmentPicker';
 import { MAX_FILES_PER_ISSUE } from '../../utils/attachments';
@@ -21,7 +21,7 @@ const labelCls = 'block text-xs font-semibold text-slate-700 mb-1';
 
 /** Ghi nhận issue mới hoặc sửa nội dung issue (người sửa phải có quyền sửa, hoặc là người báo khi issue còn ở trạng thái khởi tạo). */
 export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) => {
-  const { issueTypes, canAssignIssue, users, projectUseCases, projectTasks, createIssue, updateIssue, attachmentsAvailable } = useApp();
+  const { issueTypes, issuePriorities, canAssignIssue, users, projectUseCases, projectTasks, createIssue, updateIssue, attachmentsAvailable } = useApp();
   const editing = !!issue;
   const pending = usePendingFiles(MAX_FILES_PER_ISSUE);
 
@@ -29,7 +29,8 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
   const [typeId, setTypeId] = useState(issue?.typeId ?? issueTypes.find(t => t.active)?.id ?? '');
   const [title, setTitle] = useState(issue?.title ?? '');
   const [description, setDescription] = useState(issue?.description ?? '');
-  const [priority, setPriority] = useState<Priority>(issue?.priority ?? 'medium');
+  const activePriorities = issuePriorities.filter(p => p.active || p.id === issue?.priorityId);
+  const [priorityId, setPriorityId] = useState(issue?.priorityId ?? issuePriorities.find(p => p.isDefault && p.active)?.id ?? issuePriorities.find(p => p.active)?.id ?? '');
   const [severity, setSeverity] = useState<string>(issue?.severity ?? '');
   const [environment, setEnvironment] = useState(issue?.environment ?? '');
   const [assigneeId, setAssigneeId] = useState('');
@@ -67,7 +68,7 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
         typeId,
         title: title.trim(),
         description,
-        priority,
+        priorityId,
         severity: severity || undefined,
         environment: environment.trim(),
         assigneeId: assigneeId || undefined,
@@ -87,7 +88,7 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
     if (typeId !== issue.typeId) changes.type_id = typeId;
     if (title.trim() !== issue.title) changes.title = title.trim();
     if (description !== issue.description) changes.description = description;
-    if (priority !== issue.priority) changes.priority = priority;
+    if (priorityId !== issue.priorityId) changes.priority_id = priorityId;
     if ((severity || null) !== (issue.severity ?? null)) changes.severity = severity || null;
     if (environment.trim() !== issue.environment) changes.environment = environment.trim();
     if ((dueDate || null) !== (issue.dueDate ?? null)) changes.due_date = dueDate || null;
@@ -165,9 +166,12 @@ export const IssueFormDialog: React.FC<Props> = ({ issue, onClose, onCreated }) 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label htmlFor="is-pri" className={labelCls}>Độ ưu tiên</label>
-              <select id="is-pri" value={priority} onChange={e => setPriority(e.target.value as Priority)} className={inputCls}>
-                {(Object.keys(PRIORITY_LABEL) as Priority[]).map(p => (
-                  <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
+              <select id="is-pri" value={priorityId} onChange={e => setPriorityId(e.target.value)} className={inputCls}>
+                {activePriorities.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.active ? '' : ' (đã ẩn)'}
+                  </option>
                 ))}
               </select>
             </div>

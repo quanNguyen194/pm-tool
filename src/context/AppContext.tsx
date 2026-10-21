@@ -32,6 +32,7 @@ import {
   Issue,
   IssueAttachment,
   IssueJournal,
+  IssuePriorityDef,
   IssueStatusDef,
   IssueTypeDef
 } from '../types';
@@ -48,6 +49,7 @@ import {
   mapIssue,
   mapIssueAttachment,
   mapIssueJournal,
+  mapIssuePriority,
   mapIssueStatus,
   mapIssueType,
   mapMergeRequest,
@@ -120,6 +122,8 @@ interface AppContextType {
   projectIssues: Issue[];
   issueTypes: IssueTypeDef[];
   issueStatuses: IssueStatusDef[];
+  /** Độ ưu tiên của dự án đang chọn, từ cao xuống thấp (gồm cả mức đã ẩn). */
+  issuePriorities: IssuePriorityDef[];
   /** Nhật ký của một issue (đã xếp theo thời gian; dựng cây bằng parentId). */
   getIssueJournals: (issueId: string) => IssueJournal[];
   canCreateIssue: boolean;
@@ -134,7 +138,7 @@ interface AppContextType {
     typeId: string;
     title: string;
     description: string;
-    priority: string;
+    priorityId?: string;
     severity?: string;
     environment: string;
     assigneeId?: string;
@@ -142,7 +146,7 @@ interface AppContextType {
     useCaseId?: string;
     taskId?: string;
   }, files?: File[]) => Promise<{ id: string; number: number } | null>;
-  /** Cập nhật issue + ghi nhật ký. changes dùng khóa DB: status_id, assignee_id, type_id, priority, severity, title, description, environment, due_date, use_case_id, task_id. */
+  /** Cập nhật issue + ghi nhật ký. changes dùng khóa DB: status_id, assignee_id, type_id, priority_id, severity, title, description, environment, due_date, use_case_id, task_id. */
   updateIssue: (issueId: string, changes: Record<string, string | null>, notes?: string, parentId?: string, files?: File[]) => Promise<boolean>;
   editIssueNote: (journalId: string, notes: string) => Promise<boolean>;
   deleteIssueNote: (journalId: string) => Promise<boolean>;
@@ -155,6 +159,7 @@ interface AppContextType {
   deleteIssueAttachment: (attachmentId: string) => Promise<boolean>;
   getAttachmentUsage: () => Promise<AttachmentUsage | null>;
   saveIssueTypes: (items: { id?: string; name: string; color: string; active: boolean }[], removeIds: string[]) => Promise<string | null>;
+  saveIssuePriorities: (items: { id?: string; name: string; color: string; active: boolean; isDefault: boolean }[], removeIds: string[]) => Promise<string | null>;
   saveIssueStatuses: (
     items: { id?: string; name: string; color: string; category: string; active: boolean; initial: boolean }[],
     removeIds: string[]
@@ -315,7 +320,8 @@ const TABLE_SLICES: Record<string, Slice[]> = {
   issue_journal_details: ['issues'],
   issue_attachments: ['issues'],
   issue_types: ['issues'],
-  issue_statuses: ['issues']
+  issue_statuses: ['issues'],
+  issue_priorities: ['issues']
 };
 
 type Row = Record<string, any>;
@@ -373,6 +379,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [issueJournals, setIssueJournals] = useState<IssueJournal[]>([]);
   const [issueTypeRows, setIssueTypeRows] = useState<IssueTypeDef[]>([]);
   const [issueStatusRows, setIssueStatusRows] = useState<IssueStatusDef[]>([]);
+  const [issuePriorityRows, setIssuePriorityRows] = useState<IssuePriorityDef[]>([]);
   const [issuesAvailable, setIssuesAvailable] = useState(true);
   const [issueAttachmentRows, setIssueAttachmentRows] = useState<IssueAttachment[]>([]);
   const [attachmentsAvailable, setAttachmentsAvailable] = useState(false);
@@ -489,16 +496,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setSnapshotRows((data || []).map(mapSnapshot));
       },
       issues: async () => {
-        const [ty, st, is, jo, de, at] = await Promise.all([
+        const [ty, st, is, jo, de, at, pr] = await Promise.all([
           fetchAll<any>((a, b) => supabase.from('issue_types').select('*').order('project_id').order('sort').range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issue_statuses').select('*').order('project_id').order('sort').range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issues').select('*').order('project_id').order('number', { ascending: false }).range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issue_journals').select('*').order('created_at').order('id').range(a, b)),
           fetchAll<any>((a, b) => supabase.from('issue_journal_details').select('*').order('id').range(a, b)),
-          fetchAll<any>((a, b) => supabase.from('issue_attachments').select('*').order('created_at').order('id').range(a, b))
+          fetchAll<any>((a, b) => supabase.from('issue_attachments').select('*').order('created_at').order('id').range(a, b)),
+          fetchAll<any>((a, b) => supabase.from('issue_priorities').select('*').order('project_id').order('sort').range(a, b))
         ]);
         // Bản DB cũ chưa có migration 0023: tắt chức năng, không làm hỏng cả ứng dụng.
-        const err = ty.error || st.error || is.error || jo.error || de.error;
+        const err = ty.error || st.error || is.error || jo.error || de.error || pr.error;
         if (err) {
           console.warn('Không tải được dữ liệu issue:', err.message);
           setIssuesAvailable(false);
@@ -508,11 +516,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           setIssueJournals([]);
           setIssueTypeRows([]);
           setIssueStatusRows([]);
+          setIssuePriorityRows([]);
           return;
         }
         setIssuesAvailable(true);
         setIssueTypeRows(ty.data.map(mapIssueType));
         setIssueStatusRows(st.data.map(mapIssueStatus));
+        setIssuePriorityRows(pr.data.map(mapIssuePriority));
         setIssueRows(is.data.map(mapIssue));
         setIssueJournals(jo.data.map((r: any) => mapIssueJournal(r, de.data)));
         // Chưa chạy migration 0024: chỉ tắt phần đính kèm, issue vẫn dùng bình thường.
@@ -644,6 +654,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const projectIssues = useMemo(() => issueRows.filter(i => i.projectId === activeProjectId), [issueRows, activeProjectId]);
   const issueTypes = useMemo(() => issueTypeRows.filter(t => t.projectId === activeProjectId).sort((a, b) => a.sort - b.sort), [issueTypeRows, activeProjectId]);
   const issueStatuses = useMemo(() => issueStatusRows.filter(s => s.projectId === activeProjectId).sort((a, b) => a.sort - b.sort), [issueStatusRows, activeProjectId]);
+  const issuePriorities = useMemo(() => issuePriorityRows.filter(p => p.projectId === activeProjectId).sort((a, b) => a.sort - b.sort), [issuePriorityRows, activeProjectId]);
   const projectTasks = useMemo(() => tasks.filter(t => t.projectId === activeProjectId), [tasks, activeProjectId]);
   const projectUseCases = useMemo(
     () => useCases.filter(u => u.projectId === activeProjectId),
@@ -1547,7 +1558,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         p_type: input.typeId,
         p_title: input.title,
         p_description: input.description,
-        p_priority: input.priority,
+        p_priority: input.priorityId || null,
         p_severity: input.severity || null,
         p_environment: input.environment,
         p_assignee: input.assigneeId || null,
@@ -1746,6 +1757,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
   const saveIssueTypes: AppContextType['saveIssueTypes'] = (items, removeIds) => saveIssueConfig('save_issue_types', items, removeIds);
   const saveIssueStatuses: AppContextType['saveIssueStatuses'] = (items, removeIds) => saveIssueConfig('save_issue_statuses', items, removeIds);
+  const saveIssuePriorities: AppContextType['saveIssuePriorities'] = (items, removeIds) =>
+    saveIssueConfig('save_issue_priorities', items.map(({ isDefault, ...rest }) => ({ ...rest, default: isDefault })), removeIds);
 
   const openIssue = (issueId: string, projectId?: string) => {
     const pid = projectId || activeProjectId;
@@ -1773,6 +1786,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         projectIssues,
         issueTypes,
         issueStatuses,
+        issuePriorities,
         getIssueJournals,
         canCreateIssue,
         canUpdateIssue,
@@ -1793,6 +1807,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getAttachmentUsage,
         saveIssueTypes,
         saveIssueStatuses,
+        saveIssuePriorities,
         focusIssue,
         openIssue,
         clearFocusIssue,

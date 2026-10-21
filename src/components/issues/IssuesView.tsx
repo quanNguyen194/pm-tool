@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CircleDot, Plus, Search, Settings2, UserRound, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { Issue, Priority } from '../../types';
+import type { Issue } from '../../types';
 import { norm } from '../../utils/text';
-import { COLOR_BADGE, issueCode, matchesQuery, PRIORITY_LABEL, PRIORITY_ORDER, PRIORITY_STYLE } from './issueUi';
+import { COLOR_BADGE, issueCode, matchesQuery } from './issueUi';
 import { IssueFormDialog } from './IssueFormDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
 import { IssueConfigDialog } from './IssueConfigDialog';
@@ -23,7 +23,7 @@ const Badge: React.FC<{ color: keyof typeof COLOR_BADGE; children: React.ReactNo
 
 export const IssuesView: React.FC = () => {
   const {
-    activeProject, issuesAvailable, projectIssues, issueTypes, issueStatuses, allUsers, users, currentUser,
+    activeProject, issuesAvailable, projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, currentUser,
     canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue
   } = useApp();
 
@@ -46,6 +46,7 @@ export const IssuesView: React.FC = () => {
 
   const typeMap = useMemo(() => new Map(issueTypes.map(t => [t.id, t])), [issueTypes]);
   const statusMap = useMemo(() => new Map(issueStatuses.map(s => [s.id, s])), [issueStatuses]);
+  const priorityMap = useMemo(() => new Map(issuePriorities.map(p => [p.id, p])), [issuePriorities]);
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
   const isClosed = (i: Issue) => statusMap.get(i.statusId)?.category === 'closed';
   const today = todayIso();
@@ -68,19 +69,19 @@ export const IssuesView: React.FC = () => {
       if (fType !== 'all' && i.typeId !== fType) return false;
       if (fStatus === 'open' ? isClosed(i) : fStatus !== 'all' && i.statusId !== fStatus) return false;
       if (fAssignee === 'me' ? i.assigneeId !== currentUser.id : fAssignee === 'none' ? !!i.assigneeId : fAssignee !== 'all' && i.assigneeId !== fAssignee) return false;
-      if (fPriority !== 'all' && i.priority !== fPriority) return false;
+      if (fPriority !== 'all' && i.priorityId !== fPriority) return false;
       return true;
     });
     list.sort((a, b) => {
       switch (sort) {
         case 'number': return b.number - a.number;
-        case 'priority': return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || b.updatedAt.localeCompare(a.updatedAt);
+        case 'priority': return (priorityMap.get(a.priorityId)?.sort ?? 9999) - (priorityMap.get(b.priorityId)?.sort ?? 9999) || b.updatedAt.localeCompare(a.updatedAt);
         case 'due': return (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || b.updatedAt.localeCompare(a.updatedAt);
         default: return b.updatedAt.localeCompare(a.updatedAt);
       }
     });
     return list;
-  }, [projectIssues, normTitles, query, fType, fStatus, fAssignee, fPriority, sort, statusMap, currentUser.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectIssues, normTitles, query, fType, fStatus, fAssignee, fPriority, sort, statusMap, priorityMap, currentUser.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = query.trim() !== '' || fType !== 'all' || fStatus !== 'open' || fAssignee !== 'all' || fPriority !== 'all';
   const clearFilters = () => {
@@ -97,8 +98,8 @@ export const IssuesView: React.FC = () => {
         <div className="flex items-center gap-2 font-bold text-sm mb-1.5">
           <AlertTriangle className="w-4 h-4" aria-hidden="true" /> Chức năng Lỗi & Yêu cầu chưa được bật
         </div>
-        Cơ sở dữ liệu chưa có bảng issue. Quản trị viên cần chạy migration <span className="font-mono">supabase/migrations/0023_issues.sql</span> trong Supabase SQL
-        Editor rồi tải lại trang.
+        Cơ sở dữ liệu chưa có bảng issue hoặc độ ưu tiên. Quản trị viên cần chạy lần lượt các migration <span className="font-mono">0023_issues.sql</span> và{' '}
+        <span className="font-mono">0025_issue_priorities.sql</span> (thư mục supabase/migrations) trong Supabase SQL Editor rồi tải lại trang.
       </div>
     );
   }
@@ -195,8 +196,11 @@ export const IssuesView: React.FC = () => {
             <span>Ưu tiên</span>
             <select value={fPriority} onChange={e => setFPriority(e.target.value)} className={selCls}>
               <option value="all">Tất cả</option>
-              {(Object.keys(PRIORITY_LABEL) as Priority[]).map(p => (
-                <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
+              {issuePriorities.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.active ? '' : ' (đã ẩn)'}
+                </option>
               ))}
             </select>
           </label>
@@ -256,7 +260,7 @@ export const IssuesView: React.FC = () => {
                       <td className="py-2.5 px-3">{type ? <Badge color={type.color}>{type.name}</Badge> : '—'}</td>
                       <td className="py-2.5 px-3">{st ? <Badge color={st.color}>{st.name}</Badge> : '—'}</td>
                       <td className="py-2.5 px-3">
-                        <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border ${PRIORITY_STYLE[i.priority]}`}>{PRIORITY_LABEL[i.priority]}</span>
+                        {priorityMap.get(i.priorityId) ? <Badge color={priorityMap.get(i.priorityId)!.color}>{priorityMap.get(i.priorityId)!.name}</Badge> : '—'}
                       </td>
                       <td className="py-2.5 px-3 text-slate-800">{i.assigneeId ? userMap.get(i.assigneeId)?.name ?? '—' : <span className="text-slate-600">Chưa phân công</span>}</td>
                       <td className={`py-2.5 px-3 font-mono tabular-nums ${late ? 'text-rose-700 font-bold' : 'text-slate-700'}`}>{i.dueDate ? fmtDay(i.dueDate) : '—'}</td>
@@ -281,7 +285,7 @@ export const IssuesView: React.FC = () => {
                       <span className="font-mono text-xs font-bold text-indigo-700">{issueCode(i)}</span>
                       {type && <Badge color={type.color}>{type.name}</Badge>}
                       {st && <Badge color={st.color}>{st.name}</Badge>}
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${PRIORITY_STYLE[i.priority]}`}>{PRIORITY_LABEL[i.priority]}</span>
+                      {priorityMap.get(i.priorityId) && <Badge color={priorityMap.get(i.priorityId)!.color}>{priorityMap.get(i.priorityId)!.name}</Badge>}
                     </div>
                     <div className="text-xs font-semibold text-slate-900 break-words">{i.title}</div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">

@@ -112,6 +112,12 @@ const ISSUE_TYPES = [
   { id: 'ty3', projectId: 'p1', name: 'Cải tiến', color: 'blue', sort: 30, active: true },
   { id: 'ty4', projectId: 'p1', name: 'Câu hỏi / Hỗ trợ', color: 'purple', sort: 40, active: false }
 ];
+const ISSUE_PRIORITIES = [
+  { id: 'pr1', projectId: 'p1', name: 'Khẩn cấp', color: 'rose', sort: 10, active: true, isDefault: false },
+  { id: 'pr2', projectId: 'p1', name: 'Cao', color: 'amber', sort: 20, active: true, isDefault: false },
+  { id: 'pr3', projectId: 'p1', name: 'Vừa', color: 'blue', sort: 30, active: true, isDefault: true },
+  { id: 'pr4', projectId: 'p1', name: 'Thấp', color: 'slate', sort: 40, active: true, isDefault: false }
+];
 const ISSUE_STATUSES = [
   ['Mới', 'blue', 'open', true], ['Đang thực hiện', 'indigo', 'in_progress', false], ['Code xong', 'purple', 'in_progress', false],
   ['Test xong', 'emerald', 'in_progress', false], ['Chờ triển khai', 'amber', 'in_progress', false], ['Sẵn sàng bàn giao', 'emerald', 'in_progress', false],
@@ -120,10 +126,10 @@ const ISSUE_STATUSES = [
 const isoAgo = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400000).toISOString();
 const ymd = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 const ISSUES = [
-  { id: 'is1', projectId: 'p1', number: 12, typeId: 'ty1', statusId: 'st2', title: 'Không đăng nhập được bằng tài khoản SSO sau khi đổi mật khẩu, màn hình trắng', description: '1. Đổi mật khẩu\n2. Đăng xuất\n3. Đăng nhập lại bằng SSO -> trắng trang.', priority: 'urgent', severity: 'critical', environment: 'UAT', reporterId: 'u3', assigneeId: 'u2', dueDate: ymd(-2), useCaseId: 'uc1', createdAt: isoAgo(5), updatedAt: isoAgo(0) },
-  { id: 'is2', projectId: 'p1', number: 11, typeId: 'ty2', statusId: 'st1', title: 'Bổ sung cột Mã vật tư vào báo cáo tồn kho', description: '', priority: 'medium', environment: '', reporterId: 'u1', createdAt: isoAgo(3), updatedAt: isoAgo(3) },
-  { id: 'is3', projectId: 'p1', number: 10, typeId: 'ty1', statusId: 'st7', title: 'Sai tổng tiền khi áp dụng 2 mã giảm giá', description: 'Đã sửa và test xong.', priority: 'high', severity: 'major', environment: 'PROD', reporterId: 'u3', assigneeId: 'u2', createdAt: isoAgo(10), updatedAt: isoAgo(1), closedAt: isoAgo(1) },
-  { id: 'is4', projectId: 'p1', number: 9, typeId: 'ty3', statusId: 'st8', title: 'Cải thiện tốc độ tải danh sách nhiệm vụ', description: '', priority: 'low', environment: '', reporterId: 'u4', assigneeId: 'u4', dueDate: ymd(5), createdAt: isoAgo(12), updatedAt: isoAgo(2) }
+  { id: 'is1', projectId: 'p1', number: 12, typeId: 'ty1', statusId: 'st2', title: 'Không đăng nhập được bằng tài khoản SSO sau khi đổi mật khẩu, màn hình trắng', description: '1. Đổi mật khẩu\n2. Đăng xuất\n3. Đăng nhập lại bằng SSO -> trắng trang.', priorityId: 'pr1', severity: 'critical', environment: 'UAT', reporterId: 'u3', assigneeId: 'u2', dueDate: ymd(-2), useCaseId: 'uc1', createdAt: isoAgo(5), updatedAt: isoAgo(0) },
+  { id: 'is2', projectId: 'p1', number: 11, typeId: 'ty2', statusId: 'st1', title: 'Bổ sung cột Mã vật tư vào báo cáo tồn kho', description: '', priorityId: 'pr3', environment: '', reporterId: 'u1', createdAt: isoAgo(3), updatedAt: isoAgo(3) },
+  { id: 'is3', projectId: 'p1', number: 10, typeId: 'ty1', statusId: 'st7', title: 'Sai tổng tiền khi áp dụng 2 mã giảm giá', description: 'Đã sửa và test xong.', priorityId: 'pr2', severity: 'major', environment: 'PROD', reporterId: 'u3', assigneeId: 'u2', createdAt: isoAgo(10), updatedAt: isoAgo(1), closedAt: isoAgo(1) },
+  { id: 'is4', projectId: 'p1', number: 9, typeId: 'ty3', statusId: 'st8', title: 'Cải thiện tốc độ tải danh sách nhiệm vụ', description: '', priorityId: 'pr4', environment: '', reporterId: 'u4', assigneeId: 'u4', dueDate: ymd(5), createdAt: isoAgo(12), updatedAt: isoAgo(2) }
 ];
 const svgPic = (seed: string) =>
   'data:image/svg+xml;utf8,' +
@@ -223,6 +229,8 @@ export const MockProvider = ({ children }: any) => {
       getAttachmentUsage: async () => ({ projectBytes: 18 * 1024 * 1024, projectCount: 3, totalBytes: role === 'admin' ? 640 * 1024 * 1024 : undefined, capBytes: 900 * 1024 * 1024 }),
       issueTypes: ISSUE_TYPES,
       issueStatuses: ISSUE_STATUSES,
+      issuePriorities: ISSUE_PRIORITIES,
+      saveIssuePriorities: async () => null,
       projectIssues: ISSUES,
       getIssueJournals: (id: string) => ISSUE_JOURNALS.filter(j => j.issueId === id),
       canCreateIssue: role !== 'viewer', canUpdateIssue: role !== 'viewer', canEditIssue: mgr || role === 'ba', canAssignIssue: mgr, canDeleteIssue: mgr,

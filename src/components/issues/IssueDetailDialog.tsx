@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bug, Loader2, Pencil, Trash2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { COLOR_BADGE, issueCode, PRIORITY_LABEL, PRIORITY_STYLE, SEVERITY_LABEL } from './issueUi';
+import { COLOR_BADGE, issueCode, SEVERITY_LABEL } from './issueUi';
 import { JournalTree } from './JournalTree';
 import { IssueFormDialog } from './IssueFormDialog';
 import { AttachmentGallery, AttachmentUsageMeter } from './AttachmentGallery';
@@ -23,7 +23,7 @@ const Prop: React.FC<{ label: string; children: React.ReactNode }> = ({ label, c
 
 export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void }> = ({ issueId, onClose }) => {
   const {
-    projectIssues, issueTypes, issueStatuses, allUsers, users, projectUseCases, projectTasks, currentUser,
+    projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, projectUseCases, projectTasks, currentUser,
     canUpdateIssue, canEditIssue, canAssignIssue, canDeleteIssue, updateIssue, deleteIssue,
     attachmentsAvailable, getIssueAttachments
   } = useApp();
@@ -60,6 +60,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
 
   const type = issueTypes.find(t => t.id === issue.typeId);
   const status = issueStatuses.find(s => s.id === issue.statusId);
+  const priority = issuePriorities.find(p => p.id === issue.priorityId);
   const uc = projectUseCases.find(u => u.id === issue.useCaseId);
   const task = projectTasks.find(t => t.id === issue.taskId);
   const statusOptions = issueStatuses.filter(s => s.active || s.id === issue.statusId);
@@ -220,7 +221,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
               <Prop label="Trạng thái">{status?.name ?? '—'}</Prop>
               <Prop label="Loại">{type?.name ?? '—'}</Prop>
               <Prop label="Độ ưu tiên">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${PRIORITY_STYLE[issue.priority]}`}>{PRIORITY_LABEL[issue.priority]}</span>
+                {priority ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${COLOR_BADGE[priority.color]}`}>{priority.name}</span> : '—'}
               </Prop>
               <Prop label="Mức nghiêm trọng">{issue.severity ? SEVERITY_LABEL[issue.severity] : '—'}</Prop>
               <Prop label="Người báo">{issue.reporterId ? userMap.get(issue.reporterId)?.name ?? '—' : '—'}</Prop>

@@ -283,6 +283,18 @@ export interface IssueStatusDef {
   initial: boolean;
 }
 
+export interface IssuePriorityDef {
+  id: string;
+  projectId: string;
+  name: string;
+  color: IssueColor;
+  /** Thứ tự từ cao xuống thấp (số nhỏ = ưu tiên cao hơn). */
+  sort: number;
+  active: boolean;
+  /** Mức gán cho issue mới (đúng một mức đang bật). */
+  isDefault: boolean;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
@@ -292,7 +304,7 @@ export interface Issue {
   statusId: string;
   title: string;
   description: string;
-  priority: Priority;
+  priorityId: string;
   severity?: IssueSeverity;
   environment: string;
   reporterId?: string;

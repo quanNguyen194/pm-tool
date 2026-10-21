@@ -210,10 +210,23 @@ function overflowAudit() {
       }
       if (clickText('button', 'Cấu hình')) {
         await wait(500);
-        res['issues:cấu-hình-loại'] = snap();
+        // Mọi hàng cấu hình phải thẳng cột: số vị trí x khác nhau của từng cột phải bằng 1
+        const align = () => {
+          const rowsEl = [...document.querySelectorAll<HTMLElement>('[role="dialog"] .grid.rounded-lg.border')];
+          const cols = new Map<number, Set<number>>();
+          rowsEl.forEach(r => [...r.children].forEach((c, i) => {
+            if (!(c as HTMLElement).offsetParent) return;
+            (cols.get(i) ?? cols.set(i, new Set()).get(i)!).add(Math.round(c.getBoundingClientRect().left));
+          }));
+          return { rows: rowsEl.length, misaligned: [...cols.entries()].filter(([, v]) => v.size > 1).map(([k, v]) => k + ':' + [...v].join('/')) };
+        };
+        res['issues:cấu-hình-loại'] = { ...snap(), align: align() } as any;
+        clickText('[role="tab"]', 'Độ ưu tiên');
+        await wait(300);
+        res['issues:cấu-hình-độ-ưu-tiên'] = { ...snap(), align: align() } as any;
         clickText('[role="tab"]', 'Trạng thái');
         await wait(300);
-        res['issues:cấu-hình-trạng-thái'] = snap();
+        res['issues:cấu-hình-trạng-thái'] = { ...snap(), align: align() } as any;
         document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
         await wait(300);
       }
