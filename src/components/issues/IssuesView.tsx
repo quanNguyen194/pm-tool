@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CircleDot, Download, Plus, Search, Settings2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, CircleDot, Download, KanbanSquare, List, Plus, Search, Settings2, UserRound, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Issue } from '../../types';
 import { norm } from '../../utils/text';
@@ -8,6 +8,7 @@ import { COLOR_BADGE, issueCode, matchesQuery } from './issueUi';
 import { IssueFormDialog } from './IssueFormDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
 import { IssueConfigDialog } from './IssueConfigDialog';
+import { IssueBoard } from './IssueBoard';
 
 type SortKey = 'updated' | 'number' | 'priority' | 'due';
 const selCls = 'text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 text-slate-900 max-w-[11rem]';
@@ -25,8 +26,10 @@ const Badge: React.FC<{ color: keyof typeof COLOR_BADGE; children: React.ReactNo
 export const IssuesView: React.FC = () => {
   const {
     activeProject, issuesAvailable, projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, currentUser,
-    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue, projectUseCases, projectTasks, getIssueAttachments
+    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue, projectUseCases, projectTasks, getIssueAttachments,
+    issueView, setIssueView
   } = useApp();
+  const board = issueView === 'board';
 
   const [query, setQuery] = useState('');
   const [fType, setFType] = useState('all');
@@ -68,7 +71,8 @@ export const IssuesView: React.FC = () => {
     const list = projectIssues.filter(i => {
       if (!matchesQuery(i, normTitles.get(i.id) ?? '', query, norm)) return false;
       if (fType !== 'all' && i.typeId !== fType) return false;
-      if (fStatus === 'open' ? isClosed(i) : fStatus !== 'all' && i.statusId !== fStatus) return false;
+      // Kanban: mỗi cột là một trạng thái nên không lọc theo trạng thái
+      if (!board && (fStatus === 'open' ? isClosed(i) : fStatus !== 'all' && i.statusId !== fStatus)) return false;
       if (fAssignee === 'me' ? i.assigneeId !== currentUser.id : fAssignee === 'none' ? !!i.assigneeId : fAssignee !== 'all' && i.assigneeId !== fAssignee) return false;
       if (fPriority !== 'all' && i.priorityId !== fPriority) return false;
       return true;
@@ -82,9 +86,9 @@ export const IssuesView: React.FC = () => {
       }
     });
     return list;
-  }, [projectIssues, normTitles, query, fType, fStatus, fAssignee, fPriority, sort, statusMap, priorityMap, currentUser.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectIssues, normTitles, query, fType, fStatus, fAssignee, fPriority, sort, statusMap, priorityMap, currentUser.id, board]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = query.trim() !== '' || fType !== 'all' || fStatus !== 'open' || fAssignee !== 'all' || fPriority !== 'all';
+  const filtered = query.trim() !== '' || fType !== 'all' || (!board && fStatus !== 'open') || fAssignee !== 'all' || fPriority !== 'all';
   const clearFilters = () => {
     setQuery('');
     setFType('all');
@@ -175,6 +179,25 @@ export const IssuesView: React.FC = () => {
               <X className="w-3.5 h-3.5" />
             </button>
           )}
+          <div role="group" aria-label="Cách xem" className="ml-auto shrink-0 inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold">
+            {(
+              [
+                ['list', 'Danh sách', List],
+                ['board', 'Kanban', KanbanSquare]
+              ] as const
+            ).map(([k, label, Icon]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={issueView === k}
+                onClick={() => setIssueView(k)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md ${issueView === k ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-700 hover:text-slate-900'}`}
+              >
+                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-700">
           <label className="flex items-center gap-1.5">
@@ -186,6 +209,7 @@ export const IssuesView: React.FC = () => {
               ))}
             </select>
           </label>
+          {!board && (
           <label className="flex items-center gap-1.5">
             <span>Trạng thái</span>
             <select value={fStatus} onChange={e => setFStatus(e.target.value)} className={selCls}>
@@ -196,6 +220,7 @@ export const IssuesView: React.FC = () => {
               ))}
             </select>
           </label>
+          )}
           <label className="flex items-center gap-1.5">
             <span>Người xử lý</span>
             <select value={fAssignee} onChange={e => setFAssignee(e.target.value)} className={selCls}>
@@ -242,6 +267,8 @@ export const IssuesView: React.FC = () => {
             ? canCreateIssue ? 'Dự án chưa có issue nào. Bấm "Ghi nhận issue" để tạo issue đầu tiên.' : 'Dự án chưa có issue nào.'
             : 'Không có issue nào khớp bộ lọc.'}
         </div>
+      ) : board ? (
+        <IssueBoard issues={rows} onOpen={setDetailId} />
       ) : (
         <>
           {/* Bảng (từ md) */}

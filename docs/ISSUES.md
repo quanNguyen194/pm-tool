@@ -9,6 +9,11 @@ Tab **Lỗi & Yêu Cầu** quản lý bug, yêu cầu thay đổi (CR), cải ti
 - **Nhật ký dạng cây:** mỗi dòng ghi người làm, thời điểm, các trường đã đổi (giá trị cũ → mới) và ghi chú. Bình luận trả lời được bình luận khác, lồng tối đa 3 cấp. Tác giả sửa được ghi chú của mình (hiện "đã sửa"); xóa nội dung ghi chú do người có quyền xóa, nhật ký vẫn ghi dấu "đã xóa".
 - **Thông báo:** người xử lý và người báo nhận thông báo (chuông và Telegram nếu đã liên kết) khi được giao, đổi trạng thái hoặc có bình luận; người thao tác không tự nhận thông báo của chính mình.
 
+## Kanban, xuất CSV và thẻ Dashboard
+- **Kanban:** nút "Danh sách | Kanban" ở bộ lọc (nhớ lựa chọn theo trình duyệt). Mỗi cột là một trạng thái đang bật (kèm cột "(đã ẩn)" nếu còn issue); cột nhóm "Đã đóng" mặc định thu gọn. Bộ lọc tìm kiếm, loại, người xử lý, ưu tiên áp dụng cho cả hai chế độ; ô lọc trạng thái chỉ có ở chế độ danh sách. **Kéo thả thẻ sang cột khác** hoặc chọn trạng thái trong ô ở cuối thẻ (dùng được trên điện thoại và bàn phím) để đổi trạng thái: cùng quyền, nhật ký và thông báo như đổi trong hộp chi tiết. Mỗi cột hiện 30 thẻ, có nút "Xem thêm".
+- **Xuất CSV:** nút "Xuất CSV" xuất đúng danh sách đang lọc và sắp xếp (mã, loại, tiêu đề, trạng thái, nhóm, độ ưu tiên, mức nghiêm trọng, người báo/xử lý, hạn, quá hạn, môi trường, use case, nhiệm vụ, ngày tạo/cập nhật/đóng, số tệp, mô tả). Ô văn bản bắt đầu bằng `=`, `+`, `-`, `@` được thêm dấu `'` để Excel không chạy thành công thức (áp dụng cho mọi nút xuất CSV của ứng dụng).
+- **Thẻ Dashboard "Lỗi & Yêu Cầu Thay Đổi":** số còn mở, quá hạn, và số issue còn mở ở hai độ ưu tiên cao nhất đang bật; thanh phân bổ theo nhóm trạng thái; 5 issue đáng chú ý (quá hạn trước, rồi theo độ ưu tiên, rồi cũ nhất) bấm vào mở chi tiết.
+
 ## Ảnh / video đính kèm
 Cần migration `0024_issue_attachments.sql` (chưa chạy thì phần này tự ẩn).
 - **Thêm tệp:** ở form ghi nhận issue, hoặc ở khung "Cập nhật" của issue: nút **Chọn ảnh / video**, **kéo thả**, hoặc **dán ảnh chụp màn hình bằng Ctrl+V**. Tệp tải lên cùng lúc khi bấm lưu và gắn vào dòng nhật ký của lần cập nhật đó.

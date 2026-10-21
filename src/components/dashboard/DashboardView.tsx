@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { ProgressChart } from '../charts/ProgressChart';
 import { WorkloadPanel } from '../team/WorkloadPanel';
+import { IssueSummaryCard } from './IssueSummaryCard';
 import { computeForecast } from '../../utils/workload';
 import { flattenUseCaseTree, leafUseCases } from '../../utils/useCaseTree';
 import {
@@ -463,6 +464,7 @@ export const DashboardView: React.FC = () => {
 
       {/* Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="space-y-6 min-w-0">
         {/* Column 1: Biểu đồ phân bổ trạng thái công việc & Nhiệm vụ ưu tiên */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
           <div>
@@ -554,6 +556,9 @@ export const DashboardView: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <IssueSummaryCard />
         </div>
 
         {/* Column 2: Tiến độ Use Cases Nghiệp Vụ */}

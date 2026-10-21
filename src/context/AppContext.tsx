@@ -119,6 +119,9 @@ interface AppContextType {
   // --- Issue (bug / yêu cầu thay đổi) ---
   /** false khi DB chưa chạy migration 0023: tab hiện hướng dẫn thay vì dữ liệu. */
   issuesAvailable: boolean;
+  /** Cách xem tab Lỗi & Yêu cầu: danh sách hoặc Kanban (lưu theo trình duyệt). */
+  issueView: 'list' | 'board';
+  setIssueView: (v: 'list' | 'board') => void;
   projectIssues: Issue[];
   issueTypes: IssueTypeDef[];
   issueStatuses: IssueStatusDef[];
@@ -252,7 +255,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   ACTIVE_PROJECT: 'omni_active_proj_id_v2',
-  SOUND_MUTED: 'omni_sound_muted_v1'
+  SOUND_MUTED: 'omni_sound_muted_v1',
+  ISSUE_VIEW: 'omni_issue_view_v1'
 };
 
 const safeGet = (key: string): string | null => {
@@ -381,6 +385,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [issueStatusRows, setIssueStatusRows] = useState<IssueStatusDef[]>([]);
   const [issuePriorityRows, setIssuePriorityRows] = useState<IssuePriorityDef[]>([]);
   const [issuesAvailable, setIssuesAvailable] = useState(true);
+  const [issueView, setIssueViewState] = useState<'list' | 'board'>(() => (safeGet(STORAGE_KEYS.ISSUE_VIEW) === 'board' ? 'board' : 'list'));
+  const setIssueView = (v: 'list' | 'board') => {
+    setIssueViewState(v);
+    safeSet(STORAGE_KEYS.ISSUE_VIEW, v);
+  };
   const [issueAttachmentRows, setIssueAttachmentRows] = useState<IssueAttachment[]>([]);
   const [attachmentsAvailable, setAttachmentsAvailable] = useState(false);
   const [focusIssue, setFocusIssue] = useState<{ issueId: string; projectId: string } | null>(null);
@@ -1783,6 +1792,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveTab,
         focusTask,
         issuesAvailable,
+        issueView,
+        setIssueView,
         projectIssues,
         issueTypes,
         issueStatuses,

@@ -202,6 +202,11 @@ function overflowAudit() {
         document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
         await wait(300);
       }
+      (window as any).__setIssueView('board');
+      await wait(500);
+      res['issues:kanban'] = { ...snap(), cols: document.querySelectorAll('section[aria-label^="Cột "]').length, cards: document.querySelectorAll('section[aria-label^="Cột "] article').length } as any;
+      (window as any).__setIssueView('list');
+      await wait(300);
       if (clickText('button', 'Ghi nhận issue')) {
         await wait(500);
         res['issues:ghi-nhận'] = snap();

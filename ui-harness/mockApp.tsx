@@ -157,6 +157,8 @@ export const MockProvider = ({ children }: any) => {
   const [activeProjectId, setActiveProjectId] = useState('p1');
   const [focusTask, setFocusTask] = useState<{ taskId: string; projectId: string } | null>(null);
   (window as any).__setTab = setActiveTab;
+  const [issueView, setIssueView] = useState<'list' | 'board'>(params.get('view') === 'board' ? 'board' : 'list');
+  (window as any).__setIssueView = setIssueView;
 
   const base = useMemo(() => {
     const isAdmin = role === 'admin';
@@ -222,6 +224,8 @@ export const MockProvider = ({ children }: any) => {
       editQualityItem: () => undefined,
       deleteQualityItem: () => undefined,
       issuesAvailable: true,
+      issueView,
+      setIssueView,
       attachmentsAvailable: true,
       getIssueAttachments: (id: string) => ISSUE_ATTACHMENTS.filter(a => a.issueId === id),
       getAttachmentUrls: async (paths: string[]) => Object.fromEntries(paths.map(p => [p, svgPic(p)])),
