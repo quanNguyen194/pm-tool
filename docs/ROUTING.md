@@ -11,6 +11,7 @@ Mỗi màn hình và mục có địa chỉ riêng, theo mã dễ đọc. Gửi 
 | Lỗi & Yêu cầu / một issue | `/p/<mã dự án>/issues` (thêm `?view=board` cho Kanban) và `/p/<mã dự án>/issues/<số>` |
 | Quality Gates, Báo cáo, Đội ngũ | `/p/<mã dự án>/quality`, `/reports`, `/team` |
 | Danh sách dự án | `/projects` |
+| Quản lý tài khoản (chỉ admin) | `/accounts` |
 | Địa chỉ gốc `/` | tự chuyển tới tổng quan dự án gần nhất |
 | Đăng nhập | `/login?next=<địa chỉ>` (đăng nhập xong quay lại `next`; chỉ nhận đường dẫn nội bộ) |
 

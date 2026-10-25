@@ -2,6 +2,6 @@
   "name": "omni-db-tests",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node rls.test.mjs && node rollback.test.mjs && node import.test.mjs && node stages.test.mjs && node origin.test.mjs && node task_use_cases.test.mjs && node placeholders.test.mjs && node telegram.test.mjs && node security_nullcheck.test.mjs && node stage_order.test.mjs && node permission_config.test.mjs && node quality_edit.test.mjs && node issues.test.mjs && node attachments.test.mjs && node issue_priorities.test.mjs && node telegram_links.test.mjs && node public_projects.test.mjs" },
+  "scripts": { "test": "node rls.test.mjs && node rollback.test.mjs && node import.test.mjs && node stages.test.mjs && node origin.test.mjs && node task_use_cases.test.mjs && node placeholders.test.mjs && node telegram.test.mjs && node security_nullcheck.test.mjs && node stage_order.test.mjs && node permission_config.test.mjs && node quality_edit.test.mjs && node issues.test.mjs && node attachments.test.mjs && node issue_priorities.test.mjs && node telegram_links.test.mjs && node public_projects.test.mjs && node accounts.test.mjs" },
   "devDependencies": { "@electric-sql/pglite": "^0.3.0" }
 }

@@ -2,6 +2,7 @@
 //
 //   /                                   -> chuyển tới tổng quan của dự án gần nhất
 //   /projects                           -> danh sách dự án
+//   /accounts                           -> quản lý tài khoản (chỉ quản trị viên)
 //   /p/<mã dự án>                       -> tổng quan dự án
 //   /p/<mã dự án>/tasks[/<mã nhiệm vụ>] -> nhiệm vụ (kèm ?view=kanban|gantt|table), mở chi tiết nếu có mã
 //   /p/<mã dự án>/usecases[/<mã use case>]
@@ -11,7 +12,7 @@
 //
 // Dự án Công khai: cùng các địa chỉ /p/... này, người chưa đăng nhập vẫn xem được (chế độ Khách, chỉ đọc).
 
-export type AppTab = 'dashboard' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'issues' | 'reports' | 'team';
+export type AppTab = 'dashboard' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'issues' | 'reports' | 'team' | 'accounts';
 
 export type AppRoute =
   | { kind: 'root' }
@@ -48,6 +49,7 @@ export function parsePath(pathname: string): AppRoute {
   }
   if (seg.length === 0) return { kind: 'root' };
   if (seg[0] === 'projects' && seg.length === 1) return { kind: 'app', tab: 'projects' };
+  if (seg[0] === 'accounts' && seg.length === 1) return { kind: 'app', tab: 'accounts' };
   if (seg[0] === 'login' && seg.length === 1) return { kind: 'login' };
   if (seg[0] === 'p' && seg.length >= 2) {
     const projectCode = seg[1];
@@ -70,6 +72,7 @@ const enc = (s: string) => encodeURIComponent(s);
 
 export function buildPath(t: PathTarget): string {
   if (t.tab === 'projects') return '/projects';
+  if (t.tab === 'accounts') return '/accounts';
   if (!t.projectCode) return '/';
   const base = `/p/${enc(t.projectCode)}`;
   if (t.tab === 'dashboard') return base;

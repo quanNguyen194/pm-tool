@@ -32,6 +32,7 @@ const IssuesView = lazy(() => import('./components/issues/IssuesView').then(m =>
 const QualityGatesView = lazy(() => import('./components/quality/QualityGatesView').then(m => ({ default: m.QualityGatesView })));
 const ReportsView = lazy(() => import('./components/reports/ReportsView').then(m => ({ default: m.ReportsView })));
 const TeamView = lazy(() => import('./components/team/TeamView').then(m => ({ default: m.TeamView })));
+const AccountsView = lazy(() => import('./components/accounts/AccountsView').then(m => ({ default: m.AccountsView })));
 
 const FullScreenMessage: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -47,7 +48,7 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
 );
 
 export const MainLayout: React.FC = () => {
-  const { activeTab, routeProjectMissing, isGuest } = useApp();
+  const { activeTab, routeProjectMissing, isGuest, isAdmin } = useApp();
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
@@ -80,6 +81,7 @@ export const MainLayout: React.FC = () => {
               {!routeProjectMissing && activeTab === 'quality' && <QualityGatesView />}
               {!routeProjectMissing && activeTab === 'reports' && <ReportsView />}
               {!routeProjectMissing && activeTab === 'team' && <TeamView />}
+              {activeTab === 'accounts' && isAdmin && <AccountsView />}
             </Suspense>
           </div>
         </main>

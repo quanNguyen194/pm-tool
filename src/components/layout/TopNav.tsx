@@ -7,7 +7,8 @@ import {
   Bug,
   ShieldCheck,
   FileBarChart2,
-  Users2
+  Users2,
+  UserCog
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NavigationTab } from '../../types';
@@ -22,7 +23,7 @@ interface NavItem {
 
 /** Menu điều hướng chính, hiển thị ngang dưới thanh trên. Các mục và nhãn giữ nguyên như menu bên trái trước đây. */
 export const TopNav: React.FC = () => {
-  const { isGuest, activeTab, hrefFor, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
+  const { isGuest, isAdmin, activeTab, hrefFor, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
   const openIssues = projectIssues.filter(i => issueStatuses.find(s => s.id === i.statusId)?.category !== 'closed').length;
 
   const totalQualityItems = projectQualityGates?.phases.reduce((sum, p) => sum + p.items.length, 0) || 0;
@@ -37,10 +38,11 @@ export const TopNav: React.FC = () => {
     ...(issuesAvailable ? [{ id: 'issues' as const, label: 'Lỗi & Yêu Cầu', icon: Bug, badge: openIssues }] : []),
     { id: 'quality', label: 'Tiêu Chuẩn Quality Gates', icon: ShieldCheck, badge: `${passedQualityItems}/${totalQualityItems}` },
     { id: 'reports', label: 'Báo Cáo Định Kỳ', icon: FileBarChart2 },
-    { id: 'team', label: 'Đội Ngũ & Phân Quyền', icon: Users2 }
+    { id: 'team', label: 'Đội Ngũ & Phân Quyền', icon: Users2 },
+    ...(isAdmin ? [{ id: 'accounts' as const, label: 'Tài Khoản', icon: UserCog }] : [])
   ];
 
-  const visibleItems = isGuest ? items.filter(i => !['projects', 'reports', 'team'].includes(i.id)) : items;
+  const visibleItems = isGuest ? items.filter(i => !['projects', 'reports', 'team', 'accounts'].includes(i.id)) : items;
 
   // Trên màn hình hẹp menu cuộn ngang: đưa mục đang chọn vào tầm nhìn.
   const activeRef = useRef<HTMLAnchorElement>(null);

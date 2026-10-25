@@ -247,7 +247,8 @@ export type NavigationTab =
   | 'quality' 
   | 'issues'
   | 'reports' 
-  | 'team';
+  | 'team'
+  | 'accounts';
 
 /** Liên kết Telegram của người dùng hiện tại (RPC get_my_telegram). */
 export interface TelegramInfo {

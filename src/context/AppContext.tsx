@@ -76,6 +76,8 @@ export interface LinkTarget {
 }
 
 interface AppContextType {
+  /** Hiện một thông báo (thành công / lỗi / thông tin) góc màn hình. */
+  notify: (type: Toast['type'], message: string) => void;
   /** Đang xem ở chế độ Khách (dự án Công khai, chỉ đọc). */
   isGuest: boolean;
   /** Chế độ Khách nhưng dự án không công khai hoặc không tồn tại. */
@@ -2006,9 +2008,10 @@ export const AppProvider: React.FC<{ children: ReactNode; guestCode?: string }> 
   useEffect(() => {
     if (isLoading || !activeProject) return;
     if (route.kind === 'root' || route.kind === 'unknown' || route.kind === 'login') navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
+    else if (route.kind === 'app' && route.tab === 'accounts' && !profile.isAdmin) navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
     else if (guest && route.kind === 'app') {
       // Khách chỉ có các tab đọc của dự án công khai; mã cũ trong địa chỉ được thay bằng mã hiện tại
-      if (['projects', 'reports', 'team'].includes(route.tab)) navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
+      if (['projects', 'reports', 'team', 'accounts'].includes(route.tab)) navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
       else if (route.projectCode && route.projectCode.toLowerCase() !== activeProject.code.toLowerCase()) {
         navigate(buildPath({ tab: route.tab, projectCode: activeProject.code, itemCode: route.itemCode }) + search, { replace: true });
       }
@@ -2018,6 +2021,7 @@ export const AppProvider: React.FC<{ children: ReactNode; guestCode?: string }> 
   return (
     <AppContext.Provider
       value={{
+        notify: pushToast,
         isGuest: guest,
         guestDenied,
         visibilityAvailable,

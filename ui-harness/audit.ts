@@ -99,7 +99,7 @@ function overflowAudit() {
     el?.click();
     return !!el;
   };
-  for (const tab of ['dashboard', 'projects', 'tasks', 'usecases', 'issues', 'quality', 'reports', 'team']) {
+  for (const tab of ['dashboard', 'projects', 'tasks', 'usecases', 'issues', 'quality', 'reports', 'team', 'accounts']) {
     (window as any).__setTab(tab);
     await wait(1300);
     res[tab] = snap();
@@ -167,6 +167,24 @@ function overflowAudit() {
         await wait(500);
         res['tasks:bảng'] = snap();
       }
+    }
+    if (tab === 'accounts') {
+      if (clickText('button', 'Tạo tài khoản')) {
+        await wait(400);
+        res['accounts:tạo'] = snap();
+        document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+        await wait(300);
+      }
+      document.querySelector<HTMLElement>('button[aria-label^="Đặt lại mật khẩu của"]')?.click();
+      await wait(400);
+      res['accounts:đặt-lại-mật-khẩu'] = snap();
+      document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+      await wait(300);
+      document.querySelector<HTMLElement>('button[aria-label^="Sửa "]')?.click();
+      await wait(400);
+      res['accounts:sửa'] = snap();
+      document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+      await wait(300);
     }
     if (tab === 'issues') {
       const setVal = (el: HTMLInputElement, v: string) => {

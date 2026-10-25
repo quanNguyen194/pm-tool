@@ -119,6 +119,10 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4q. Hoàn tác migration `0028` (quản lý tài khoản)
+
+- Hoàn tác DB: `supabase/rollback/0028_rollback.sql` (xóa bảng nhật ký và hai hàm đọc). Mất nhật ký thao tác; các tài khoản đã tạo / sửa / xóa **không** bị ảnh hưởng. Tab Tài Khoản sẽ báo thiếu chức năng. Muốn gỡ hẳn, xóa thêm hàm `admin-accounts` trong Dashboard > Edge Functions.
+
 ## 4p. Hoàn tác migration `0027` (dự án Công khai / Riêng tư)
 
 - Hoàn tác DB: `supabase/rollback/0027_rollback.sql` (xóa cột `visibility` và hai hàm): mọi dự án về Riêng tư, **người chưa đăng nhập không còn xem được gì**. Giao diện bản mới chạy được cả khi thiếu `0027` (người xem ẩn danh thấy trang đăng nhập; nút Công khai ẩn). Cần `0025` và `0026` còn nguyên (hàm đọc dữ liệu dùng bảng độ ưu tiên và mã cũ của dự án). Độc lập về thứ tự rollback: chạy `0027` trước `0026`/`0025`.
