@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
+import { useRouter } from '../src/router/Router';
 
 const iso = (n: number) => new Date(Date.now() + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10);
 const users = [
@@ -155,7 +156,15 @@ export const MockProvider = ({ children }: any) => {
   const role = params.get('role') || 'admin';
   const [activeTab, setActiveTab] = useState(params.get('page') || 'dashboard');
   const [activeProjectId, setActiveProjectId] = useState('p1');
-  const [focusTask, setFocusTask] = useState<{ taskId: string; projectId: string } | null>(null);
+  // Mục đang mở lấy từ ?item=task:<mã> | issue:<số> (thay cho địa chỉ thật của ứng dụng)
+  const router = useRouter();
+  const itemParam = router.query.get('item');
+  const itemCode = itemParam ? itemParam.split(':')[1] : null;
+  const itemHref = (kind: string, code: string) => {
+    const q = new URLSearchParams(location.search);
+    q.set('item', `${kind}:${code}`);
+    return `?${q.toString()}`;
+  };
   (window as any).__setTab = setActiveTab;
   const [issueView, setIssueView] = useState<'list' | 'board'>(params.get('view') === 'board' ? 'board' : 'list');
   (window as any).__setIssueView = setIssueView;
@@ -165,8 +174,14 @@ export const MockProvider = ({ children }: any) => {
     const mgr = role === 'admin' || role === 'pm';
     const activeProject = projects.find(p => p.id === activeProjectId)!;
     return {
-      activeTab, setActiveTab, focusTask, clearFocusTask: () => setFocusTask(null),
-      openTask: (taskId: string, projectId?: string) => { setFocusTask({ taskId, projectId: projectId || activeProjectId }); setActiveTab('tasks'); },
+      activeTab, setActiveTab,
+      routeItemCode: itemCode, routeProjectMissing: false,
+      hrefFor: (t: any) => (t.taskId ? itemHref('task', tasks.find(x => x.id === t.taskId)?.code ?? '') : t.issueId ? itemHref('issue', String(ISSUES.find(x => x.id === t.issueId)?.number ?? '')) : '#'),
+      copyLink: async () => undefined,
+      closeItem: () => router.setQuery('item', null),
+      openTask: (taskId: string) => { setActiveTab('tasks'); router.navigate(itemHref('task', tasks.find(x => x.id === taskId)?.code ?? '')); },
+      openIssue: (issueId: string) => { setActiveTab('issues'); router.navigate(itemHref('issue', String(ISSUES.find(x => x.id === issueId)?.number ?? ''))); },
+      openUseCase: () => undefined,
       activeProjectId, setActiveProjectId, activeProject, projects, tasks, projectTasks: tasks, users, allUsers: users,
       currentUser: { ...users[0], role }, useCases, projectUseCases: useCases, qualityGates: [{ projectId: 'p1', phases }],
       projectQualityGates: { projectId: 'p1', phases }, notifications, unreadNotificationCount: 1, projectSnapshots: snaps,
@@ -241,11 +256,10 @@ export const MockProvider = ({ children }: any) => {
       canConfigIssueTypes: mgr, canConfigIssueStatuses: mgr,
       createIssue: async () => ({ id: 'i1', number: 99 }), updateIssue: async () => true, editIssueNote: async () => true, deleteIssueNote: async () => true, deleteIssue: async () => true,
       saveIssueTypes: async () => null, saveIssueStatuses: async () => null,
-      focusIssue: null, openIssue: () => undefined, clearFocusIssue: () => undefined,
       toasts: [], isLoading: false, loadError: null, isAdmin, canManageProject: mgr, canManageProjectId: () => mgr,
       canManageTasks: mgr || ['dev', 'ba', 'tester'].includes(role), canManageUseCases: mgr || ['dev', 'ba'].includes(role), canTickStage: (st: string) => mgr || (role === 'ba' && ['analysis', 'design'].includes(st)) || (role === 'dev' && st === 'coding') || (role === 'tester' && st === 'testing'), canApproveQuality: mgr || role === 'tester', canEditQualityItems: mgr, canApproveUseCase: mgr, isViewer: role === 'viewer', soundMuted: false
     };
-  }, [activeTab, activeProjectId, role, focusTask]);
+  }, [activeTab, activeProjectId, role, itemCode, router.search]);
 
   // Mọi thuộc tính không khai báo (hàm thao tác) trả về hàm rỗng.
   const value = useMemo(() => new Proxy(base as any, { get: (t, k) => (k in t ? t[k] : () => {}) }), [base]);

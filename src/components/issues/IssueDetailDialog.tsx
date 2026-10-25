@@ -9,6 +9,7 @@ import { AttachmentGallery, AttachmentUsageMeter } from './AttachmentGallery';
 import { AttachmentPicker, usePendingFiles } from './AttachmentPicker';
 import { MAX_FILES_PER_ISSUE } from '../../utils/attachments';
 import { useConfirm } from '../common/ConfirmDialog';
+import { CopyLinkButton } from '../common/CopyLinkButton';
 
 const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 const selectCls =
@@ -25,7 +26,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
   const {
     projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, projectUseCases, projectTasks, currentUser,
     canUpdateIssue, canEditIssue, canAssignIssue, canDeleteIssue, updateIssue, deleteIssue,
-    attachmentsAvailable, getIssueAttachments
+    attachmentsAvailable, getIssueAttachments, hrefFor
   } = useApp();
   const confirm = useConfirm();
   const issue = projectIssues.find(i => i.id === issueId);
@@ -108,6 +109,7 @@ export const IssueDetailDialog: React.FC<{ issueId: string; onClose: () => void 
             </h2>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <CopyLinkButton href={hrefFor({ issueId: issue.id })} label="Sao chép liên kết issue" />
             {canEditContent && (
               <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-lg">
                 <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Sửa

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NavigationTab } from '../../types';
+import { Link } from '../../router/Router';
 
 interface NavItem {
   id: NavigationTab;
@@ -21,7 +22,7 @@ interface NavItem {
 
 /** Menu điều hướng chính, hiển thị ngang dưới thanh trên. Các mục và nhãn giữ nguyên như menu bên trái trước đây. */
 export const TopNav: React.FC = () => {
-  const { activeTab, setActiveTab, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
+  const { activeTab, hrefFor, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
   const openIssues = projectIssues.filter(i => issueStatuses.find(s => s.id === i.statusId)?.category !== 'closed').length;
 
   const totalQualityItems = projectQualityGates?.phases.reduce((sum, p) => sum + p.items.length, 0) || 0;
@@ -40,7 +41,7 @@ export const TopNav: React.FC = () => {
   ];
 
   // Trên màn hình hẹp menu cuộn ngang: đưa mục đang chọn vào tầm nhìn.
-  const activeRef = useRef<HTMLButtonElement>(null);
+  const activeRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
   }, [activeTab]);
@@ -52,10 +53,10 @@ export const TopNav: React.FC = () => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
-            <button
+            <Link
               key={item.id}
               ref={isActive ? activeRef : undefined}
-              onClick={() => setActiveTab(item.id)}
+              to={hrefFor({ tab: item.id })}
               aria-current={isActive ? 'page' : undefined}
               className={`shrink-0 my-1.5 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 isActive
@@ -74,7 +75,7 @@ export const TopNav: React.FC = () => {
                   {item.badge}
                 </span>
               )}
-            </button>
+            </Link>
           );
         })}
       </div>

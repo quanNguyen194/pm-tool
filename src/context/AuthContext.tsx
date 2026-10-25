@@ -78,7 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { name: name.trim() } }
+      // Xác nhận email xong quay lại đúng địa chỉ đang mở (chỉ có hiệu lực nếu địa chỉ nằm trong danh sách Redirect URLs của Supabase)
+      options: { data: { name: name.trim() }, emailRedirectTo: window.location.origin + window.location.pathname + window.location.search }
     });
     if (error) {
       if (/already registered/i.test(error.message)) {

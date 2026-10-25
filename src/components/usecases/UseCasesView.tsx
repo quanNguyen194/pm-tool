@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CopyLinkButton } from '../common/CopyLinkButton';
 import { useApp } from '../../context/AppContext';
 import { UseCase, UseCaseComplexity, UseCaseKind, UseCaseOrigin, UseCaseStatus, Priority } from '../../types';
 import {
@@ -104,7 +105,9 @@ export const UseCasesView: React.FC = () => {
     setUseCaseStages,
     setUseCaseLevel,
     allUsers,
-    currentUser
+    currentUser,
+    routeItemCode,
+    hrefFor
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -280,6 +283,30 @@ export const UseCasesView: React.FC = () => {
     });
   const openAll = () => setOpen(new Set(nodes.filter(n => n.childCount > 0).map(n => n.useCase.id)));
   const closeAll = () => setOpen(new Set());
+  // Địa chỉ /p/<dự án>/usecases/<mã>: mở các nhánh cha, mở chi tiết use case đó, cuộn tới và nháy sáng một lúc
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const focusedCode = React.useRef('');
+  useEffect(() => {
+    if (!routeItemCode) {
+      focusedCode.current = '';
+      return;
+    }
+    if (focusedCode.current === routeItemCode) return;
+    const code = routeItemCode.toLowerCase();
+    const target = nodes.find(n => n.useCase.code.toLowerCase() === code || n.useCase.id === routeItemCode)?.useCase;
+    if (!target) return;
+    focusedCode.current = routeItemCode;
+    const ancestors: string[] = [];
+    for (let p = target.parentId ? byId.get(target.parentId) : undefined; p; p = p.parentId ? byId.get(p.parentId) : undefined) ancestors.push(p.id);
+    clearFilters();
+    if (target.status === 'cancelled') setShowCancelled(true);
+    setOpenNodes(new Set([...(openNodes ?? effectiveOpen), ...ancestors]));
+    setExpandedId(target.id);
+    setHighlightId(target.id);
+    window.setTimeout(() => document.getElementById(`uc-${target.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150);
+    window.setTimeout(() => setHighlightId(null), 3500);
+  }, [routeItemCode, nodes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const clearFilters = () => {
     setSearchQuery('');
     setFilterStatus('all');
@@ -692,10 +719,11 @@ export const UseCasesView: React.FC = () => {
             return (
               <div
                 key={uc.id}
+                id={`uc-${uc.id}`}
                 role="treeitem"
                 aria-level={depth}
                 aria-expanded={isParent ? isOpen : undefined}
-                className={`bg-white border rounded-2xl overflow-hidden shadow-xs ${INDENT[Math.min(depth, 3) - 1]} ${
+                className={`bg-white border rounded-2xl overflow-hidden shadow-xs transition-shadow ${highlightId === uc.id ? 'ring-2 ring-indigo-500' : ''} ${INDENT[Math.min(depth, 3) - 1]} ${
                   uc.status === 'cancelled' ? 'opacity-70' : ''
                 } ${
                   isGroup
@@ -841,6 +869,9 @@ export const UseCasesView: React.FC = () => {
                 {/* Expanded Details Body */}
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-3 border-t border-slate-100 bg-slate-50/40 space-y-5">
+                    <div className="flex justify-end -mb-3">
+                      <CopyLinkButton href={hrefFor({ useCaseId: uc.id })} label="Sao chép liên kết use case" showText />
+                    </div>
                     {parent && (
                       <div className="text-xs text-slate-600 flex items-center gap-1.5">
                         <FolderTree className="w-3.5 h-3.5 text-indigo-600" />

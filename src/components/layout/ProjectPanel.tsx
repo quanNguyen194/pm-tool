@@ -2,13 +2,14 @@ import React, { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { projectColor } from '../../utils/projectColor';
+import { Link } from '../../router/Router';
 
 /**
  * Danh sách dự án ở bên trái (chỉ từ màn hình lg trở lên). Dưới lg dùng ô chọn dự án trên thanh trên.
  * Menu điều hướng chính nằm ở TopNav, vai trò + công cụ quản trị nằm trong menu tài khoản.
  */
 export const ProjectPanel: React.FC = () => {
-  const { projects, activeProjectId, setActiveProjectId, setActiveTab, tasks, isAdmin } = useApp();
+  const { projects, activeProjectId, activeTab, hrefFor, tasks, isAdmin } = useApp();
 
   const taskCountByProject = useMemo(() => {
     const m = new Map<string, number>();
@@ -24,14 +25,14 @@ export const ProjectPanel: React.FC = () => {
       <div className="px-4 pt-4 pb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500">
         <span>Dự án ({projects.length})</span>
         {isAdmin && (
-          <button
-            onClick={() => setActiveTab('projects')}
+          <Link
+            to={hrefFor({ tab: 'projects' })}
             className="p-1 -mr-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/70"
             title="Tạo dự án mới"
             aria-label="Tạo dự án mới"
           >
             <Plus className="w-4 h-4" />
-          </button>
+          </Link>
         )}
       </div>
 
@@ -40,11 +41,11 @@ export const ProjectPanel: React.FC = () => {
           const isActive = p.id === activeProjectId;
           const color = projectColor(p.code);
           return (
-            <button
+            <Link
               key={p.id}
-              onClick={() => setActiveProjectId(p.id)}
+              to={hrefFor({ tab: activeTab === 'projects' ? 'dashboard' : activeTab, projectId: p.id })}
               aria-current={isActive ? 'true' : undefined}
-              className={`w-full text-left p-3 rounded-2xl border transition-colors ${
+              className={`block w-full text-left p-3 rounded-2xl border transition-colors ${
                 isActive
                   ? 'bg-white border-slate-200 shadow-xs text-slate-900'
                   : 'border-transparent text-slate-600 hover:bg-white/70 hover:text-slate-900'
@@ -62,7 +63,7 @@ export const ProjectPanel: React.FC = () => {
               <div className="ml-[18px] mt-1.5 h-1 rounded-full bg-slate-200 overflow-hidden" aria-hidden="true">
                 <div className={`h-full rounded-full ${color.bg}`} style={{ width: `${p.progressPercent}%` }} />
               </div>
-            </button>
+            </Link>
           );
         })}
       </div>

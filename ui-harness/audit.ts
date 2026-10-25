@@ -181,7 +181,7 @@ function overflowAudit() {
         setVal(search, '');
         await wait(200);
       }
-      const first = [...document.querySelectorAll<HTMLElement>('table button, ul button')].find(b => (b.textContent || '').includes('SSO'));
+      const first = [...document.querySelectorAll<HTMLElement>('table a, table button, ul button')].find(b => (b.textContent || '').includes('SSO'));
       if (first) {
         first.click();
         await wait(500);

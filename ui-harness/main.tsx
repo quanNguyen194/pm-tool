@@ -4,6 +4,7 @@ import './harness.css';
 import { ThemeProvider } from '../src/context/ThemeContext';
 import { ConfirmProvider } from '../src/components/common/ConfirmDialog';
 import { MockProvider } from './mockApp';
+import { RouterProvider } from '../src/router/Router';
 import { MainLayout } from '../src/App';
 import './audit';
 
@@ -15,10 +16,12 @@ if (theme) {
 
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
-    <ConfirmProvider>
-      <MockProvider>
-        <MainLayout />
-      </MockProvider>
-    </ConfirmProvider>
+    <RouterProvider>
+      <ConfirmProvider>
+        <MockProvider>
+          <MainLayout />
+        </MockProvider>
+      </ConfirmProvider>
+    </RouterProvider>
   </ThemeProvider>
 );

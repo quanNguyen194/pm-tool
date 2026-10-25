@@ -22,6 +22,8 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { exportTasksToCSV } from '../../utils/exportUtils';
+import { useRouter } from '../../router/Router';
+import { CopyLinkButton } from '../common/CopyLinkButton';
 import { GanttTimeline } from './GanttTimeline';
 import { AssessmentBadge, OwnerAvatars, TaskProgress } from './TaskParts';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS, ASSESSMENT_STYLES, effectiveAssessment, suggestAssessment } from '../../utils/taskAssessment';
@@ -87,11 +89,17 @@ export const TasksView: React.FC = () => {
     canManageProject,
     currentUser,
     projectUseCases,
-    focusTask,
-    clearFocusTask
+    routeItemCode,
+    openTask,
+    closeItem,
+    hrefFor
   } = useApp();
 
-  const [viewMode, setViewMode] = useState<'kanban' | 'gantt' | 'table'>('kanban');
+  // Cách xem nằm trên địa chỉ (?view=gantt|table), mặc định Kanban
+  const { query, setQuery } = useRouter();
+  const viewParam = query.get('view');
+  const viewMode: 'kanban' | 'gantt' | 'table' = viewParam === 'gantt' || viewParam === 'table' ? viewParam : 'kanban';
+  const setViewMode = (v: 'kanban' | 'gantt' | 'table') => setQuery('view', v === 'kanban' ? null : v);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
@@ -108,18 +116,17 @@ export const TasksView: React.FC = () => {
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [detailId, setDetailId] = useState<string | null>(null);
 
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   const useCaseCodeMap = useMemo(() => new Map(projectUseCases.map(u => [u.id, u.code])), [projectUseCases]);
-  // Đến từ cảnh báo/thông báo: mở thẳng chi tiết nhiệm vụ (chờ đúng dự án được nạp xong)
-  useEffect(() => {
-    if (!focusTask || focusTask.projectId !== activeProject?.id) return;
-    const t = projectTasks.find(x => x.id === focusTask.taskId);
-    if (t) setDetailId(t.id);
-    clearFocusTask();
-  }, [focusTask, activeProject?.id, projectTasks]);
-  const detailTask = detailId ? projectTasks.find(t => t.id === detailId) || null : null;
+  // Chi tiết nhiệm vụ đang mở theo địa chỉ (/p/<dự án>/tasks/<mã>); mở / đóng chi tiết đổi địa chỉ
+  const detailTask = useMemo(() => {
+    if (!routeItemCode) return null;
+    const code = routeItemCode.toLowerCase();
+    return projectTasks.find(t => t.code.toLowerCase() === code || t.id === routeItemCode) || null;
+  }, [projectTasks, routeItemCode]);
+  const detailId = detailTask?.id ?? null;
+  const setDetailId = (id: string | null) => (id ? openTask(id) : closeItem());
 
   const roleDepartment = (): Department | '' =>
     (['pm', 'ba', 'dev', 'tester'] as const).find(r => r === currentUser.role) || '';
@@ -986,13 +993,16 @@ export const TasksView: React.FC = () => {
                 <div className="font-mono text-xs font-bold text-indigo-600 break-all">[{detailTask.code}]</div>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">{detailTask.title}</h3>
               </div>
-              <button
-                onClick={() => setDetailId(null)}
-                className="p-1 text-slate-500 hover:text-slate-600 shrink-0"
-                aria-label="Đóng"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <CopyLinkButton href={hrefFor({ taskId: detailTask.id })} label="Sao chép liên kết nhiệm vụ" />
+                <button
+                  onClick={() => setDetailId(null)}
+                  className="p-1 text-slate-500 hover:text-slate-600"
+                  aria-label="Đóng"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">

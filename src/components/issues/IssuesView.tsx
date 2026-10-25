@@ -9,6 +9,7 @@ import { IssueFormDialog } from './IssueFormDialog';
 import { IssueDetailDialog } from './IssueDetailDialog';
 import { IssueConfigDialog } from './IssueConfigDialog';
 import { IssueBoard } from './IssueBoard';
+import { Link } from '../../router/Router';
 
 type SortKey = 'updated' | 'number' | 'priority' | 'due';
 const selCls = 'text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 text-slate-900 max-w-[11rem]';
@@ -26,7 +27,7 @@ const Badge: React.FC<{ color: keyof typeof COLOR_BADGE; children: React.ReactNo
 export const IssuesView: React.FC = () => {
   const {
     activeProject, issuesAvailable, projectIssues, issueTypes, issueStatuses, issuePriorities, allUsers, users, currentUser,
-    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, focusIssue, clearFocusIssue, projectUseCases, projectTasks, getIssueAttachments,
+    canCreateIssue, canConfigIssueTypes, canConfigIssueStatuses, routeItemCode, openIssue, closeItem, hrefFor, projectUseCases, projectTasks, getIssueAttachments,
     issueView, setIssueView
   } = useApp();
   const board = issueView === 'board';
@@ -39,14 +40,12 @@ export const IssuesView: React.FC = () => {
   const [sort, setSort] = useState<SortKey>('updated');
   const [createOpen, setCreateOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
-
-  // Mở từ thông báo
-  useEffect(() => {
-    if (!focusIssue || focusIssue.projectId !== activeProject?.id) return;
-    if (projectIssues.some(i => i.id === focusIssue.issueId)) setDetailId(focusIssue.issueId);
-    clearFocusIssue();
-  }, [focusIssue, activeProject?.id, projectIssues]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Issue đang mở theo địa chỉ (/p/<dự án>/issues/<số>); mở / đóng chi tiết đổi địa chỉ
+  const detailId = useMemo(
+    () => (routeItemCode ? projectIssues.find(i => String(i.number) === routeItemCode || i.id === routeItemCode)?.id ?? null : null),
+    [projectIssues, routeItemCode]
+  );
+  const setDetailId = (id: string | null) => (id ? openIssue(id) : closeItem());
 
   const typeMap = useMemo(() => new Map(issueTypes.map(t => [t.id, t])), [issueTypes]);
   const statusMap = useMemo(() => new Map(issueStatuses.map(s => [s.id, s])), [issueStatuses]);
@@ -295,9 +294,9 @@ export const IssuesView: React.FC = () => {
                     <tr key={i.id} className="hover:bg-slate-50/70">
                       <td className="py-2.5 px-3 font-mono font-bold text-indigo-700">{issueCode(i)}</td>
                       <td className="py-2.5 px-3 max-w-[22rem]">
-                        <button onClick={() => setDetailId(i.id)} className="text-left font-semibold text-slate-900 hover:text-indigo-700 hover:underline break-words">
+                        <Link to={hrefFor({ issueId: i.id })} className="text-left font-semibold text-slate-900 hover:text-indigo-700 hover:underline break-words">
                           {i.title}
-                        </button>
+                        </Link>
                       </td>
                       <td className="py-2.5 px-3">{type ? <Badge color={type.color}>{type.name}</Badge> : '—'}</td>
                       <td className="py-2.5 px-3">{st ? <Badge color={st.color}>{st.name}</Badge> : '—'}</td>

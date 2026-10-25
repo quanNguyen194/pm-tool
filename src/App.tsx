@@ -7,6 +7,8 @@ import React, { Suspense, lazy } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { RouterProvider } from './router/Router';
+import { NotFoundPanel } from './components/layout/NotFoundPanel';
 import { ConfirmProvider } from './components/common/ConfirmDialog';
 import { AppProvider, useApp } from './context/AppContext';
 import { isSupabaseConfigured } from './lib/supabase';
@@ -41,7 +43,7 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
 );
 
 export const MainLayout: React.FC = () => {
-  const { activeTab } = useApp();
+  const { activeTab, routeProjectMissing } = useApp();
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
@@ -64,14 +66,15 @@ export const MainLayout: React.FC = () => {
                 </div>
               }
             >
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'projects' && <ProjectsView />}
-              {activeTab === 'tasks' && <TasksView />}
-              {activeTab === 'usecases' && <UseCasesView />}
-              {activeTab === 'issues' && <IssuesView />}
-              {activeTab === 'quality' && <QualityGatesView />}
-              {activeTab === 'reports' && <ReportsView />}
-              {activeTab === 'team' && <TeamView />}
+              {routeProjectMissing && <NotFoundPanel />}
+              {!routeProjectMissing && activeTab === 'dashboard' && <DashboardView />}
+              {!routeProjectMissing && activeTab === 'projects' && <ProjectsView />}
+              {!routeProjectMissing && activeTab === 'tasks' && <TasksView />}
+              {!routeProjectMissing && activeTab === 'usecases' && <UseCasesView />}
+              {!routeProjectMissing && activeTab === 'issues' && <IssuesView />}
+              {!routeProjectMissing && activeTab === 'quality' && <QualityGatesView />}
+              {!routeProjectMissing && activeTab === 'reports' && <ReportsView />}
+              {!routeProjectMissing && activeTab === 'team' && <TeamView />}
             </Suspense>
           </div>
         </main>
@@ -148,11 +151,13 @@ const AuthGate: React.FC = () => {
 export default function App() {
   return (
     <ThemeProvider>
-      <ConfirmProvider>
-        <AuthProvider>
-          <AuthGate />
-        </AuthProvider>
-      </ConfirmProvider>
+      <RouterProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
+        </ConfirmProvider>
+      </RouterProvider>
     </ThemeProvider>
   );
 }

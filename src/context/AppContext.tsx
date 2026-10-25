@@ -61,17 +61,39 @@ import {
 } from '../api/mappers';
 import { useAuth } from './AuthContext';
 import { sound } from '../utils/soundAlert';
+import { useRouter } from '../router/Router';
+import { buildPath, parsePath, PathTarget } from '../router/paths';
 import { ATTACH_BUCKET, checkPrepared, extForMime, mimeOf } from '../utils/attachments';
 import { StageKey, STAGES, STAGE_LABEL, canTickStage as roleCanTickStage } from '../utils/stages';
 
+/** Đích của một liên kết nội bộ. Có mã mục (nhiệm vụ / issue / use case) thì tab và dự án suy ra từ mục đó. */
+export interface LinkTarget {
+  tab?: NavigationTab;
+  projectId?: string;
+  taskId?: string;
+  issueId?: string;
+  useCaseId?: string;
+}
+
 interface AppContextType {
+  /** Tab đang xem, lấy từ địa chỉ (URL). */
   activeTab: NavigationTab;
+  /** Chuyển tab của dự án đang chọn (đổi địa chỉ). */
   setActiveTab: (tab: NavigationTab) => void;
-  /** Nhiệm vụ cần mở chi tiết khi vào màn Nhiệm vụ (từ cảnh báo / thông báo). */
-  focusTask: { taskId: string; projectId: string } | null;
-  /** Chuyển sang màn Nhiệm vụ và mở chi tiết nhiệm vụ (đổi dự án nếu cần). */
+  /** Mã của mục đang mở theo địa chỉ: mã nhiệm vụ, số issue hoặc mã use case. null = không mở mục nào. */
+  routeItemCode: string | null;
+  /** Dự án trong địa chỉ không tồn tại hoặc bạn không có quyền xem. */
+  routeProjectMissing: boolean;
+  /** Đường dẫn (tương đối) tới một màn hình hoặc một mục, theo mã dễ đọc. */
+  hrefFor: (target: LinkTarget) => string;
+  /** Sao chép địa chỉ đầy đủ của một đường dẫn vào clipboard và báo bằng thông báo. */
+  copyLink: (href: string) => Promise<void>;
+  /** Đóng chi tiết đang mở và về danh sách của tab. */
+  closeItem: () => void;
+  /** Mở chi tiết nhiệm vụ (đổi dự án và tab nếu cần). */
   openTask: (taskId: string, projectId?: string) => void;
-  clearFocusTask: () => void;
+  /** Mở một use case trong cây use case (tự mở nhánh cha và cuộn tới). */
+  openUseCase: (useCaseId: string) => void;
 
   /** Thành viên của dự án đang chọn (kèm vai trò hiệu lực trong dự án đó). */
   users: User[];
@@ -167,10 +189,8 @@ interface AppContextType {
     items: { id?: string; name: string; color: string; category: string; active: boolean; initial: boolean }[],
     removeIds: string[]
   ) => Promise<string | null>;
-  focusIssue: { issueId: string; projectId: string } | null;
-  /** Chuyển sang tab Lỗi & Yêu cầu và mở chi tiết issue (đổi dự án nếu cần). */
+  /** Mở chi tiết issue (đổi dự án và tab nếu cần). */
   openIssue: (issueId: string, projectId?: string) => void;
-  clearFocusIssue: () => void;
   canApproveUseCase: boolean;
   /** Vai trò hiện tại có được tick bước chuẩn này của use case không. */
   canTickStage: (stage: StageKey) => boolean;
@@ -350,8 +370,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const { profile, signOut } = useAuth();
   if (!profile) throw new Error('AppProvider requires a signed-in profile');
 
-  const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
-  const [focusTask, setFocusTask] = useState<{ taskId: string; projectId: string } | null>(null);
+  // Địa chỉ (URL) là nguồn sự thật của tab, dự án và mục đang mở.
+  const { pathname, search, navigate, closeTo, query, setQuery } = useRouter();
+  const route = useMemo(() => parsePath(pathname), [pathname]);
+  const activeTab: NavigationTab = route.kind === 'app' ? route.tab : 'dashboard';
+  const routeItemCode = route.kind === 'app' ? route.itemCode ?? null : null;
   const [soundMuted, setSoundMuted] = useState<boolean>(() => safeGet(STORAGE_KEYS.SOUND_MUTED) === 'true');
 
   const toggleSound = () => {
@@ -385,14 +408,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [issueStatusRows, setIssueStatusRows] = useState<IssueStatusDef[]>([]);
   const [issuePriorityRows, setIssuePriorityRows] = useState<IssuePriorityDef[]>([]);
   const [issuesAvailable, setIssuesAvailable] = useState(true);
-  const [issueView, setIssueViewState] = useState<'list' | 'board'>(() => (safeGet(STORAGE_KEYS.ISSUE_VIEW) === 'board' ? 'board' : 'list'));
+  // Cách xem tab Lỗi & Yêu cầu: tham số ?view= trên địa chỉ ưu tiên, không có thì theo lựa chọn đã lưu của trình duyệt
+  const [issueViewPref, setIssueViewPref] = useState<'list' | 'board'>(() => (safeGet(STORAGE_KEYS.ISSUE_VIEW) === 'board' ? 'board' : 'list'));
+  const issueView: 'list' | 'board' = query.get('view') === 'board' ? 'board' : query.get('view') === 'list' ? 'list' : issueViewPref;
   const setIssueView = (v: 'list' | 'board') => {
-    setIssueViewState(v);
+    setIssueViewPref(v);
     safeSet(STORAGE_KEYS.ISSUE_VIEW, v);
+    setQuery('view', v === 'board' ? 'board' : null);
   };
   const [issueAttachmentRows, setIssueAttachmentRows] = useState<IssueAttachment[]>([]);
   const [attachmentsAvailable, setAttachmentsAvailable] = useState(false);
-  const [focusIssue, setFocusIssue] = useState<{ issueId: string; projectId: string } | null>(null);
   // Ma trận phân quyền hiệu lực của dự án đang chọn (null = chưa nạp được: dùng mặc định có sẵn)
   const [permMatrix, setPermMatrix] = useState<MatrixData | null>(null);
   const activeProjectIdRef = useRef('');
@@ -635,10 +660,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // --- Dữ liệu suy ra ---
   const projects = useMemo(() => projectRows.map(r => mapProject(r, members)), [projectRows, members]);
 
+  // Dự án theo mã trong địa chỉ (không phân biệt hoa thường; chấp nhận cả id dự phòng)
+  const routeProject = useMemo(() => {
+    if (route.kind !== 'app' || !route.projectCode) return undefined;
+    const code = route.projectCode.toLowerCase();
+    return projects.find(p => p.code.toLowerCase() === code || p.id === route.projectCode);
+  }, [projects, route]);
+  const routeProjectMissing = route.kind === 'app' && !!route.projectCode && !routeProject && !isLoading;
   const activeProject = useMemo(
-    () => projects.find(p => p.id === activeProjectIdState) || projects[0],
-    [projects, activeProjectIdState]
+    () => routeProject || projects.find(p => p.id === activeProjectIdState) || projects[0],
+    [routeProject, projects, activeProjectIdState]
   );
+  // Vào dự án bằng địa chỉ thì nhớ làm dự án gần nhất
+  useEffect(() => {
+    if (routeProject && routeProject.id !== activeProjectIdState) setActiveProjectIdState(routeProject.id);
+  }, [routeProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeProjectId = activeProject?.id || '';
   activeProjectIdRef.current = activeProjectId;
   // Đổi dự án: nạp ma trận phân quyền của dự án đó (có ghi đè riêng thì khác mặc định)
@@ -764,7 +800,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (res.error) throw res.error;
   };
 
-  const setActiveProjectId = (id: string) => setActiveProjectIdState(id);
+  const setActiveProjectId = (id: string) => {
+    setActiveProjectIdState(id);
+    // Địa chỉ đang có mã dự án thì đổi theo (bỏ mục đang mở); tab Danh sách dự án không gắn với dự án nào
+    const p = projects.find(x => x.id === id);
+    if (p && route.kind === 'app' && route.projectCode) navigate(buildPath({ tab: route.tab, projectCode: p.code }));
+  };
 
   // Dự án
   const createProject = (p: Omit<Project, 'id' | 'progressPercent'>) => {
@@ -1769,28 +1810,107 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const saveIssuePriorities: AppContextType['saveIssuePriorities'] = (items, removeIds) =>
     saveIssueConfig('save_issue_priorities', items.map(({ isDefault, ...rest }) => ({ ...rest, default: isDefault })), removeIds);
 
-  const openIssue = (issueId: string, projectId?: string) => {
-    const pid = projectId || activeProjectId;
-    if (pid !== activeProjectId) setActiveProjectIdState(pid);
-    setFocusIssue({ issueId, projectId: pid });
-    setActiveTab('issues');
+  // ----- Địa chỉ / điều hướng -----
+  const hrefFor = (t: LinkTarget): string => {
+    let tab: NavigationTab = t.tab ?? 'dashboard';
+    let projectId = t.projectId ?? activeProjectId;
+    let itemCode: string | undefined;
+    if (t.taskId) {
+      const task = tasks.find(x => x.id === t.taskId);
+      if (task) {
+        tab = 'tasks';
+        projectId = task.projectId;
+        itemCode = task.code;
+      }
+    } else if (t.issueId) {
+      const issue = issueRows.find(x => x.id === t.issueId);
+      if (issue) {
+        tab = 'issues';
+        projectId = issue.projectId;
+        itemCode = String(issue.number);
+      }
+    } else if (t.useCaseId) {
+      const uc = useCases.find(x => x.id === t.useCaseId);
+      if (uc) {
+        tab = 'usecases';
+        projectId = uc.projectId;
+        itemCode = uc.code;
+      }
+    }
+    const target: PathTarget = { tab, projectCode: projects.find(p => p.id === projectId)?.code, itemCode };
+    return buildPath(target);
   };
-  const clearFocusIssue = () => setFocusIssue(null);
+  // Mở một mục ngay trong tab đang xem (cùng dự án) thì giữ nguyên tham số như ?view=gantt; sang tab / dự án khác thì bỏ.
+  const goTo = (href: string) => {
+    const head = (p: string) => p.split('/').slice(0, 4).join('/');
+    navigate(head(href) === head(pathname) ? href + search : href);
+  };
+  const setActiveTab = (tab: NavigationTab) => navigate(hrefFor({ tab }));
+  const openTask = (taskId: string) => goTo(hrefFor({ taskId }));
+  const openIssue = (issueId: string) => goTo(hrefFor({ issueId }));
+  const openUseCase = (useCaseId: string) => goTo(hrefFor({ useCaseId }));
+  const closeItem = () => {
+    if (route.kind === 'app') closeTo(buildPath({ tab: route.tab, projectCode: route.projectCode }) + search);
+  };
 
-  const openTask = (taskId: string, projectId?: string) => {
-    const pid = projectId || activeProjectId;
-    if (pid !== activeProjectId) setActiveProjectIdState(pid);
-    setFocusTask({ taskId, projectId: pid });
-    setActiveTab('tasks');
+  const copyLink = async (href: string) => {
+    const url = window.location.origin + href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Trình duyệt chặn clipboard API: dùng cách dự phòng
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+      } catch {
+        /* bỏ qua */
+      }
+      document.body.removeChild(ta);
+    }
+    pushToast('success', 'Đã sao chép liên kết');
   };
-  const clearFocusTask = () => setFocusTask(null);
+
+  // Mục (nhiệm vụ / issue / use case) trong địa chỉ không có: báo và về danh sách. Mục từng thấy rồi mới biến mất (vừa xóa) thì đóng lặng lẽ.
+  const seenItemRef = useRef('');
+  useEffect(() => {
+    if (isLoading || !routeProject || !routeItemCode || route.kind !== 'app') return;
+    const code = routeItemCode.toLowerCase();
+    const inProject = <T extends { projectId: string }>(list: T[], match: (x: T) => boolean) => list.some(x => x.projectId === routeProject.id && match(x));
+    let found = true;
+    if (route.tab === 'tasks') found = inProject(tasks, t => t.code.toLowerCase() === code || t.id === routeItemCode);
+    else if (route.tab === 'usecases') found = inProject(useCases, u => u.code.toLowerCase() === code || u.id === routeItemCode);
+    else if (route.tab === 'issues' && issuesAvailable) found = inProject(issueRows, i => String(i.number) === routeItemCode || i.id === routeItemCode);
+    const key = `${routeProject.id}/${route.tab}/${code}`;
+    if (found) {
+      seenItemRef.current = key;
+      return;
+    }
+    if (seenItemRef.current !== key) pushToast('error', `Không tìm thấy "${routeItemCode}" trong dự án ${routeProject.code}, hoặc bạn không có quyền xem.`);
+    navigate(buildPath({ tab: route.tab, projectCode: routeProject.code }) + search, { replace: true });
+  }, [isLoading, routeProject?.id, routeItemCode, route, tasks, useCases, issueRows, issuesAvailable]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Vào địa chỉ gốc hoặc địa chỉ không hợp lệ thì đưa về tổng quan của dự án gần nhất (địa chỉ luôn phản ánh màn hình đang xem)
+  useEffect(() => {
+    if (isLoading || !activeProject) return;
+    if (route.kind === 'root' || route.kind === 'unknown' || route.kind === 'share') navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
+  }, [isLoading, route.kind, activeProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AppContext.Provider
       value={{
         activeTab,
         setActiveTab,
-        focusTask,
+        routeItemCode,
+        routeProjectMissing,
+        hrefFor,
+        copyLink,
+        closeItem,
+        openUseCase,
         issuesAvailable,
         issueView,
         setIssueView,
@@ -1819,11 +1939,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         saveIssueTypes,
         saveIssueStatuses,
         saveIssuePriorities,
-        focusIssue,
         openIssue,
-        clearFocusIssue,
         openTask,
-        clearFocusTask,
         users,
         allUsers,
         currentUser,
