@@ -666,7 +666,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const code = route.projectCode.toLowerCase();
     return projects.find(p => p.code.toLowerCase() === code || p.id === route.projectCode);
   }, [projects, route]);
-  const routeProjectMissing = route.kind === 'app' && !!route.projectCode && !routeProject && !isLoading;
+  // Mã dự án trong địa chỉ không khớp dự án nào: thử tra mã cũ (dự án đã đổi mã) rồi mới kết luận không tìm thấy
+  const missingCode = route.kind === 'app' && route.projectCode && !routeProject && !isLoading ? route.projectCode : null;
+  const [aliasChecked, setAliasChecked] = useState('');
+  const routeProjectMissing = !!missingCode && aliasChecked === missingCode;
+  useEffect(() => {
+    if (!missingCode || aliasChecked === missingCode) return;
+    let alive = true;
+    void (async () => {
+      const res = await supabase.rpc('resolve_project_code', { p_code: missingCode });
+      if (!alive) return;
+      const next = !res.error && typeof res.data === 'string' ? res.data : null;
+      if (next && next.toLowerCase() !== missingCode.toLowerCase() && route.kind === 'app') {
+        navigate(buildPath({ tab: route.tab, projectCode: next, itemCode: route.itemCode }) + search, { replace: true });
+      } else {
+        setAliasChecked(missingCode);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [missingCode]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeProject = useMemo(
     () => routeProject || projects.find(p => p.id === activeProjectIdState) || projects[0],
     [routeProject, projects, activeProjectIdState]

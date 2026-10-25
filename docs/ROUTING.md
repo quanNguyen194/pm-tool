@@ -22,6 +22,20 @@ Mỗi màn hình và mục có địa chỉ riêng, theo mã dễ đọc. Gửi 
 - **Đổi mã dự án:** địa chỉ mới dùng mã mới (id dự án trong CSDL không đổi). Link cũ chứa mã cũ sẽ không mở được trừ khi dùng id.
 - Mở một mục ngay trong tab đang xem thì giữ nguyên tham số `?view=`.
 
+## Link trong tin Telegram
+Cần migration `0026_telegram_links.sql`.
+- Mọi tin Telegram theo thông báo có thêm dòng `🔗 <link>`: nhắc quá hạn / sắp đến hạn dẫn tới nhiệm vụ (`/tasks/<mã>`), thông báo issue dẫn tới issue (`/issues/<số>`), cảnh báo chất lượng dẫn tới `/quality`. Thông báo không thuộc dự án nào thì không có link.
+- **Bản tóm tắt hằng ngày** (8:00 sáng): mỗi việc kèm link riêng. Danh sách dài đến mức vượt giới hạn tin nhắn của Telegram thì bỏ link từng việc, thay bằng link danh sách nhiệm vụ của dự án.
+- Người nhận bấm link: đã đăng nhập thì vào thẳng, chưa thì đăng nhập rồi vào đúng chỗ; không phải thành viên thì thấy trang "Không tìm thấy nội dung này".
+- **Địa chỉ gốc** lưu ở bảng `app_settings` (khóa `base_url`, mặc định `https://pm-tool.quan-ntm194.workers.dev`). Khi đổi sang tên miền riêng, chạy trong SQL Editor (một lần, không cần phát hành lại web):
+  ```sql
+  select public.set_app_base_url('https://ten-mien-moi');
+  ```
+  Chưa có địa chỉ gốc thì tin vẫn gửi bình thường, chỉ không có dòng link.
+
+## Đổi mã dự án
+Khi đổi mã dự án, mã cũ được nhớ (bảng `project_code_aliases`): link cũ chứa mã cũ (đã gửi qua Telegram hay chat) tự chuyển sang mã mới, giữ nguyên tab và mục đang xem. Chỉ người xem được dự án mới được chuyển; người khác vẫn thấy "Không tìm thấy". Nếu một dự án khác sau này dùng lại mã cũ đó thì mã đó thuộc dự án mới.
+
 ## Kỹ thuật
 - `src/router/paths.ts`: phân tích và dựng đường dẫn (thuần, có test `scripts/router.test.mjs`); `src/router/Router.tsx`: bộ định tuyến nhỏ dựa trên History API (`RouterProvider`, `useRouter`, `Link`).
 - `AppContext` suy ra `activeTab`, dự án và mục đang mở từ địa chỉ; cung cấp `hrefFor`, `copyLink`, `closeItem`, `openTask/openIssue/openUseCase`.

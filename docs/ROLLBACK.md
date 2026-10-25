@@ -119,6 +119,10 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4o. Hoàn tác migration `0026` (link Telegram, mã cũ của dự án)
+
+- Giao diện chạy được cả khi chưa có `0026` (tra mã cũ báo lỗi thì coi như không có). Hoàn tác DB: `supabase/rollback/0026_rollback.sql`: tin Telegram và bản tóm tắt hằng ngày trở lại không kèm link; mất cài đặt địa chỉ gốc và bảng mã cũ của dự án (link cũ chứa mã cũ sẽ báo "không tìm thấy"). Độc lập với `0023`-`0025`.
+
 ## 4n. Hoàn tác migration `0025` (độ ưu tiên issue cấu hình được)
 
 - **Khác các lần trước:** giao diện bản mới (từ commit độ ưu tiên) cần `0025`; giao diện bản cũ cần DB chưa có `0025`. Hoàn tác DB thì phải rollback Cloudflare/git về bản trước đó, nếu không tab Lỗi & Yêu Cầu tự ẩn (thiếu bảng độ ưu tiên).
