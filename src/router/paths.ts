@@ -7,14 +7,16 @@
 //   /p/<mã dự án>/usecases[/<mã use case>]
 //   /p/<mã dự án>/issues[/<số issue>]   (kèm ?view=board)
 //   /p/<mã dự án>/quality | reports | team
-//   /s/<mã chia sẻ>[/...]               -> chế độ khách (chia sẻ cho người chưa có tài khoản)
+//   /login[?next=<địa chỉ>]             -> trang đăng nhập, xong thì quay lại địa chỉ `next`
+//
+// Dự án Công khai: cùng các địa chỉ /p/... này, người chưa đăng nhập vẫn xem được (chế độ Khách, chỉ đọc).
 
 export type AppTab = 'dashboard' | 'projects' | 'tasks' | 'usecases' | 'quality' | 'issues' | 'reports' | 'team';
 
 export type AppRoute =
   | { kind: 'root' }
   | { kind: 'app'; tab: AppTab; projectCode?: string; itemCode?: string }
-  | { kind: 'share'; token: string; rest: string[] }
+  | { kind: 'login' }
   | { kind: 'unknown' };
 
 const TAB_BY_SEGMENT: Record<string, AppTab> = {
@@ -46,7 +48,7 @@ export function parsePath(pathname: string): AppRoute {
   }
   if (seg.length === 0) return { kind: 'root' };
   if (seg[0] === 'projects' && seg.length === 1) return { kind: 'app', tab: 'projects' };
-  if (seg[0] === 's' && seg.length >= 2) return { kind: 'share', token: seg[1], rest: seg.slice(2) };
+  if (seg[0] === 'login' && seg.length === 1) return { kind: 'login' };
   if (seg[0] === 'p' && seg.length >= 2) {
     const projectCode = seg[1];
     if (seg.length === 2) return { kind: 'app', tab: 'dashboard', projectCode };
@@ -75,7 +77,12 @@ export function buildPath(t: PathTarget): string {
   return t.itemCode && TABS_WITH_ITEM.has(t.tab) ? `${tabPath}/${enc(t.itemCode)}` : tabPath;
 }
 
-/** Đường dẫn của link chia sẻ (khách): /s/<mã>[/tab[/mục]] */
-export function buildSharePath(token: string, rest: string[] = []): string {
-  return `/s/${enc(token)}${rest.map(r => `/${enc(r)}`).join('')}`;
+/** Trang đăng nhập; `next` là địa chỉ quay lại sau khi đăng nhập (chỉ nhận đường dẫn nội bộ). */
+export function buildLoginPath(next?: string): string {
+  return next && next.startsWith('/') && !next.startsWith('//') && next !== '/login' ? `/login?next=${encodeURIComponent(next)}` : '/login';
+}
+
+/** Địa chỉ đích hợp lệ sau đăng nhập: chỉ đường dẫn nội bộ, không phải /login; còn lại về gốc. */
+export function safeNext(next: string | null | undefined): string {
+  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : '/';
 }

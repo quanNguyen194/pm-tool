@@ -22,7 +22,7 @@ interface NavItem {
 
 /** Menu điều hướng chính, hiển thị ngang dưới thanh trên. Các mục và nhãn giữ nguyên như menu bên trái trước đây. */
 export const TopNav: React.FC = () => {
-  const { activeTab, hrefFor, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
+  const { isGuest, activeTab, hrefFor, projectTasks, projectUseCases, projectQualityGates, projectIssues, issueStatuses, issuesAvailable } = useApp();
   const openIssues = projectIssues.filter(i => issueStatuses.find(s => s.id === i.statusId)?.category !== 'closed').length;
 
   const totalQualityItems = projectQualityGates?.phases.reduce((sum, p) => sum + p.items.length, 0) || 0;
@@ -40,6 +40,8 @@ export const TopNav: React.FC = () => {
     { id: 'team', label: 'Đội Ngũ & Phân Quyền', icon: Users2 }
   ];
 
+  const visibleItems = isGuest ? items.filter(i => !['projects', 'reports', 'team'].includes(i.id)) : items;
+
   // Trên màn hình hẹp menu cuộn ngang: đưa mục đang chọn vào tầm nhìn.
   const activeRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -49,7 +51,7 @@ export const TopNav: React.FC = () => {
   return (
     <nav aria-label="Menu chính" className="bg-white border-b border-slate-200">
       <div className="flex items-center gap-1 px-3 sm:px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map(item => {
+        {visibleItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (

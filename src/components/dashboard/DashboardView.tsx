@@ -32,7 +32,8 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     openTask,
     hrefFor,
-    sendDeadlineReminder
+    sendDeadlineReminder,
+    isGuest
   } = useApp();
 
   const userMap = new Map(users.map(u => [u.id, u]));
@@ -210,13 +211,15 @@ export const DashboardView: React.FC = () => {
                           <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
                         </Link>
+                        {!isGuest && (
                         <button
-                          onClick={() => sendDeadlineReminder(t.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors shrink-0"
-                        >
-                          <Send className="w-3 h-3" />
-                          <span>Gửi nhắc nhở</span>
-                        </button>
+                            onClick={() => sendDeadlineReminder(t.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded border border-rose-200 transition-colors shrink-0"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>Gửi nhắc nhở</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -238,13 +241,15 @@ export const DashboardView: React.FC = () => {
                           <span className="text-slate-500">·</span>
                           <span className="text-slate-500 font-medium">Phụ trách: {assignee?.name}</span>
                         </Link>
+                        {!isGuest && (
                         <button
-                          onClick={() => sendDeadlineReminder(t.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors shrink-0"
-                        >
-                          <Send className="w-3 h-3" />
-                          <span>Gửi nhắc nhở</span>
-                        </button>
+                            onClick={() => sendDeadlineReminder(t.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors shrink-0"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>Gửi nhắc nhở</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}

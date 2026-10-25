@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export const LoginView: React.FC = () => {
+export const LoginView: React.FC<{ notice?: string }> = ({ notice }) => {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
@@ -57,6 +57,11 @@ export const LoginView: React.FC = () => {
               : 'Tài khoản mới chỉ thấy các dự án mà quản trị viên hoặc PM thêm bạn vào.'}
           </p>
 
+          {notice && (
+            <p role="note" className="mb-4 text-xs text-indigo-900 bg-indigo-50 border border-indigo-200 rounded-lg p-2.5">
+              {notice}
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {mode === 'register' && (
               <div>

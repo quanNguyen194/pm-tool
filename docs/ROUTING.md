@@ -12,6 +12,7 @@ Mỗi màn hình và mục có địa chỉ riêng, theo mã dễ đọc. Gửi 
 | Quality Gates, Báo cáo, Đội ngũ | `/p/<mã dự án>/quality`, `/reports`, `/team` |
 | Danh sách dự án | `/projects` |
 | Địa chỉ gốc `/` | tự chuyển tới tổng quan dự án gần nhất |
+| Đăng nhập | `/login?next=<địa chỉ>` (đăng nhập xong quay lại `next`; chỉ nhận đường dẫn nội bộ) |
 
 ## Cách hoạt động
 - Địa chỉ là nguồn sự thật của tab, dự án và mục đang mở: nút Back/Forward của trình duyệt dùng được, tải lại trang (F5) giữ nguyên chỗ đang xem, menu và danh sách dự án là liên kết thật (chuột giữa, Ctrl+click mở tab mới).
@@ -21,6 +22,17 @@ Mỗi màn hình và mục có địa chỉ riêng, theo mã dễ đọc. Gửi 
 - Mã dự án không phân biệt hoa thường; cũng nhận id dự án làm đường dự phòng.
 - **Đổi mã dự án:** địa chỉ mới dùng mã mới (id dự án trong CSDL không đổi). Link cũ chứa mã cũ sẽ không mở được trừ khi dùng id.
 - Mở một mục ngay trong tab đang xem thì giữ nguyên tham số `?view=`.
+
+## Dự án Công khai / Riêng tư
+Cần migration `0027_public_projects.sql`. Mỗi dự án có chế độ truy cập:
+- **Riêng tư** (mặc định, mọi dự án hiện có): chỉ thành viên xem được; người khác thấy trang đăng nhập hoặc "Không tìm thấy nội dung này". Hành vi của thành viên với từng mục vẫn theo ma trận phân quyền.
+- **Công khai:** **ai biết địa chỉ cũng xem được, không cần tài khoản**, với tư cách **Khách** (vai trò Quan sát, chỉ đọc). Dùng đúng các địa chỉ `/p/<mã dự án>/...` ở trên: gửi link nhiệm vụ, issue, use case, Gantt hay tổng quan của dự án công khai cho bất kỳ ai là họ mở được. Địa chỉ không khó đoán (là mã dự án và mã mục), nên coi nội dung công khai là **công khai thật sự**, không phải "bí mật có link".
+- Người đã đăng nhập nhưng chưa là thành viên mở link của dự án công khai cũng xem ở chế độ Khách (có nút "Quay lại dự án của tôi").
+- **Ai đổi được chế độ truy cập:** người có quyền "Quản lý dự án" (PM của dự án, Admin). Ở tab Danh sách dự án, bấm biểu tượng khóa/quả địa cầu trên thẻ dự án, có hộp xác nhận liệt kê nội dung sẽ lộ. Nút sợi xích trên thẻ sao chép liên kết dự án.
+- **Khách xem được:** tổng quan, nhiệm vụ (Kanban, Gantt, bảng), use case, issue và nhật ký bình luận, Quality Gates, biểu đồ tiến độ, tên và vai trò thành viên. **Không bao giờ lộ:** ngân sách, email, tệp đính kèm, thông báo, cấu hình Telegram, phân quyền, báo cáo định kỳ, các dự án khác. Khách không thấy tab Báo cáo, Đội ngũ, Danh sách dự án.
+- Chuyển về Riêng tư thì khách mất quyền xem ngay (kể cả link cũ). Đổi mã dự án: link cũ vẫn tự chuyển sang mã mới.
+- Dữ liệu khách xem tải một lần rồi tự làm mới mỗi 60 giây (không có realtime).
+- **Bảo mật kỹ thuật:** người chưa đăng nhập không đọc được bảng nào; quyền của họ chỉ gồm đúng một hàm `get_public_project(mã)` trả về bản dữ liệu đã lọc của dự án đang Công khai. Trang `/p/*` có `X-Robots-Tag: noindex` và trang có thẻ `robots noindex` để công cụ tìm kiếm không lập chỉ mục.
 
 ## Link trong tin Telegram
 Cần migration `0026_telegram_links.sql`.

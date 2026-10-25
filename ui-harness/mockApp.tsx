@@ -25,7 +25,7 @@ const tasks = [
   mk('t6', 'OB-106', 'Tác vụ chưa giao', 'todo', 'low', '', -1, 9, 1, 0, undefined, { department: undefined })
 ];
 const proj = (id: string, code: string, name: string, p: number, status = 'in_progress') => ({
-  id, code, name,
+  id, code, name, visibility: id === 'p1' ? 'public' : 'private',
   description: 'Nền tảng Internet Banking & Mobile Banking thế hệ mới hỗ trợ thanh toán tức thì, định danh điện tử eKYC và bảo mật đa lớp sinh trắc học.',
   status, priority: 'urgent', managerId: 'u1', startDate: iso(-60), targetEndDate: iso(45), budget: 1850000000, progressPercent: p, currentPhase: 'phase_3', progressModel: 'stages', memberIds: ['u1', 'u2', 'u3']
 });
@@ -174,6 +174,7 @@ export const MockProvider = ({ children }: any) => {
     const mgr = role === 'admin' || role === 'pm';
     const activeProject = projects.find(p => p.id === activeProjectId)!;
     return {
+      isGuest: params.get('guest') === '1', guestDenied: false, visibilityAvailable: true, setProjectVisibility: async () => true,
       activeTab, setActiveTab,
       routeItemCode: itemCode, routeProjectMissing: false,
       hrefFor: (t: any) => (t.taskId ? itemHref('task', tasks.find(x => x.id === t.taskId)?.code ?? '') : t.issueId ? itemHref('issue', String(ISSUES.find(x => x.id === t.issueId)?.number ?? '')) : '#'),

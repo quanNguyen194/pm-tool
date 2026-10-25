@@ -91,6 +91,7 @@ export const mapProject = (r: Row, members: MemberRow[]): Project => ({
   startDate: r.start_date,
   targetEndDate: r.target_end_date,
   budget: Number(r.budget ?? 0),
+  visibility: r.visibility === 'public' ? 'public' : 'private',
   progressPercent: r.progress_percent ?? 0,
   currentPhase: r.current_phase,
   progressModel: r.progress_model === 'stages' ? 'stages' : 'criteria',

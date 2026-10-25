@@ -9,13 +9,15 @@ import { Link } from '../../router/Router';
  * Menu điều hướng chính nằm ở TopNav, vai trò + công cụ quản trị nằm trong menu tài khoản.
  */
 export const ProjectPanel: React.FC = () => {
-  const { projects, activeProjectId, activeTab, hrefFor, tasks, isAdmin } = useApp();
+  const { projects, activeProjectId, activeTab, hrefFor, tasks, isAdmin, isGuest } = useApp();
 
   const taskCountByProject = useMemo(() => {
     const m = new Map<string, number>();
     tasks.forEach(t => m.set(t.projectId, (m.get(t.projectId) || 0) + 1));
     return m;
   }, [tasks]);
+
+  if (isGuest) return null;
 
   return (
     <aside

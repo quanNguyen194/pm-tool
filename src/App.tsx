@@ -3,11 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { RouterProvider } from './router/Router';
+import { RouterProvider, useRouter } from './router/Router';
+import { buildLoginPath, parsePath, safeNext } from './router/paths';
+import { GuestSwitchContext } from './context/GuestSwitchContext';
+import { GuestBanner } from './components/layout/GuestBanner';
+import { useGuestSwitch } from './context/GuestSwitchContext';
 import { NotFoundPanel } from './components/layout/NotFoundPanel';
 import { ConfirmProvider } from './components/common/ConfirmDialog';
 import { AppProvider, useApp } from './context/AppContext';
@@ -43,10 +47,11 @@ const Spinner: React.FC<{ label: string }> = ({ label }) => (
 );
 
 export const MainLayout: React.FC = () => {
-  const { activeTab, routeProjectMissing } = useApp();
+  const { activeTab, routeProjectMissing, isGuest } = useApp();
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
+      {isGuest && <GuestBanner />}
       {/* Thanh trên: thương hiệu, chọn dự án, tài khoản */}
       <Header />
       {/* Menu điều hướng ngang */}
@@ -85,10 +90,24 @@ export const MainLayout: React.FC = () => {
 
 /** Chọn màn hình theo trạng thái tải dữ liệu / có dự án hay chưa. */
 const DataGate: React.FC = () => {
-  const { isLoading, loadError, reload, projects } = useApp();
+  const { isLoading, loadError, reload, projects, isGuest, guestDenied } = useApp();
   const { signOut } = useAuth();
+  const { signedIn, exit } = useGuestSwitch();
 
   if (isLoading) return <Spinner label="Đang tải dữ liệu..." />;
+  // Chế độ Khách nhưng dự án không công khai (hoặc không tồn tại)
+  if (isGuest && guestDenied) {
+    if (!signedIn) return <LoginView notice="Dự án này không công khai hoặc không tồn tại. Nếu bạn là thành viên, hãy đăng nhập để xem." />;
+    return (
+      <FullScreenMessage>
+        <p className="font-semibold text-slate-900 mb-1">Không tìm thấy nội dung này</p>
+        <p className="mb-4">Liên kết có thể đã sai, hoặc dự án không còn công khai.</p>
+        <button onClick={exit} className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg">
+          Quay lại dự án của tôi
+        </button>
+      </FullScreenMessage>
+    );
+  }
   if (loadError) {
     return (
       <FullScreenMessage>
@@ -115,6 +134,15 @@ const DataGate: React.FC = () => {
 
 const AuthGate: React.FC = () => {
   const { session, profile, loading, signOut } = useAuth();
+  const { pathname, search, query, navigate } = useRouter();
+  const route = useMemo(() => parsePath(pathname), [pathname]);
+  // Người đã đăng nhập nhưng chưa là thành viên: xem một dự án công khai với tư cách Khách
+  const [asGuest, setAsGuest] = useState<string | null>(null);
+
+  // Đăng nhập xong (hoặc đã đăng nhập sẵn) mà đang ở /login: về địa chỉ đích
+  useEffect(() => {
+    if (session && profile && route.kind === 'login') navigate(safeNext(query.get('next')), { replace: true });
+  }, [session, profile, route.kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isSupabaseConfigured) {
     return (
@@ -128,7 +156,19 @@ const AuthGate: React.FC = () => {
     );
   }
   if (loading) return <Spinner label="Đang kiểm tra phiên đăng nhập..." />;
-  if (!session) return <LoginView />;
+  if (!session) {
+    // Địa chỉ của một dự án: thử xem ở chế độ Khách (chỉ được nếu dự án Công khai, không thì hiện trang đăng nhập)
+    if (route.kind === 'app' && route.projectCode) {
+      return (
+        <GuestSwitchContext.Provider value={{ enter: () => undefined, exit: () => navigate(buildLoginPath(pathname + search)), signedIn: false }}>
+          <AppProvider key="guest" guestCode={route.projectCode}>
+            <DataGate />
+          </AppProvider>
+        </GuestSwitchContext.Provider>
+      );
+    }
+    return <LoginView />;
+  }
   if (!profile) {
     return (
       <FullScreenMessage>
@@ -141,10 +181,33 @@ const AuthGate: React.FC = () => {
     );
   }
 
+  if (route.kind === 'login') return <Spinner label="Đang chuyển trang..." />;
+
+  if (asGuest) {
+    return (
+      <GuestSwitchContext.Provider
+        value={{
+          enter: () => undefined,
+          exit: () => {
+            setAsGuest(null);
+            navigate('/', { replace: true });
+          },
+          signedIn: true
+        }}
+      >
+        <AppProvider key="guest" guestCode={asGuest}>
+          <DataGate />
+        </AppProvider>
+      </GuestSwitchContext.Provider>
+    );
+  }
+
   return (
-    <AppProvider>
-      <DataGate />
-    </AppProvider>
+    <GuestSwitchContext.Provider value={{ enter: setAsGuest, exit: () => undefined, signedIn: true }}>
+      <AppProvider key="member">
+        <DataGate />
+      </AppProvider>
+    </GuestSwitchContext.Provider>
   );
 };
 

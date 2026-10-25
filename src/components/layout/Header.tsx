@@ -22,6 +22,8 @@ import { projectColor, projectInitials } from '../../utils/projectColor';
 import { ROLE_NAMES, ROLE_SHORT } from '../../utils/roles';
 import { TelegramDialog } from './TelegramDialog';
 import { useConfirm } from '../common/ConfirmDialog';
+import { Link, useRouter } from '../../router/Router';
+import { buildLoginPath } from '../../router/paths';
 
 export const Header: React.FC = () => {
   const confirm = useConfirm();
@@ -49,8 +51,10 @@ export const Header: React.FC = () => {
     projectTasks,
     projectUseCases,
     projectQualityGates,
-    projectSnapshots
+    projectSnapshots,
+    isGuest
   } = useApp();
+  const { pathname, search } = useRouter();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -202,19 +206,31 @@ export const Header: React.FC = () => {
           <span>Xuất Excel</span>
         </button>
 
+        {isGuest && (
+          <>
+            <ThemeToggle />
+            <Link
+              to={buildLoginPath(pathname + search)}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg whitespace-nowrap"
+            >
+              Đăng nhập
+            </Link>
+          </>
+        )}
+
         {/* Audio Sound Toggle */}
-        <button
+        {!isGuest && <button
           onClick={toggleSound}
           className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           title={soundMuted ? 'Bật chuông thông báo' : 'Tắt chuông thông báo'}
         >
           {soundMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-indigo-600" />}
-        </button>
+        </button>}
 
-        <ThemeToggle />
+        {!isGuest && <ThemeToggle />}
 
         {/* Notification Bell */}
-        <div className="relative" ref={notifRef}>
+        {!isGuest && <div className="relative" ref={notifRef}>
           <button
             onClick={() => setIsNotifOpen(!isNotifOpen)}
             className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
@@ -303,10 +319,10 @@ export const Header: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Current User & Role Switcher */}
-        <div className="relative" ref={userRef}>
+        {!isGuest && <div className="relative" ref={userRef}>
           <button
             onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
             className="flex items-center gap-2.5 p-1.5 pr-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
@@ -406,7 +422,7 @@ export const Header: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </div>
       {isTelegramOpen && <TelegramDialog onClose={() => setIsTelegramOpen(false)} />}
     </header>

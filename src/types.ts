@@ -54,6 +54,8 @@ export interface Project {
   startDate: string;
   targetEndDate: string;
   budget: number; // VND
+  /** Riêng tư: chỉ thành viên. Công khai: ai biết địa chỉ cũng xem được (chỉ đọc, với tư cách Khách). */
+  visibility: 'private' | 'public';
   progressPercent: number;
   currentPhase: 'phase_1' | 'phase_2' | 'phase_3' | 'phase_4' | 'phase_5';
   progressModel: ProgressModel;

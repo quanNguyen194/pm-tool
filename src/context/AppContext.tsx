@@ -76,6 +76,14 @@ export interface LinkTarget {
 }
 
 interface AppContextType {
+  /** Đang xem ở chế độ Khách (dự án Công khai, chỉ đọc). */
+  isGuest: boolean;
+  /** Chế độ Khách nhưng dự án không công khai hoặc không tồn tại. */
+  guestDenied: boolean;
+  /** CSDL đã có cột chế độ truy cập (migration 0027). */
+  visibilityAvailable: boolean;
+  /** Đổi dự án giữa Công khai / Riêng tư (chỉ người có quyền Quản lý dự án). */
+  setProjectVisibility: (projectId: string, visibility: 'private' | 'public') => Promise<boolean>;
   /** Tab đang xem, lấy từ địa chỉ (URL). */
   activeTab: NavigationTab;
   /** Chuyển tab của dự án đang chọn (đổi địa chỉ). */
@@ -197,7 +205,7 @@ interface AppContextType {
   isViewer: boolean;
 
   // Dự án
-  createProject: (project: Omit<Project, 'id' | 'progressPercent'>) => void;
+  createProject: (project: Omit<Project, 'id' | 'progressPercent' | 'visibility'>) => void;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
   // Thành viên
@@ -366,9 +374,25 @@ const toUser = (p: Profile, role: Role): User => ({
   isPlaceholder: p.isPlaceholder
 });
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { profile, signOut } = useAuth();
+/** Hồ sơ giả của người xem ở chế độ Khách: không phải admin, không thuộc dự án nào nên vai trò hiệu lực là Quan sát. */
+const GUEST_PROFILE: Profile = {
+  id: '00000000-0000-0000-0000-00000000f00d',
+  name: 'Khách',
+  email: '',
+  department: 'Chỉ xem',
+  avatarColor: 'bg-zinc-600',
+  isAdmin: false,
+  isPlaceholder: false
+};
+
+/** guestCode: xem một dự án Công khai bằng mã trong địa chỉ, không cần đăng nhập (dữ liệu lấy qua get_public_project, chỉ đọc). */
+export const AppProvider: React.FC<{ children: ReactNode; guestCode?: string }> = ({ children, guestCode }) => {
+  const { profile: authProfile, signOut } = useAuth();
+  const guest = !!guestCode;
+  const profile = guest ? GUEST_PROFILE : authProfile;
   if (!profile) throw new Error('AppProvider requires a signed-in profile');
+  const guestRef = useRef(guestCode);
+  guestRef.current = guestCode;
 
   // Địa chỉ (URL) là nguồn sự thật của tab, dự án và mục đang mở.
   const { pathname, search, navigate, closeTo, query, setQuery } = useRouter();
@@ -424,6 +448,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [guestDenied, setGuestDenied] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastSeq = useRef(0);
   // Thông báo thành công của thao tác sắp chạy (do run() đọc và xóa ngay khi bắt đầu).
@@ -611,14 +636,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     []
   );
 
+  // Chế độ Khách: một lần gọi duy nhất lấy toàn bộ dữ liệu công khai của dự án (đã lọc ở CSDL), rồi đổ vào đúng các state như chế độ thường.
+  const loadGuest = useCallback(async (code: string) => {
+    const res = await supabase.rpc('get_public_project', { p_code: code });
+    // Lỗi (vd chưa chạy migration 0027) coi như dự án không công khai: người xem sẽ được mời đăng nhập
+    if (res.error) console.warn('Không tải được dự án công khai:', res.error.message);
+    const d = (res.error ? null : res.data) as Record<string, any[] | any> | null;
+    if (!d) {
+      setGuestDenied(true);
+      return;
+    }
+    setGuestDenied(false);
+    setProfiles((d.profiles || []).map(mapProfile));
+    setMembers((d.members || []).map((m: any) => mapMember(m)));
+    setProjectRows([d.project]);
+    setTaskRows(d.tasks || []);
+    setCollabRows(d.task_collaborators || []);
+    setTaskUcRows(d.task_use_cases || []);
+    setUcRows(d.use_cases || []);
+    setCriteriaRows(d.acceptance_criteria || []);
+    setStageRows(d.use_case_stages || []);
+    setQualityDefs(d.quality_phase_defs || []);
+    setQualityRows(d.quality_items || []);
+    setSnapshotRows((d.progress_snapshots || []).map(mapSnapshot));
+    setIssuesAvailable(true);
+    setIssueTypeRows((d.issue_types || []).map(mapIssueType));
+    setIssueStatusRows((d.issue_statuses || []).map(mapIssueStatus));
+    setIssuePriorityRows((d.issue_priorities || []).map(mapIssuePriority));
+    setIssueRows((d.issues || []).map(mapIssue));
+    setIssueJournals((d.issue_journals || []).map((r: any) => mapIssueJournal(r, d.issue_journal_details || [])));
+    setAttachmentsAvailable(false);
+    setIssueAttachmentRows([]);
+    setNotifications([]);
+    setScheduleRows([]);
+    setRunRows([]);
+    setMergeRows([]);
+    setPermMatrix(null);
+  }, []);
+
   const refresh = useCallback(
     async (slices: Slice[]) => {
+      if (guestRef.current) {
+        await loadGuest(guestRef.current);
+        return;
+      }
       // Dự án đổi tiến độ thì lịch sử tiến độ cũng đổi theo.
       const wanted = new Set<Slice>(slices);
       if (wanted.has('projects')) wanted.add('snapshots');
       await Promise.all([...wanted].map(s => fetchers[s]()));
     },
-    [fetchers]
+    [fetchers, loadGuest]
   );
 
   const reload = useCallback(() => {
@@ -633,8 +700,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     reload();
   }, [reload, profile.id]);
 
+  // Khách không có realtime: tự tải lại mỗi 60 giây
+  useEffect(() => {
+    if (!guest) return;
+    const t = setInterval(() => refresh(ALL_SLICES).catch(() => undefined), 60000);
+    return () => clearInterval(t);
+  }, [guest, refresh]);
+
   // Realtime: người khác sửa dữ liệu thì tự tải lại phần liên quan.
   useEffect(() => {
+    if (guest) return;
     const pending = new Set<Slice>();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = (slices: Slice[]) => {
@@ -655,7 +730,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
-  }, [refresh, profile.id]);
+  }, [refresh, profile.id, guest]);
 
   // --- Dữ liệu suy ra ---
   const projects = useMemo(() => projectRows.map(r => mapProject(r, members)), [projectRows, members]);
@@ -663,6 +738,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Dự án theo mã trong địa chỉ (không phân biệt hoa thường; chấp nhận cả id dự phòng)
   const routeProject = useMemo(() => {
     if (route.kind !== 'app' || !route.projectCode) return undefined;
+    if (guest) return projects[0]; // chế độ Khách chỉ có đúng dự án công khai này (mã trong địa chỉ có thể là mã cũ)
     const code = route.projectCode.toLowerCase();
     return projects.find(p => p.code.toLowerCase() === code || p.id === route.projectCode);
   }, [projects, route]);
@@ -671,7 +747,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [aliasChecked, setAliasChecked] = useState('');
   const routeProjectMissing = !!missingCode && aliasChecked === missingCode;
   useEffect(() => {
-    if (!missingCode || aliasChecked === missingCode) return;
+    if (!missingCode || aliasChecked === missingCode || guest) return;
     let alive = true;
     void (async () => {
       const res = await supabase.rpc('resolve_project_code', { p_code: missingCode });
@@ -699,12 +775,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   activeProjectIdRef.current = activeProjectId;
   // Đổi dự án: nạp ma trận phân quyền của dự án đó (có ghi đè riêng thì khác mặc định)
   useEffect(() => {
-    if (activeProjectId) refresh(['permissions']).catch(() => undefined);
-  }, [activeProjectId, refresh]);
+    if (activeProjectId && !guest) refresh(['permissions']).catch(() => undefined);
+  }, [activeProjectId, refresh, guest]);
 
   useEffect(() => {
-    if (activeProjectId) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
-  }, [activeProjectId]);
+    if (activeProjectId && !guest) safeSet(STORAGE_KEYS.ACTIVE_PROJECT, activeProjectId);
+  }, [activeProjectId, guest]);
 
   const tasks = useMemo(() => taskRows.map(r => mapTask(r, collabRows, taskUcRows)), [taskRows, collabRows, taskUcRows]);
   const useCases = useMemo(
@@ -828,7 +904,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Dự án
-  const createProject = (p: Omit<Project, 'id' | 'progressPercent'>) => {
+  const createProject = (p: Omit<Project, 'id' | 'progressPercent' | 'visibility'>) => {
     announce('Đã tạo dự án');
     void run(
       async () => {
@@ -1868,6 +1944,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setActiveTab = (tab: NavigationTab) => navigate(hrefFor({ tab }));
   const openTask = (taskId: string) => goTo(hrefFor({ taskId }));
   const openIssue = (issueId: string) => goTo(hrefFor({ issueId }));
+  const visibilityAvailable = projectRows.some(r => 'visibility' in r);
+  const setProjectVisibility = async (projectId: string, visibility: 'private' | 'public'): Promise<boolean> => {
+    try {
+      check(await supabase.rpc('set_project_visibility', { p_project: projectId, p_visibility: visibility }));
+      await refresh(['projects']);
+      pushToast('success', visibility === 'public' ? 'Dự án đã Công khai: ai biết địa chỉ cũng xem được (chỉ đọc).' : 'Dự án đã chuyển về Riêng tư.');
+      return true;
+    } catch (e) {
+      pushToast('error', describeError(e));
+      return false;
+    }
+  };
   const openUseCase = (useCaseId: string) => goTo(hrefFor({ useCaseId }));
   const closeItem = () => {
     if (route.kind === 'app') closeTo(buildPath({ tab: route.tab, projectCode: route.projectCode }) + search);
@@ -1917,12 +2005,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Vào địa chỉ gốc hoặc địa chỉ không hợp lệ thì đưa về tổng quan của dự án gần nhất (địa chỉ luôn phản ánh màn hình đang xem)
   useEffect(() => {
     if (isLoading || !activeProject) return;
-    if (route.kind === 'root' || route.kind === 'unknown' || route.kind === 'share') navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
-  }, [isLoading, route.kind, activeProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (route.kind === 'root' || route.kind === 'unknown' || route.kind === 'login') navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
+    else if (guest && route.kind === 'app') {
+      // Khách chỉ có các tab đọc của dự án công khai; mã cũ trong địa chỉ được thay bằng mã hiện tại
+      if (['projects', 'reports', 'team'].includes(route.tab)) navigate(hrefFor({ tab: 'dashboard' }), { replace: true });
+      else if (route.projectCode && route.projectCode.toLowerCase() !== activeProject.code.toLowerCase()) {
+        navigate(buildPath({ tab: route.tab, projectCode: activeProject.code, itemCode: route.itemCode }) + search, { replace: true });
+      }
+    }
+  }, [isLoading, route, activeProject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AppContext.Provider
       value={{
+        isGuest: guest,
+        guestDenied,
+        visibilityAvailable,
+        setProjectVisibility,
         activeTab,
         setActiveTab,
         routeItemCode,

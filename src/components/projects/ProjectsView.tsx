@@ -12,8 +12,11 @@ import {
   Users,
   DollarSign,
   AlertCircle,
+  Globe,
+  Lock,
   X
 } from 'lucide-react';
+import { CopyLinkButton } from '../common/CopyLinkButton';
 
 export const ProjectsView: React.FC = () => {
   const confirm = useConfirm();
@@ -27,7 +30,10 @@ export const ProjectsView: React.FC = () => {
     isAdmin,
     canManageProjectId,
     currentUser,
-    allUsers
+    allUsers,
+    visibilityAvailable,
+    setProjectVisibility,
+    hrefFor
   } = useApp();
 
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -220,6 +226,12 @@ export const ProjectsView: React.FC = () => {
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${statusInfo.color}`}>
                       {statusInfo.label}
                     </span>
+                    {visibilityAvailable && project.visibility === 'public' && (
+                      <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 px-2 py-0.5 rounded flex items-center gap-1 border border-sky-200" title="Ai biết địa chỉ cũng xem được (chỉ đọc)">
+                        <Globe className="w-3 h-3" aria-hidden="true" />
+                        <span>Công khai</span>
+                      </span>
+                    )}
                   </div>
 
                   {isActive && (
@@ -290,6 +302,48 @@ export const ProjectsView: React.FC = () => {
                 >
                   {isActive ? 'Đang kích hoạt' : 'Chọn dự án này'}
                 </button>
+
+                <CopyLinkButton
+                  href={hrefFor({ tab: 'dashboard', projectId: project.id })}
+                  label={project.visibility === 'public' ? 'Sao chép liên kết dự án (ai cũng xem được)' : 'Sao chép liên kết dự án (chỉ thành viên mở được)'}
+                  className="border border-slate-200"
+                />
+
+                {visibilityAvailable && canManageProjectId(project.id) && (
+                  <button
+                    onClick={async () => {
+                      const toPublic = project.visibility !== 'public';
+                      const ok = await confirm(
+                        toPublic
+                          ? {
+                              title: 'Công khai dự án?',
+                              message: 'Ai biết địa chỉ của dự án đều xem được, kể cả người chưa có tài khoản, với tư cách Khách (chỉ đọc).',
+                              target: { title: project.name, badge: project.code, description: project.description },
+                              warnings: [
+                                'Xem được: nhiệm vụ, use case, issue và nhật ký, tiêu chuẩn chất lượng, tiến độ, tên thành viên.',
+                                'Không công khai: ngân sách, email, tệp đính kèm, thông báo, cấu hình, báo cáo định kỳ.',
+                                'Có thể chuyển về Riêng tư bất cứ lúc nào.'
+                              ],
+                              confirmLabel: 'Công khai dự án',
+                              tone: 'primary'
+                            }
+                          : {
+                              title: 'Chuyển dự án về Riêng tư?',
+                              message: 'Người chưa là thành viên sẽ không còn xem được dự án qua địa chỉ này.',
+                              target: { title: project.name, badge: project.code },
+                              confirmLabel: 'Chuyển Riêng tư',
+                              tone: 'primary'
+                            }
+                      );
+                      if (ok) await setProjectVisibility(project.id, toPublic ? 'public' : 'private');
+                    }}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                    title={project.visibility === 'public' ? 'Đang Công khai: bấm để chuyển Riêng tư' : 'Đang Riêng tư: bấm để Công khai'}
+                    aria-label={project.visibility === 'public' ? 'Chuyển dự án về Riêng tư' : 'Công khai dự án'}
+                  >
+                    {project.visibility === 'public' ? <Globe className="w-3.5 h-3.5 text-sky-700" /> : <Lock className="w-3.5 h-3.5" />}
+                  </button>
+                )}
 
                 {canManageProjectId(project.id) && (
                   <button
