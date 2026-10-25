@@ -22,6 +22,7 @@ function world() {
     verifyToken: async t => tokens[t] ?? null,
     getProfile: async id => profiles.get(id) ?? null,
     countAdmins: async () => [...profiles.values()].filter(p => p.isAdmin && !p.isPlaceholder).length,
+    emailTaken: async (email, exceptId) => [...profiles.values()].some(p => p.id !== exceptId && (p.email ?? '').toLowerCase() === email.toLowerCase()),
     createUser: async ({ email, password, name }) => {
       w.calls.push(['createUser', email]);
       if (w.failAuth) return { error: w.failAuth };
@@ -141,8 +142,13 @@ const bad = (r, text) => r.body.ok === false && (!text || String(r.body.error).i
   // Chỉ còn Admin Một; một admin khác không tồn tại nên chỉ kiểm tra chặn tự đổi quyền (đã có ở trên)
   ok('kiểu quyền không phải boolean bị từ chối', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(3), isAdmin: 'true' }), 'không hợp lệ'));
   ok('tài khoản chưa đăng ký không sửa được bằng hàm này', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(9), name: 'Tên Mới' }), 'chưa đăng ký'));
-  w4.failAuth = 'A user with this email address has already been registered';
-  ok('đổi sang email đã dùng báo lỗi dễ hiểu và không sửa hồ sơ', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(3), email: 'admin1@t.vn' }), 'đã được dùng') && w4.profiles.get(U(3)).email === 'dev@t.vn');
+  const callsBefore = w4.calls.length;
+  ok('đổi sang email của tài khoản khác (kể cả khác hoa thường): báo lỗi dễ hiểu, không gọi hệ thống xác thực, không sửa hồ sơ', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(3), email: 'ADMIN1@t.vn' }), 'đã được dùng') && w4.calls.length === callsBefore && w4.profiles.get(U(3)).email === 'dev@t.vn');
+  ok('đặt lại đúng email hiện tại của chính tài khoản đó không bị coi là trùng', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(3), email: 'DEV@t.vn' }), 'Không có thay đổi'));
+  w4.failAuth = 'Error updating user';
+  ok('lỗi chung của hệ thống xác thực được dịch', bad(await call(w4, 'tok-admin1', { action: 'update', userId: U(3), email: 'moi.hoan.toan@t.vn' }), 'có thể đã được dùng'));
+  w4.failAuth = null;
+  ok('tạo tài khoản với email đã có (khác hoa thường) bị chặn trước khi gọi hệ thống xác thực', await (async () => { const n = w4.calls.length; const r = await call(w4, 'tok-admin1', { action: 'create', email: 'Dev@T.vn', name: 'Trùng', password: 'matkhau123' }); return bad(r, 'đã được dùng') && w4.calls.length === n; })());
 }
 
 // ---------- Chốt chặn "admin cuối cùng" (phòng thủ: kích hoạt khi số admin đếm được chỉ còn 1) ----------

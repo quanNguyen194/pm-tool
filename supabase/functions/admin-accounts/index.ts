@@ -26,6 +26,8 @@ export interface Ports {
   getProfile(id: string): Promise<ProfileInfo | null>;
   /** Số quản trị viên thật (không tính tài khoản chưa đăng ký). */
   countAdmins(): Promise<number>;
+  /** Email đã thuộc một tài khoản khác (không tính tài khoản `exceptId`)? So khớp không phân biệt hoa thường. */
+  emailTaken(email: string, exceptId?: string): Promise<boolean>;
   createUser(a: { email: string; password: string; name: string }): Promise<{ id?: string; error?: string }>;
   setPassword(id: string, password: string): Promise<string | undefined>;
   deleteUser(id: string): Promise<string | undefined>;
@@ -63,6 +65,7 @@ function checkPassword(p: unknown): string | null {
 
 function mapAuthError(msg: string): string {
   if (/already (been )?registered|already exists|duplicate|exists/i.test(msg)) return 'Email này đã được dùng bởi một tài khoản khác.';
+  if (/error updating user/i.test(msg)) return 'Không cập nhật được tài khoản (email có thể đã được dùng bởi tài khoản khác).';
   if (/password/i.test(msg) && /(weak|short|least|characters)/i.test(msg)) return 'Mật khẩu không đạt yêu cầu của hệ thống (quá ngắn hoặc quá yếu).';
   return msg;
 }
@@ -91,6 +94,7 @@ export async function handle(req: HttpIn, ports: Ports): Promise<HttpOut> {
     if (name.length < 2 || name.length > 80) return fail('Họ tên phải từ 2 đến 80 ký tự.');
     const pwErr = checkPassword(b.password);
     if (pwErr) return fail(pwErr);
+    if (await ports.emailTaken(email)) return fail('Email này đã được dùng bởi một tài khoản khác.');
     const r = await ports.createUser({ email, password: b.password as string, name });
     if (r.error || !r.id) return fail(mapAuthError(r.error ?? 'Không tạo được tài khoản.'));
     let note: string | undefined;
@@ -144,8 +148,10 @@ export async function handle(req: HttpIn, ports: Ports): Promise<HttpOut> {
     if (b.email !== undefined) {
       email = cleanEmail(b.email);
       if (!EMAIL.test(email) || email.length > 254) return fail('Email không hợp lệ.');
-      if (email !== (target.email ?? '').toLowerCase()) changes.push(`email ${target.email ?? '—'} → ${email}`);
-      else email = undefined;
+      if (email !== (target.email ?? '').toLowerCase()) {
+        if (await ports.emailTaken(email, targetId)) return fail('Email này đã được dùng bởi một tài khoản khác.');
+        changes.push(`email ${target.email ?? '—'} → ${email}`);
+      } else email = undefined;
     }
     let isAdmin: boolean | undefined;
     if (b.isAdmin !== undefined) {
@@ -199,6 +205,11 @@ if (typeof Deno !== 'undefined' && typeof Deno.serve === 'function') {
     countAdmins: async () => {
       const { count } = await admin.from('profiles').select('id', { count: 'exact', head: true }).eq('is_admin', true).eq('is_placeholder', false);
       return count ?? 0;
+    },
+    emailTaken: async (email, exceptId) => {
+      // ilike coi _ và % là ký tự đại diện nên có thể trả thừa; lọc lại bằng so khớp chính xác bên dưới
+      const { data } = await admin.from('profiles').select('id,email').ilike('email', email);
+      return (data ?? []).some((p: { id: string; email: string | null }) => p.id !== exceptId && (p.email ?? '').toLowerCase() === email.toLowerCase());
     },
     createUser: async ({ email, password, name }) => {
       const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } });
