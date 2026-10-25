@@ -20,12 +20,15 @@ Việc tạo tài khoản, đặt lại mật khẩu, xóa và đổi email là 
 1. Chạy `supabase/migrations/0028_account_admin.sql` trong SQL Editor (bảng nhật ký và hai hàm đọc).
 2. Supabase Dashboard > **Edge Functions** > **Deploy a new function** > **Via Editor**.
 3. Đặt tên **`admin-accounts`** (đúng như vậy), xóa mã mẫu, dán toàn bộ nội dung `supabase/functions/admin-accounts/index.ts`.
-4. Tắt tùy chọn **Verify JWT** (hoặc "Enforce JWT verification") rồi bấm **Deploy**. Lý do: hàm tự xác thực người gọi bằng `auth.getUser` và chỉ nhận quản trị viên; kiểm tra JWT ở cổng của Supabase không tương thích với khóa API kiểu mới nên có thể trả "Invalid JWT" cho cả người hợp lệ.
-5. Mở tab Tài Khoản trên web và thử "Tạo tài khoản". Nếu thấy "Chưa triển khai hàm admin-accounts" thì kiểm tra lại tên hàm.
+4. Bấm **Deploy function**. Màn hình tạo hàm không có tùy chọn Verify JWT; tùy chọn này nằm ở trang chi tiết của hàm sau khi deploy.
+5. Mở hàm vừa tạo, tab **Details**, tắt **Enforce JWT verification** (nếu có) rồi Save. Lý do: hàm tự xác thực người gọi bằng `auth.getUser` và chỉ nhận quản trị viên; kiểm tra JWT ở cổng của Supabase có thể không tương thích với khóa API kiểu mới và trả "Invalid JWT" cho cả người hợp lệ.
+6. Mở tab Tài Khoản trên web và thử "Tạo tài khoản".
+
+Nếu web báo "Chưa triển khai hàm admin-accounts" dù đã deploy: hàm có thể bị lỗi khi khởi động. Xem **Edge Functions > admin-accounts > Logs** để biết lỗi cụ thể. Lưu ý quan trọng: dòng `import { createClient } from 'npm:@supabase/supabase-js@...'` ở đầu file phải là **import tĩnh** (Edge Runtime không cho import động địa chỉ ngoài).
 
 Cập nhật mã hàm sau này: dán lại nội dung file rồi Deploy lại.
 
 ## Kỹ thuật
-- `supabase/functions/admin-accounts/index.ts`: logic `handle()` thuần (không phụ thuộc Deno) + phần chạy trên Deno. Kiểm thử logic bằng dữ liệu giả: `npx -y node@22 --experimental-strip-types scripts/accounts.test.mjs`.
+- `supabase/functions/admin-accounts/index.ts`: logic `handle()` thuần (không phụ thuộc Deno) + phần chạy trên Deno. Kiểm thử logic bằng dữ liệu giả: `npx -y node@22 --experimental-strip-types --import ./scripts/npm-stub.mjs scripts/accounts.test.mjs` (`npm-stub.mjs` thay specifier `npm:` mà node không hiểu).
 - `0028_account_admin.sql`: bảng `account_audit_log` (chỉ Edge Function ghi, bằng khóa service_role), `admin_list_accounts()` và `admin_account_log()` (chỉ admin đọc).
 - Giao diện: `src/components/accounts/AccountsView.tsx`; gọi `supabase.functions.invoke('admin-accounts')`.

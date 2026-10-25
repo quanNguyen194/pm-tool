@@ -1,5 +1,5 @@
 // Kiểm tra logic của Edge Function admin-accounts bằng dữ liệu giả (không gọi Supabase).
-// Chạy: npx -y node@22 --experimental-strip-types scripts/accounts.test.mjs
+// Chạy: npx -y node@22 --experimental-strip-types --import ./scripts/npm-stub.mjs scripts/accounts.test.mjs
 import { handle } from '../supabase/functions/admin-accounts/index.ts';
 
 let pass = 0, fail = 0;

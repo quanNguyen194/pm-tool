@@ -67,7 +67,7 @@ async function callAccounts(body: Record<string, unknown>): Promise<{ error: str
     }
     const msg = error.message || '';
     if (/Failed to send|FunctionsFetchError|FunctionsRelayError|not found|404/i.test(msg) || (ctx && ctx.status === 404)) {
-      return { error: 'Chưa triển khai hàm "admin-accounts" trên Supabase (Edge Functions). Xem hướng dẫn trong docs/ACCOUNTS.md.' };
+      return { error: 'Không gọi được hàm "admin-accounts" trên Supabase: hàm chưa được triển khai, hoặc bị lỗi khi khởi động (xem Edge Functions > admin-accounts > Logs). Hướng dẫn trong docs/ACCOUNTS.md.' };
     }
     return { error: msg || 'Không gọi được máy chủ.' };
   }

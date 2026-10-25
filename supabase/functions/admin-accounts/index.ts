@@ -4,9 +4,13 @@
 // Supabase tự cấp khóa đó cho Edge Function (biến môi trường SUPABASE_SERVICE_ROLE_KEY), nên không phải đưa khóa cho ai.
 //
 // Triển khai: Dashboard > Edge Functions > Deploy a new function > Via Editor, đặt tên `admin-accounts`, dán toàn bộ file này,
-// giữ bật "Verify JWT" rồi Deploy. Xem docs/ACCOUNTS.md.
+// Deploy; sau đó vào trang chi tiết của hàm, tab Details, tắt "Enforce JWT verification" (hàm tự xác thực). Xem docs/ACCOUNTS.md.
 //
 // Phần logic (`handle`) không phụ thuộc Deno nên kiểm thử được bằng node với dữ liệu giả (scripts/accounts.test.mjs).
+// Lưu ý: import ở đầu file phải là import tĩnh (Edge Runtime không cho import động địa chỉ ngoài).
+
+// @ts-ignore: Edge Runtime (Deno) hiểu specifier npm:; tsc và node thì không (bản thử nghiệm thay bằng scripts/npm-stub.mjs)
+import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 export interface ProfileInfo {
   id: string;
@@ -179,8 +183,6 @@ const CORS = {
 };
 
 if (typeof Deno !== 'undefined' && typeof Deno.serve === 'function') {
-  const modUrl = 'https://esm.sh/@supabase/supabase-js@2.45.4';
-  const { createClient } = await import(/* @vite-ignore */ modUrl);
   const admin = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), {
     auth: { persistSession: false, autoRefreshToken: false }
   });
