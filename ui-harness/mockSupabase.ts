@@ -12,6 +12,9 @@ const log = [
   { id: 1, at: iso(5), actorName: 'quan.ntm194', action: 'create', targetLabel: 'ngoc@example.com', detail: null }
 ];
 export const supabase = {
-  rpc: async (fn: string) => ({ data: fn === 'admin_list_accounts' ? accounts : fn === 'admin_account_log' ? log : null, error: null }),
+  rpc: async (fn: string) => ({
+    data: fn === 'admin_list_accounts' ? accounts : fn === 'admin_account_log' ? log : fn === 'admin_merge_preview' ? { projects: 2, tasksAssigned: 5, tasksCollaborating: 1, projectsManaged: 0 } : null,
+    error: null
+  }),
   functions: { invoke: async () => ({ data: { ok: true }, error: null }) }
 } as any;

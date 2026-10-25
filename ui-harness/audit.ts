@@ -185,6 +185,11 @@ function overflowAudit() {
       res['accounts:sửa'] = snap();
       document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
       await wait(300);
+      document.querySelector<HTMLElement>('button[aria-label$="với tài khoản thật"]')?.click();
+      await wait(500);
+      res['accounts:ghép'] = snap();
+      document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Đóng"]')?.click();
+      await wait(300);
     }
     if (tab === 'issues') {
       const setVal = (el: HTMLInputElement, v: string) => {

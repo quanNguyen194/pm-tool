@@ -119,6 +119,10 @@ Nếu chỉ cần khôi phục dịch vụ thật nhanh thì làm bước 1 là 
 - Hoàn tác DB: `supabase/rollback/0022_rollback.sql` (không mất tiêu chuẩn nào; chỉ xóa cấu hình `edit_quality_items` đã lưu). Thứ tự hoàn tác: `0022` -> `0021`.
 - Nếu Tester cần thêm tiêu chuẩn như trước: Đội ngũ -> Chỉnh sửa phân quyền -> bật "Thêm, sửa, xóa tiêu chuẩn Quality Gates" cho Tester (không cần rollback).
 
+## 4r. Hoàn tác migration `0029` (ghép thủ công tài khoản)
+
+- Hoàn tác DB: `supabase/rollback/0029_rollback.sql` (xóa hai hàm). Các lần ghép đã làm **không** được hoàn nguyên. Nút ghép trên màn Tài Khoản sẽ báo thiếu chức năng. Ghép tự động khi trùng tên (migration 0013) vẫn dùng được.
+
 ## 4q. Hoàn tác migration `0028` (quản lý tài khoản)
 
 - Hoàn tác DB: `supabase/rollback/0028_rollback.sql` (xóa bảng nhật ký và hai hàm đọc). Mất nhật ký thao tác; các tài khoản đã tạo / sửa / xóa **không** bị ảnh hưởng. Tab Tài Khoản sẽ báo thiếu chức năng. Muốn gỡ hẳn, xóa thêm hàm `admin-accounts` trong Dashboard > Edge Functions.

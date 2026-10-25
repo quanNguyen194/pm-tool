@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Copy, Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, UserCog, UserX, X } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, GitMerge, KeyRound, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, UserCog, UserX, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import { useConfirm } from '../common/ConfirmDialog';
+import { SearchSelect } from '../common/SearchSelect';
 
 interface Account {
   id: string;
@@ -300,6 +301,80 @@ const EditDialog: React.FC<{ account: Account; isSelf: boolean; onClose: () => v
   );
 };
 
+/** Ghép tài khoản chưa đăng ký vào tài khoản thật: nhiệm vụ đã giao, dự án, phối hợp... chuyển sang tài khoản thật. */
+const MergeDialog: React.FC<{ placeholder: Account; realAccounts: Account[]; onClose: () => void; onDone: (summary: string) => void }> = ({ placeholder, realAccounts, onClose, onDone }) => {
+  const [target, setTarget] = useState('');
+  const [preview, setPreview] = useState<{ projects: number; tasksAssigned: number; tasksCollaborating: number; projectsManaged: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    void supabase.rpc('admin_merge_preview', { p_placeholder: placeholder.id }).then(r => {
+      if (!alive) return;
+      if (r.error) setError(/admin_merge_preview/.test(r.error.message) && /function|schema cache/i.test(r.error.message) ? 'Cơ sở dữ liệu chưa có chức năng ghép tài khoản. Hãy chạy migration supabase/migrations/0029_manual_account_merge.sql.' : r.error.message);
+      else setPreview(r.data as typeof preview);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [placeholder.id]);
+
+  const options = useMemo(() => realAccounts.map(a => ({ id: a.id, label: a.name, sub: a.email ?? '' })), [realAccounts]);
+  const chosen = realAccounts.find(a => a.id === target);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!target) return;
+    setBusy(true);
+    setError('');
+    const r = await supabase.rpc('admin_merge_accounts', { p_placeholder: placeholder.id, p_user: target });
+    setBusy(false);
+    if (r.error) setError(r.error.message);
+    else {
+      const d = r.data as { tasksAssigned: number; projects: number; userName: string };
+      onDone(`Đã ghép "${placeholder.name}" vào "${d.userName}": chuyển ${d.tasksAssigned} nhiệm vụ đã giao và ${d.projects} dự án.`);
+    }
+  };
+
+  return (
+    <Backdrop label="Ghép với tài khoản thật" onClose={onClose} busy={busy}>
+      <form onSubmit={submit}>
+        <DialogHeader title="Ghép với tài khoản thật" onClose={onClose} disabled={busy} />
+        <p className="text-xs text-slate-700 mb-3">
+          Tài khoản chưa đăng ký: <strong>{placeholder.name}</strong>
+        </p>
+        <span className={labelCls}>Ghép vào tài khoản đã đăng ký</span>
+        <SearchSelect value={target} onChange={setTarget} options={options} placeholder="Gõ tên hoặc email để tìm…" ariaLabel="Tài khoản thật cần ghép vào" disabled={busy} />
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800">
+          {preview ? (
+            <>
+              <p className="font-semibold mb-1">Sẽ chuyển sang {chosen ? <span className="text-indigo-800">{chosen.name}</span> : 'tài khoản thật'}:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>{preview.tasksAssigned} nhiệm vụ đang giao (không phải phân công lại)</li>
+                <li>{preview.tasksCollaborating} nhiệm vụ đang phối hợp</li>
+                <li>Tư cách thành viên của {preview.projects} dự án (nếu người thật đã ở trong dự án, giữ vai trò hiện có của họ)</li>
+                {preview.projectsManaged > 0 && <li>Vai trò quản lý của {preview.projectsManaged} dự án</li>}
+                <li>Các bước use case, tiêu chuẩn chất lượng đã tick</li>
+              </ul>
+            </>
+          ) : error ? null : (
+            <span className="inline-flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Đang tính…</span>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-600">Sau khi ghép, tài khoản chưa đăng ký bị xóa và <strong>không thể hoàn tác</strong>. Người dùng thật nhận một thông báo.</p>
+        {error && <p role="alert" className="mt-3 text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 text-xs font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">Hủy bỏ</button>
+          <button type="submit" disabled={busy || !target || !preview} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg">
+            {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />} Ghép tài khoản
+          </button>
+        </div>
+      </form>
+    </Backdrop>
+  );
+};
+
 type Filter = 'all' | 'admin' | 'member' | 'placeholder';
 
 /** Màn hình quản lý mọi tài khoản của hệ thống (chỉ quản trị viên): xem, tạo, sửa, đặt lại mật khẩu, xóa. */
@@ -312,7 +387,7 @@ export const AccountsView: React.FC = () => {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const [dialog, setDialog] = useState<{ kind: 'create' } | { kind: 'edit' | 'reset'; account: Account } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: 'create' } | { kind: 'edit' | 'reset' | 'merge'; account: Account } | null>(null);
   const [secret, setSecret] = useState<{ title: string; email: string; password: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -401,6 +476,11 @@ export const AccountsView: React.FC = () => {
               <KeyRound className="w-4 h-4" />
             </button>
           </>
+        )}
+        {a.isPlaceholder && (
+          <button type="button" onClick={() => setDialog({ kind: 'merge', account: a })} className={btn} title="Ghép với tài khoản thật (chuyển nhiệm vụ đã giao)" aria-label={`Ghép ${a.name} với tài khoản thật`}>
+            <GitMerge className="w-4 h-4" />
+          </button>
         )}
         <button
           type="button"
@@ -577,6 +657,18 @@ export const AccountsView: React.FC = () => {
           onDone={password => {
             setSecret({ title: 'Đã đặt lại mật khẩu', email: dialog.account.email ?? '', password });
             setDialog(null);
+            void load();
+          }}
+        />
+      )}
+      {dialog?.kind === 'merge' && (
+        <MergeDialog
+          placeholder={dialog.account}
+          realAccounts={accounts.filter(a => !a.isPlaceholder)}
+          onClose={() => setDialog(null)}
+          onDone={summary => {
+            setDialog(null);
+            notify('success', summary);
             void load();
           }}
         />

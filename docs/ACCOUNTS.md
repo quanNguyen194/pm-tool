@@ -8,6 +8,15 @@ Chỉ **quản trị viên hệ thống** thấy tab **Tài Khoản** (`/account
 - **Xóa:** người đó mất quyền đăng nhập, rời mọi dự án, nhiệm vụ họ phụ trách thành "chưa giao"; dữ liệu họ đã nhập vẫn giữ. Tài khoản "Chưa đăng ký" cũng xóa ở đây.
 - **Nhật ký thao tác:** ai tạo / sửa / đặt lại mật khẩu / xóa tài khoản nào, lúc nào (không ghi mật khẩu).
 
+## Ghép tài khoản chưa đăng ký với tài khoản thật
+Tình huống: bạn thêm một người chưa đăng ký vào dự án và giao việc cho họ; sau này họ tạo tài khoản thật. Muốn các nhiệm vụ đã giao chuyển sang tài khoản thật để **không phải phân công lại**.
+
+- **Tự động (khi trùng tên):** nếu họ đăng ký đúng tên đã đặt (không phân biệt hoa thường, khoảng trắng thừa; **có phân biệt dấu**), hệ thống tạo yêu cầu hợp nhất và báo admin. Admin duyệt ở **Đội ngũ & Phân quyền**, mục "Yêu cầu hợp nhất tài khoản".
+- **Thủ công (bất kể tên):** ở tab **Tài Khoản**, lọc "Chưa đăng ký", bấm biểu tượng ghép (hai nhánh) trên dòng tài khoản chưa đăng ký, chọn tài khoản thật (gõ tên hoặc email), xem trước điều sẽ được chuyển, bấm **Ghép tài khoản**. Cần migration `0029_manual_account_merge.sql`.
+- **Được chuyển sang tài khoản thật:** nhiệm vụ đang giao, nhiệm vụ đang phối hợp, tư cách thành viên các dự án (nếu người thật đã ở trong dự án thì **giữ vai trò hiện có** của họ), vai trò quản lý dự án, các bước use case và tiêu chuẩn chất lượng đã tick, mọi liên kết khác tới hồ sơ.
+- Sau khi ghép: tài khoản chưa đăng ký bị xóa, **không hoàn tác được**, người dùng thật nhận một thông báo.
+- Chỉ admin ghép được. Chỉ ghép được "chưa đăng ký" vào "đã đăng ký".
+
 ## Chốt chặn
 - Mọi thao tác kiểm quyền admin **ở máy chủ** (Edge Function), ẩn nút ở giao diện không phải bảo vệ duy nhất.
 - Không tự xóa chính mình; không tự đổi quyền quản trị của chính mình; không xóa hay bỏ quyền của quản trị viên cuối cùng.
